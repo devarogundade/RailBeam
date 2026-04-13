@@ -2,43 +2,37 @@
 import OnboardingHeader from './components/OnboardingHeader.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWalletStore } from './stores/wallet';
-import type { Merchant } from 'beam-ts/src/types';
-import { onMounted, ref, watch } from 'vue';
-import { beamSdk } from '@/scripts/beamSdk';
+import type { Merchant } from 'beam-ts';
+import { computed, ref, watchEffect } from 'vue';
+import { useBeamMerchantQuery } from '@/query/beam';
 
 const route = useRoute();
 const router = useRouter();
 const walletStore = useWalletStore();
 const merchant = ref<Merchant | null>(null);
 
-const getMerchant = async () => {
-    if (!walletStore.address) return;
+const address = computed(() => walletStore.address);
+const merchantQuery = useBeamMerchantQuery(address);
 
-    merchant.value = await beamSdk.merchant.getMerchant({
-        merchant: walletStore.address
-    });
+watchEffect(() => {
+    merchant.value = merchantQuery.data.value ?? null;
+
+    if (!walletStore.address) return;
 
     if (route.name?.toString().startsWith('onboarding')) {
         if (merchant.value) {
             router.push('/');
-        } else if (route.name === 'onboarding-wallet' && walletStore.address) {
-            router.push('/');
+            return;
+        }
+
+        // Wallet connected but merchant doesn't exist yet: continue onboarding.
+        if (route.name === 'onboarding-wallet') {
+            router.push('/onboarding/profile');
         }
     } else {
         walletStore.setMerchant(merchant.value);
     }
-};
-
-onMounted(() => {
-    getMerchant();
 });
-
-watch(
-    () => walletStore.address,
-    () => {
-        getMerchant();
-    }
-);
 </script>
 
 <template>

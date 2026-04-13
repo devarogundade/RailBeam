@@ -4,20 +4,9 @@ import BeamLogo from './icons/BeamLogo.vue';
 import MetamaskIcon from './icons/MetamaskIcon.vue';
 import WalletIcon from './icons/WalletIcon.vue';
 import Converter from '@/scripts/converter';
-import { Connection } from '@/scripts/types';
-import { config, chains } from '@/scripts/config';
-import { createWeb3Modal } from '@web3modal/wagmi/vue';
+import { Connection } from '@/types/app';
 import EyeIcon from './icons/EyeIcon.vue';
 import { useWeb3Modal } from '@web3modal/wagmi/vue';
-
-createWeb3Modal({
-    wagmiConfig: config,
-    projectId: import.meta.env.VITE_PROJECT_ID,
-    // @ts-ignore
-    chains: chains,
-    enableAnalytics: true,
-    themeMode: 'dark'
-});
 
 const walletStore = useWalletStore();
 const modal = useWeb3Modal();

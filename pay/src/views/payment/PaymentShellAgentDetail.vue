@@ -49,24 +49,15 @@ watch(
           <button type="button" class="icon-btn" aria-label="Back" @click="router.back()">
             <ChevronLeftIcon />
           </button>
-          <button
-            type="button"
-            class="title"
-            aria-label="Open agent details"
-            @click="infoOpen = true"
-          >
+          <button type="button" class="title" aria-label="Open agent details" @click="infoOpen = true">
             <img class="avatar" :src="agent.image || AGENT_AVATAR_DEFAULT" width="34" height="34" alt="" />
             <div class="title-txt">
               <p class="name">{{ agent.name }}</p>
               <p class="sub">Chat</p>
             </div>
           </button>
-          <button
-            type="button"
-            class="star"
-            :class="{ on: agentsStore.isStarred(agent.id) }"
-            @click="agentsStore.toggleStar(agent.id)"
-          >
+          <button type="button" class="star" :class="{ on: agentsStore.isStarred(agent.id) }"
+            @click="agentsStore.toggleStar(agent.id)">
             <span class="star-ico" />
           </button>
         </div>
@@ -160,7 +151,7 @@ watch(
 
 .top__inner {
   display: grid;
-  grid-template-columns: 72px 1fr 54px;
+  grid-template-columns: 40px 1fr 54px;
   align-items: center;
   gap: 10px;
   width: 100%;

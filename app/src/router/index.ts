@@ -3,6 +3,7 @@ import TreasuryView from "../views/TreasuryView.vue";
 import SubscriptionView from "@/views/subscriptions/SubscriptionView.vue";
 import PlansView from "@/views/subscriptions/PlansView.vue";
 import ChatView from "@/views/ChatView.vue";
+import ChatAgentNew from "@/views/ChatAgentNew.vue";
 import SettingsView from "@/views/SettingsView.vue";
 import ConnectView from "@/views/onboarding/ConnectView.vue";
 import App from "@/App.vue";
@@ -14,7 +15,6 @@ import MultisigView from "@/views/onboarding/MultisigView.vue";
 import GeneralView from "@/views/settings/GeneralView.vue";
 import WalletSettings from "@/views/settings/WalletSettings.vue";
 import PaymentsSettingsView from "@/views/settings/PaymentsSettingsView.vue";
-import DeveloperView from "@/views/settings/DeveloperView.vue";
 import AcceptPaymentView from "@/views/accept-payments/AcceptPaymentView.vue";
 import CustomerView from "@/views/accept-payments/CustomerView.vue";
 import X402View from "@/views/accept-payments/x402View.vue";
@@ -101,9 +101,14 @@ const router = createRouter({
         },
 
         {
-          path: "/chat",
-          name: "chat",
+          path: "/agents",
+          name: "agents",
           component: ChatView,
+        },
+        {
+          path: "/agents/new",
+          name: "agents-new",
+          component: ChatAgentNew,
         },
         {
           path: "/settings",
@@ -124,11 +129,6 @@ const router = createRouter({
               path: "/settings/wallet",
               name: "settings-wallet",
               component: WalletSettings,
-            },
-            {
-              path: "/settings/developer",
-              name: "settings-developer",
-              component: DeveloperView,
             },
           ],
         },

@@ -75,3 +75,75 @@ type SubscriptionPlan @entity(immutable: false) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type Agent @entity(immutable: false) {
+  id: Bytes!
+  agentId: BigInt!
+  owner: Bytes! # address
+  uri: String
+  agentWallet: Bytes # address (decoded from reserved metadata when possible)
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  metadata: [AgentMetadata!]! @derivedFrom(field: "agent")
+}
+
+type AgentMetadata @entity(immutable: false) {
+  id: Bytes!
+  agent: Agent!
+  agentId: BigInt!
+  key: String!
+  value: Bytes!
+  updatedBy: Bytes! # address (tx.from for set/transfer-triggered clear)
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Feedback @entity(immutable: false) {
+  id: Bytes!
+  agentId: BigInt!
+  clientAddress: Bytes! # address
+  feedbackIndex: BigInt!
+  value: BigInt! # int128 stored as BigInt
+  valueDecimals: Int!
+  tag1: String!
+  tag2: String!
+  endpoint: String!
+  feedbackURI: String!
+  feedbackHash: Bytes! # bytes32
+  revoked: Boolean!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  responses: [FeedbackResponse!]! @derivedFrom(field: "feedback")
+}
+
+type FeedbackResponse @entity(immutable: true) {
+  id: Bytes!
+  feedback: Feedback!
+  agentId: BigInt!
+  clientAddress: Bytes! # address
+  feedbackIndex: BigInt!
+  responder: Bytes! # address
+  responseURI: String!
+  responseHash: Bytes! # bytes32
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Validation @entity(immutable: false) {
+  id: Bytes! # requestHash (bytes32)
+  requestHash: Bytes!
+  validatorAddress: Bytes! # address
+  agentId: BigInt!
+  requestURI: String!
+  response: Int
+  responseURI: String
+  responseHash: Bytes
+  tag: String
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

@@ -129,10 +129,8 @@ contract RecurrentTransaction is IRecurrentTransaction, Ownable {
         ];
 
         require(t.payer == msg.sender, Errors.TRANSACTION_INVALID_PAYER);
-        require(
-            t.status == Enums.TransactionStatus.Completed,
-            Errors.TRANSACTION_NOT_COMPLETED
-        );
+        require(t.status == Enums.TransactionStatus.Active, Errors.TRANSACTION_NOT_ACTIVE);
+        require(t.timestamps.length > 0, Errors.TRANSACTION_NOT_COMPLETED);
 
         _receipt.mint(params);
     }

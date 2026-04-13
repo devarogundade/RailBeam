@@ -112,12 +112,14 @@ function demoAgents(): Agent[] {
 export const useAgentsStore = defineStore("agents", () => {
   const seeded = safeJsonParse<Persisted>(localStorage.getItem(LS_KEY));
 
-  const agents = ref<Agent[]>(seeded?.agents?.length ? seeded.agents : demoAgents());
+  const agents = ref<Agent[]>(
+    seeded?.agents?.length ? seeded.agents : demoAgents(),
+  );
   const starredIds = ref<Set<AgentId>>(new Set(seeded?.starredIds ?? []));
   const chats = ref<Record<AgentId, ChatMessage[]>>(seeded?.chats ?? {});
 
   const starredAgents = computed(() =>
-    agents.value.filter((a) => starredIds.value.has(a.id))
+    agents.value.filter((a) => starredIds.value.has(a.id)),
   );
 
   function isStarred(agentId: AgentId): boolean {
@@ -205,7 +207,7 @@ export const useAgentsStore = defineStore("agents", () => {
       };
       localStorage.setItem(LS_KEY, JSON.stringify(payload));
     },
-    { deep: true }
+    { deep: true },
   );
 
   return {
@@ -222,4 +224,3 @@ export const useAgentsStore = defineStore("agents", () => {
     sendMessage,
   };
 });
-

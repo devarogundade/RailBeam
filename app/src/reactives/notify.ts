@@ -1,4 +1,4 @@
-import type { Notification } from "@/scripts/types";
+import type { Notification } from "@/types/app";
 import { reactive } from "vue";
 
 export const notify = reactive({

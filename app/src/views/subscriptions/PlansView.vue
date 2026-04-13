@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import PlanDetails from '@/components/PlanDetails.vue';
 import { useWalletStore } from '@/stores/wallet';
-import { onMounted, ref } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import ProgressBox from '@/components/ProgressBox.vue';
-import { Client } from '@/scripts/client';
-import { Plan } from '@/scripts/types';
+import type { Plan } from '@/types/app';
 import Converter from '@/scripts/converter';
 import CreatePlan from '@/components/CreatePlan.vue';
-import { getToken } from 'beam-ts/src/utils/constants';
+import { getToken } from 'beam-ts';
 import { displayImageUrl } from '@/scripts/displayImageUrl';
+import { useBeamPlansQuery } from '@/query/beam';
+import { useQueryClient } from '@tanstack/vue-query';
 
 const walletStore = useWalletStore();
-const progress = ref<boolean>(false);
 const plans = ref<Plan[]>([]);
 const selectedPlan = ref<Plan | null>(null);
+const qc = useQueryClient();
 
 const emit = defineEmits(['close-creating-plan']);
 
@@ -21,21 +22,18 @@ const props = defineProps({
     creatingPlan: { type: Boolean }
 });
 
-const getPlans = async (load: boolean = true) => {
-    if (!walletStore.address) return;
-    progress.value = load;
+const address = computed(() => walletStore.address);
+const plansQuery = useBeamPlansQuery(address);
 
-    plans.value = await Client.getPlans(walletStore.address);
+const progress = computed(() => plansQuery.isLoading.value);
 
-    progress.value = false;
-
-    const clientMerchant = await Client.getMerchant(walletStore.address);
-    walletStore.setClientMerchant(clientMerchant);
-};
-
-onMounted(() => {
-    getPlans();
+watchEffect(() => {
+    if (plansQuery.data.value) plans.value = plansQuery.data.value;
 });
+
+const getPlans = async () => {
+    await qc.invalidateQueries({ queryKey: ['plans', address.value ?? null] });
+};
 </script>
 
 <template>
@@ -64,7 +62,7 @@ onMounted(() => {
         <p>No plans.</p>
     </div>
 
-    <CreatePlan v-if="props.creatingPlan" @refresh="getPlans(false)" @close="emit('close-creating-plan')" />
+    <CreatePlan v-if="props.creatingPlan" @refresh="getPlans()" @close="emit('close-creating-plan')" />
 
     <PlanDetails v-if="selectedPlan" :plan="selectedPlan" @close="selectedPlan = null" />
 </template>

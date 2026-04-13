@@ -10,7 +10,7 @@ import { getEthersSigner } from '@/scripts/ethersSigner';
 import { useWalletStore } from '@/stores/wallet';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { getTokens } from 'beam-ts/src/utils/constants';
+import { getTokens } from 'beam-ts';
 import { notify } from '@/reactives/notify';
 import { displayImageUrl } from '@/scripts/displayImageUrl';
 

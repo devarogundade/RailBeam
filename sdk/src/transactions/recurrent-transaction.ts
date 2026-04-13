@@ -4,7 +4,7 @@ import type {
   GetSubscription,
   GetSubscriptions,
   Transaction,
-  Subscription,
+  SubscriptionPlan,
   GetSubscriptionsHash,
 } from "../types";
 import { BaseTransaction } from "./base";
@@ -101,17 +101,17 @@ export class RecurrentTransaction
     });
   }
 
-  getSubscription(params: GetSubscription): Promise<Subscription | null> {
+  getSubscription(params: GetSubscription): Promise<SubscriptionPlan | null> {
     return this.graph.getSubscription(params.subscriptionId);
   }
 
   getSubscriptionFromHash(
     params: GetSubscriptionsHash
-  ): Promise<Subscription[]> {
+  ): Promise<SubscriptionPlan[]> {
     return this.graph.getSubscriptionsFromHash(params.transactionHash);
   }
 
-  getSubscriptions(params: GetSubscriptions): Promise<Subscription[]> {
+  getSubscriptions(params: GetSubscriptions): Promise<SubscriptionPlan[]> {
     return this.graph.getSubscriptions(
       params.merchant,
       params.page,

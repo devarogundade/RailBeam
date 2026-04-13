@@ -8,9 +8,11 @@ import { type Hex } from "viem";
 import { merchantAbi } from "../abis/merchant";
 import { walletAbi } from "../abis/wallet";
 import { hookManagerAbi } from "../abis/hookManager";
+import { identityRegistryAbi } from "../abis/identityRegistry";
 import {
   HOOK_MANAGER_ADDRESS,
   MERCHANT_MODULE_ADDRESS,
+  IDENTITY_REGISTRY_ADDRESS,
 } from "./contractEnv";
 import type {
   CreateMerchant,
@@ -19,6 +21,7 @@ import type {
   RegisterHook,
   UpdateMerchant,
   UpdateSubscription,
+  MetadataEntry,
 } from "./params";
 
 export const HookManagerContract = {
@@ -80,7 +83,7 @@ export const MultiSigContract = {
     wallet: Hex,
     token: Hex,
     amount: BigInt,
-    recipient: Hex
+    recipient: Hex,
   ): Promise<Hex | null> {
     try {
       const result = await writeContract(config, {
@@ -198,7 +201,7 @@ export const MultiSigContract = {
   async updateSigners(
     wallet: Hex,
     signers: Hex[],
-    minSigners: number
+    minSigners: number,
   ): Promise<Hex | null> {
     try {
       const result = await writeContract(config, {
@@ -343,6 +346,60 @@ export const MerchantContract = {
         args: [merchant],
       })) as Hex;
     } catch (error) {
+      return null;
+    }
+  },
+};
+
+export const IdentityRegistryContract = {
+  address: IDENTITY_REGISTRY_ADDRESS,
+
+  async register(
+    agentURI: string,
+    metadata: MetadataEntry[],
+  ): Promise<Hex | null> {
+    try {
+      const result = await writeContract(config, {
+        abi: identityRegistryAbi,
+        address: this.address,
+        functionName: "register",
+        args: [agentURI, metadata],
+      });
+
+      const receipt = await waitForTransactionReceipt(config, { hash: result });
+
+      return receipt.transactionHash;
+    } catch {
+      return null;
+    }
+  },
+
+  async setAgentURI(agentId: bigint, newURI: string): Promise<Hex | null> {
+    try {
+      const result = await writeContract(config, {
+        abi: identityRegistryAbi,
+        address: this.address,
+        functionName: "setAgentURI",
+        args: [agentId, newURI],
+      });
+
+      const receipt = await waitForTransactionReceipt(config, { hash: result });
+
+      return receipt.transactionHash;
+    } catch {
+      return null;
+    }
+  },
+
+  async getMetadata(agentId: bigint, metadataKey: string): Promise<Hex | null> {
+    try {
+      return (await readContract(config, {
+        abi: identityRegistryAbi,
+        address: this.address,
+        functionName: "getMetadata",
+        args: [agentId, metadataKey],
+      })) as Hex;
+    } catch {
       return null;
     }
   },

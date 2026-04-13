@@ -1,53 +1,53 @@
 <script setup lang="ts">
 import SideBar from '@/components/SideBar.vue';
 import AppHeader from './components/AppHeader.vue';
-import { onMounted, ref } from 'vue';
+import { computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWalletStore } from './stores/wallet';
-import { beamSdk } from '@/scripts/beamSdk';
 import ProgressBox from './components/ProgressBox.vue';
-import { Client } from './scripts/client';
 import { notify } from './reactives/notify';
+import { useBeamMerchantQuery } from '@/query/beam';
 
 const router = useRouter();
 const walletStore = useWalletStore();
-const loading = ref<boolean>(true);
+const address = computed(() => walletStore.address);
 
-const getMerchant = async () => {
-  if (!walletStore.address) return;
+const merchantQuery = useBeamMerchantQuery(address);
 
-  try {
-    const chainMerchant = await beamSdk.merchant.getMerchant({
-      merchant: walletStore.address
-    });
-    walletStore.setMerchant(chainMerchant);
-  } catch {
+const loading = computed(
+  () => merchantQuery.isLoading.value,
+);
+
+watchEffect(() => {
+  if (!walletStore.address) {
+    router.push('/onboarding');
+  }
+});
+
+watchEffect(() => {
+  if (merchantQuery.isError.value) {
     walletStore.setMerchant(null);
-    loading.value = false;
     notify.push({
       title: 'Could not load account',
       description: 'Check your connection and try again.',
-      category: 'error'
+      category: 'error',
     });
     return;
   }
-
-  try {
-    const clientMerchant = await Client.getMerchant(walletStore.address);
-    walletStore.setClientMerchant(clientMerchant);
-  } finally {
-    loading.value = false;
+  if (merchantQuery.data.value !== undefined) {
+    walletStore.setMerchant(merchantQuery.data.value ?? null);
   }
-};
+});
 
-onMounted(() => {
-  loading.value = true;
+watchEffect(() => {
+  // If wallet exists but merchant is missing, send user to onboarding.
+  if (!walletStore.address) return;
+  if (merchantQuery.isLoading.value) return;
+  if (merchantQuery.isError.value) return;
 
-  if (!walletStore.address) {
-    return router.push('/onboarding');
+  if (merchantQuery.data.value === null) {
+    router.push('/onboarding/profile');
   }
-
-  getMerchant();
 });
 </script>
 

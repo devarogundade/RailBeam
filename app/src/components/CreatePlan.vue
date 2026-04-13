@@ -8,10 +8,10 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 import Storage from '@/scripts/storage';
 import { getEthersSigner } from '@/scripts/ethersSigner';
 import { MerchantContract } from '@/scripts/contract';
-import { getTokens } from 'beam-ts/src/utils/constants';
+import { getTokens } from 'beam-ts';
 import { parseUnits } from 'viem';
 import { notify } from '@/reactives/notify';
-import { Token } from '@/scripts/types';
+import type { Token } from "beam-ts";
 
 const emit = defineEmits(['close', 'refresh']);
 const walletStore = useWalletStore();

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { useWalletStore } from '@/stores/wallet';
-import { computed, onMounted, ref, watch } from 'vue';
-import { getTokens } from 'beam-ts/src/utils/constants';
-import type { Plan, Token } from '@/scripts/types';
+import { computed, onMounted, ref, watch, watchEffect } from 'vue';
+import { getTokens } from 'beam-ts';
+import type { Token } from "beam-ts";
+import type { Plan } from "@/types/app";
 import type { Hex } from 'viem';
-import { Client } from '@/scripts/client';
 import { notify } from '@/reactives/notify';
 import QrcodeVue from 'qrcode.vue';
 import Converter from '@/scripts/converter';
-import { getToken } from 'beam-ts/src/utils/constants';
+import { getToken } from 'beam-ts';
 import CopyIcon from '@/components/icons/CopyIcon.vue';
+import { useBeamPlansQuery } from '@/query/beam';
 
 type PaymentKind = 'one-time' | 'recurrent';
 
@@ -91,25 +92,23 @@ const canGenerateRecurrent = computed(() => {
     return !!walletStore.merchant && !!selectedPlan.value;
 });
 
-const loadPlans = async () => {
+const address = computed(() => walletStore.address);
+const plansQuery = useBeamPlansQuery(address);
+
+watchEffect(() => {
+    plansLoading.value = plansQuery.isLoading.value;
     if (!walletStore.address) {
         plans.value = [];
         selectedPlan.value = null;
         return;
     }
-    plansLoading.value = true;
-    try {
-        plans.value = await Client.getPlans(walletStore.address);
-        if (
-            selectedPlan.value &&
-            !plans.value.some((p) => p._id === selectedPlan.value!._id)
-        ) {
+    if (plansQuery.data.value) {
+        plans.value = plansQuery.data.value;
+        if (selectedPlan.value && !plans.value.some((p) => p._id === selectedPlan.value!._id)) {
             selectedPlan.value = null;
         }
-    } finally {
-        plansLoading.value = false;
     }
-};
+});
 
 const generatePaymentLink = () => {
     if (!walletStore.merchant) {
@@ -207,7 +206,7 @@ const sdkSnippet = computed(() => {
         const a = String(form.value.amount).trim();
         return `import { parseEther } from 'viem';
 import { beamSdk } from '@/scripts/beamSdk';
-import { SCHEMA_JSON } from 'beam-ts/src/utils/constants';
+import { SCHEMA_JSON } from 'beam-ts';
 
 // Replace with the customer's wallet address (or multiple for split pay).
 const payer = '0x…' as \`0x\${string}\`;
@@ -226,7 +225,7 @@ const result = await beamSdk.oneTimeTransaction.create({
     const m = walletStore.merchant.merchant;
     const sid = selectedPlan.value._id;
     return `import { beamSdk } from '@/scripts/beamSdk';
-import { SCHEMA_JSON } from 'beam-ts/src/utils/constants';
+import { SCHEMA_JSON } from 'beam-ts';
 
 const result = await beamSdk.recurrentTransaction.create({
   merchant: '${m}',
@@ -268,13 +267,12 @@ watch([() => form.value.amount, () => form.value.description, token, selectedPla
 watch(
     () => walletStore.address,
     () => {
-        loadPlans();
+        // handled by query + watchEffect
     }
 );
 
 onMounted(() => {
     syncTokens();
-    loadPlans();
 });
 </script>
 

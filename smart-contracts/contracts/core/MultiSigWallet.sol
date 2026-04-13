@@ -4,12 +4,16 @@ pragma solidity ^0.8.0;
 import {Types} from "../libs/Types.sol";
 import {Errors} from "../libs/Errors.sol";
 
-import {IWallet} from "../interfaces/IWallet.sol";
+import {IMultisigWallet} from "../interfaces/IMultisigWallet.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract MultiSigWallet is Ownable, IWallet {
+contract MultiSigWallet is Ownable, IMultisigWallet, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     address[] internal _tokens;
     address[] internal _signers;
     uint256 internal _minSigners;
@@ -43,7 +47,7 @@ contract MultiSigWallet is Ownable, IWallet {
         if (token == address(0)) {
             require(amount == msg.value, Errors.INVALID_INPUT);
         } else {
-            IERC20(token).transferFrom(msg.sender, address(this), amount);
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
     }
 
@@ -76,6 +80,7 @@ contract MultiSigWallet is Ownable, IWallet {
     function approveWithdraw(uint256 requestId) external override onlySigner {
         Types.WithdrawRequest storage request = _requests[requestId];
 
+        require(request.recipient != address(0), Errors.INVALID_INPUT);
         require(!request.executed, Errors.ACTION_NOT_ALLOWED);
         require(!request.hasApproved[msg.sender], Errors.ACTION_NOT_ALLOWED);
 
@@ -85,31 +90,36 @@ contract MultiSigWallet is Ownable, IWallet {
         emit WithdrawRequestApproved(owner(), requestId, msg.sender);
     }
 
-    function executeWithdraw(uint256 requestId) external override {
+    function executeWithdraw(
+        uint256 requestId
+    ) external override nonReentrant {
         Types.WithdrawRequest storage request = _requests[requestId];
 
+        require(request.recipient != address(0), Errors.INVALID_INPUT);
         require(
             request.approvals >= _minSigners,
             Errors.INSUFFICIENT_APPROVALS
         );
         require(!request.executed, Errors.ACTION_NOT_ALLOWED);
 
+        request.executed = true;
+
         if (request.token == address(0)) {
             require(
                 address(this).balance >= request.amount,
                 Errors.INSUFFICIENT_BALANCE
             );
-            payable(request.recipient).transfer(request.amount);
+            (bool success, ) = payable(request.recipient).call{
+                value: request.amount
+            }("");
+            require(success, Errors.OPERATION_FAILED);
         } else {
-            IERC20 erc20 = IERC20(request.token);
             require(
-                erc20.balanceOf(address(this)) >= request.amount,
+                IERC20(request.token).balanceOf(address(this)) >= request.amount,
                 Errors.INSUFFICIENT_BALANCE
             );
-            erc20.transfer(request.recipient, request.amount);
+            IERC20(request.token).safeTransfer(request.recipient, request.amount);
         }
-
-        request.executed = true;
 
         emit WithdrawRequestExecuted(owner(), requestId);
     }

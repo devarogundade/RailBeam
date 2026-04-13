@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useWalletStore } from '@/stores/wallet';
 import { computed, onMounted, ref, watch } from 'vue';
-import { getTokens } from 'beam-ts/src/utils/constants';
-import type { Token } from '@/scripts/types';
+import { getTokens } from 'beam-ts';
+import type { Token } from "beam-ts";
 import { notify } from '@/reactives/notify';
 
 type SourceKind = 'link' | 'file';

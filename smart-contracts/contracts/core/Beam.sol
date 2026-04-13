@@ -3,13 +3,11 @@ pragma solidity ^0.8.28;
 
 import {Types} from "../libs/Types.sol";
 import {Params} from "../libs/Params.sol";
-
 import {AddressLib} from "../libs/AddressLib.sol";
 import {IntegerLib} from "../libs/IntegerLib.sol";
-
 import {Errors} from "../libs/Errors.sol";
 
-import {IWallet} from "../interfaces/IWallet.sol";
+import {IMultisigWallet} from "../interfaces/IMultisigWallet.sol";
 import {IMerchant} from "../interfaces/IMerchant.sol";
 import {IBeam} from "../interfaces/IBeam.sol";
 import {IHookManager} from "../interfaces/IHookManager.sol";
@@ -89,7 +87,8 @@ contract Beam is Ownable, IBeam {
 
         _routeTransaction(routeParams);
 
-        IWallet(wallet).deposit{value: msg.value}(
+        uint256 depositValue = adjustedToken == address(0) ? adjustedAmount : 0;
+        IMultisigWallet(wallet).deposit{value: depositValue}(
             adjustedToken,
             adjustedAmount
         );
@@ -166,7 +165,8 @@ contract Beam is Ownable, IBeam {
 
         _routeTransaction(routeParams);
 
-        IWallet(wallet).deposit{value: msg.value}(
+        uint256 depositValue = adjustedToken == address(0) ? adjustedAmount : 0;
+        IMultisigWallet(wallet).deposit{value: depositValue}(
             adjustedToken,
             adjustedAmount
         );
@@ -242,7 +242,8 @@ contract Beam is Ownable, IBeam {
 
         _routeTransaction(routeParams);
 
-        IWallet(wallet).deposit{value: msg.value}(
+        uint256 depositValue = adjustedToken == address(0) ? adjustedAmount : 0;
+        IMultisigWallet(wallet).deposit{value: depositValue}(
             adjustedToken,
             adjustedAmount
         );
@@ -318,7 +319,8 @@ contract Beam is Ownable, IBeam {
 
         _routeTransaction(routeParams);
 
-        IWallet(wallet).deposit{value: msg.value}(
+        uint256 depositValue = adjustedToken == address(0) ? adjustedAmount : 0;
+        IMultisigWallet(wallet).deposit{value: depositValue}(
             adjustedToken,
             adjustedAmount
         );
@@ -374,7 +376,7 @@ contract Beam is Ownable, IBeam {
         require(balance >= params.amount, Errors.TRANSACTION_FAILED);
 
         if (params.token == address(0)) {
-            require(msg.value >= params.amount, Errors.TRANSACTION_FAILED);
+            require(msg.value == params.amount, Errors.TRANSACTION_FAILED);
         } else {
             IERC20(params.token).safeTransferFrom(
                 msg.sender,

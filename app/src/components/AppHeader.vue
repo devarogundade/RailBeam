@@ -7,7 +7,7 @@ import { ref, watch, type Component } from 'vue';
 import TreasuryIcon from './icons/TreasuryIcon.vue';
 import PaymentsIcon from './icons/PaymentsIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import Converter from '@/scripts/converter';
 import EyeIcon from './icons/EyeIcon.vue';
 import WalletIcon from './icons/WalletIcon.vue';
@@ -47,9 +47,17 @@ watch(route, (newValue) => {
             icon: PaymentsIcon
         };
     }
-    else if (newValue.name?.toString().startsWith('chat')) {
+    else if (newValue.name === 'agents') {
         props.value = {
-            title: 'Beam',
+            title: 'My Agents',
+            parent: 'Agents',
+            icon: AIIcon
+        };
+    }
+    else if (newValue.name?.toString().startsWith('agents-new')) {
+        props.value = {
+            title: 'New Agent',
+            parent: 'Agents',
             icon: AIIcon
         };
     }

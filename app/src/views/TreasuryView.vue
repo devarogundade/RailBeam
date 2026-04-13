@@ -9,9 +9,9 @@ import SendIcon from '@/components/icons/SendIcon.vue';
 import SwapIcon from '@/components/icons/SwapIcon.vue';
 import UsersIcon from '@/components/icons/UsersIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
-import { onMounted, ref } from 'vue';
-import type { Token, Transaction } from "beam-ts/src/types";
-import { getToken, getTokens } from "beam-ts/src/utils/constants";
+import { computed, onMounted, ref } from 'vue';
+import type { Token, Transaction } from "beam-ts";
+import { getToken, getTokens } from "beam-ts";
 import { beamSdk } from "@/scripts/beamSdk";
 import CompletedIcon from '@/components/icons/CompletedIcon.vue';
 import { formatUnits } from 'viem';
@@ -22,15 +22,15 @@ import ArrowUpIcon from '@/components/icons/ArrowUpIcon.vue';
 import { TokenContract } from '@/scripts/erc20';
 import AllAssets from '@/components/AllAssets.vue';
 import ProgressBox from '@/components/ProgressBox.vue';
-import { TransactionType } from '@/scripts/types';
+import { TransactionType } from "beam-ts";
 import ReceiveToken from '@/components/ReceiveToken.vue';
 import UserIcon from '@/components/icons/UserIcon.vue';
+import { useBeamOneTimeTransactionsQuery } from '@/query/beam';
 
 const VITE_EXPLORER_URL = import.meta.env.VITE_EXPLORER_URL;
 
 const activeIndex = ref<number>(-1);
 const walletStore = useWalletStore();
-const progress = ref<boolean>(false);
 const balances = ref<{ [key: string]: number; }>({
   "0x0000000000000000000000000000000000000000": 0,
 });
@@ -38,7 +38,10 @@ const tokens = ref<Token[]>([]);
 const receiveToken = ref<boolean>(false);
 const allAssets = ref<boolean>(false);
 
-const transactions = ref<Transaction[]>([]);
+const address = computed(() => walletStore.address);
+const transactionsQuery = useBeamOneTimeTransactionsQuery(address, { page: 1, limit: 50 });
+const progress = computed(() => transactionsQuery.isLoading.value);
+const transactions = computed<Transaction[]>(() => transactionsQuery.data.value ?? []);
 
 const getTokenBalances = async () => {
   if (!walletStore.merchant) return;
@@ -56,21 +59,7 @@ const getTokenBalances = async () => {
   }
 };
 
-const getTransactions = async (load: boolean = true) => {
-  if (!walletStore.address) return;
-  progress.value = load;
-
-  transactions.value = await beamSdk.oneTimeTransaction.getTransactions({
-    merchant: walletStore.address,
-    page: 1,
-    limit: 50
-  });
-
-  progress.value = false;
-};
-
 onMounted(() => {
-  getTransactions();
   getTokenBalances();
 });
 </script>
@@ -95,7 +84,7 @@ onMounted(() => {
             <p>$
               {{
                 Converter.toMoney(
-                  tokens.reduce((a, b) => a + b.price * balances[b.address], 0) || 0
+                  tokens.reduce((a: number, b: any) => a + (b.price || 0) * (balances[b.address] || 0), 0) || 0
                 )
               }}
               <span>+0.00%</span>
@@ -303,14 +292,14 @@ onMounted(() => {
                 <p v-if="transaction.type == TransactionType.OneTime">
                   {{
                     Converter.toMoney(
-                      Number(formatUnits(transaction.amounts.reduce((a, b) => a + b, BigInt(0)),
+                      Number(formatUnits(transaction.amounts.reduce((a: bigint, b: bigint) => a + b, BigInt(0)),
                         getToken(transaction.token)?.decimals || 18))
                     )
                   }}
                   <span>{{ getToken(transaction.token)?.symbol }}</span>
                 </p>
                 <p v-if="transaction.type == TransactionType.OneTime">≈ ${{Converter.toMoney(
-                  (getToken(transaction.token)?.price || 0) * Number(formatUnits(transaction.amounts.reduce((a, b) => a
+                  (getToken(transaction.token)?.price || 0) * Number(formatUnits(transaction.amounts.reduce((a: bigint, b: bigint) => a
                     + b, BigInt(0)),
                     getToken(transaction.token)?.decimals || 18))
 

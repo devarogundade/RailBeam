@@ -45,7 +45,7 @@ function openExternal(url: string) {
       </div>
     </div>
 
-    <ul class="list" aria-label="Agents list">
+    <ul class="grid" aria-label="Agents list">
       <li v-for="a in results" :key="a.id" class="row" role="button" tabindex="0"
         @click="router.push({ name: 'payment-agent-detail', params: { id: a.id } })"
         @keydown.enter.prevent="router.push({ name: 'payment-agent-detail', params: { id: a.id } })">
@@ -114,11 +114,23 @@ function openExternal(url: string) {
   background: rgba(245, 95, 20, 0.12);
 }
 
-.list {
+.grid {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1220px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .row {
@@ -131,6 +143,7 @@ function openExternal(url: string) {
   background: var(--bg-light);
   box-shadow: var(--native-shadow-md, 0 8px 28px rgba(0, 0, 0, 0.42));
   cursor: pointer;
+  min-width: 0;
 }
 
 .row:active {

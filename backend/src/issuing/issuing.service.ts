@@ -34,7 +34,9 @@ export class IssuingService {
   ) {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
     if (!key) {
-      this.logger.warn('STRIPE_SECRET_KEY is not set; Issuing endpoints will fail until configured.');
+      this.logger.warn(
+        'STRIPE_SECRET_KEY is not set; Issuing endpoints will fail until configured.',
+      );
     }
     this.stripe = new Stripe(key ?? 'sk_test_placeholder', {
       typescript: true,
@@ -68,7 +70,9 @@ export class IssuingService {
         },
       },
     });
-    await this.users.setStripeIds(wallet, { stripeCardholderId: cardholder.id });
+    await this.users.setStripeIds(wallet, {
+      stripeCardholderId: cardholder.id,
+    });
     return cardholder.id;
   }
 
@@ -86,8 +90,15 @@ export class IssuingService {
       const card = (await this.stripe.issuing.cards.retrieve(
         existing.stripeCardId,
       )) as IssuingCardLike;
-      const summary = this.toSummary(wallet, existing.stripeCardholderId ?? '', card);
-      await this.users.setCachedIssuingSummary(wallet, summary as unknown as Record<string, unknown>);
+      const summary = this.toSummary(
+        wallet,
+        existing.stripeCardholderId ?? '',
+        card,
+      );
+      await this.users.setCachedIssuingSummary(
+        wallet,
+        summary as unknown as Record<string, unknown>,
+      );
       return summary;
     }
 
@@ -106,11 +117,18 @@ export class IssuingService {
     });
 
     const summary = this.toSummary(wallet, cardholderId, card);
-    await this.users.setCachedIssuingSummary(wallet, summary as unknown as Record<string, unknown>);
+    await this.users.setCachedIssuingSummary(
+      wallet,
+      summary as unknown as Record<string, unknown>,
+    );
     return summary;
   }
 
-  private toSummary(wallet: string, cardholderId: string, card: IssuingCardLike): VirtualCardSummary {
+  private toSummary(
+    wallet: string,
+    cardholderId: string,
+    card: IssuingCardLike,
+  ): VirtualCardSummary {
     return {
       walletAddress: wallet,
       stripeCardId: card.id,

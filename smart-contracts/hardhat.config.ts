@@ -1,7 +1,9 @@
-import { vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
+import dotenv from "dotenv";
 
-const MNEMONIC = vars.get("MNEMONIC");
+dotenv.config();
+
+const MNEMONIC = process.env.MNEMONIC as string;
 
 module.exports = {
   mocha: {
@@ -22,7 +24,7 @@ module.exports = {
     hardhat: {
       accounts: {
         privateKey:
-          "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+          "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", // test PK
       },
     },
     /** 0G Chain — https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/deploy-contracts */

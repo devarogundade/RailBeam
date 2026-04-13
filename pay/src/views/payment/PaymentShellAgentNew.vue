@@ -96,31 +96,31 @@ function create() {
             <input v-model="name" class="inp" type="text" placeholder="Bitcoin Study Buddy" />
           </label>
 
-      <label class="lbl">
-        <span>Description</span>
-        <textarea v-model="description" class="ta" rows="4"
-          placeholder="What does this agent do? When should people pay it?" />
-      </label>
+          <label class="lbl">
+            <span>Description</span>
+            <textarea v-model="description" class="ta" rows="4"
+              placeholder="What does this agent do? When should people pay it?" />
+          </label>
 
-      <label class="lbl">
-        <span>Topics (comma-separated)</span>
-        <input v-model="topicsRaw" class="inp" type="text" placeholder="money, articles, videos" />
-      </label>
+          <label class="lbl">
+            <span>Topics (comma-separated)</span>
+            <input v-model="topicsRaw" class="inp" type="text" placeholder="money, articles, videos" />
+          </label>
 
-      <label class="lbl">
-        <span>x402 endpoint (optional)</span>
-        <input v-model="x402Endpoint" class="inp" type="text" placeholder="https://agent.example/x402/..." />
-      </label>
+          <label class="lbl">
+            <span>x402 endpoint (optional)</span>
+            <input v-model="x402Endpoint" class="inp" type="text" placeholder="https://agent.example/x402/..." />
+          </label>
 
-      <label class="lbl">
-        <span>Agent wallet (optional)</span>
-        <input v-model="agentWallet" class="inp" type="text" placeholder="0x…" />
-      </label>
+          <label class="lbl">
+            <span>Agent wallet (optional)</span>
+            <input v-model="agentWallet" class="inp" type="text" placeholder="0x…" />
+          </label>
 
-      <label class="lbl">
-        <span>Image URL (optional)</span>
-        <input v-model="image" class="inp" type="text" placeholder="https://..." />
-      </label>
+          <label class="lbl">
+            <span>Image URL (optional)</span>
+            <input v-model="image" class="inp" type="text" placeholder="https://..." />
+          </label>
 
           <button type="button" class="cta" @click="create">Create</button>
         </div>

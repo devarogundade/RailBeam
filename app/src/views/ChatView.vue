@@ -1,144 +1,122 @@
 <script setup lang="ts">
-import AIIcon from '@/components/icons/AIIcon.vue';
-import BulbIcon from '@/components/icons/BulbIcon.vue';
-import CloseIcon from '@/components/icons/CloseIcon.vue';
-import SendIcon from '@/components/icons/SendIcon.vue';
-import ProgressBox from '@/components/ProgressBox.vue';
-import { notify } from '@/reactives/notify';
-import { Client } from '@/scripts/client';
-import type { Chat } from '@/scripts/types';
-import { useWalletStore } from '@/stores/wallet';
-import { onMounted, onUnmounted, ref } from 'vue';
+import ProgressBox from "@/components/ProgressBox.vue";
+import PlusIcon from "@/components/icons/PlusIcon.vue";
+import { useWalletStore } from "@/stores/wallet";
+import { useRouter } from "vue-router";
+import { computed } from "vue";
+import { useBeamAgentsQuery } from "@/query/agents";
+import type { Agent as BeamAgent } from "beam-ts";
 
-const faqs = [
-    "How much have I earned from payments in the last 7 days until now?",
-    "Which subscription plans have the most active payers?",
-    "Which of my listed subscription plans has the highest recurring customers?"
-];
+type AgentCardRegistrationV1 = {
+  type?: string;
+  name?: string;
+  description?: string;
+  image?: string;
+  services?: Array<{ name?: string; endpoint?: string; version?: string }>;
+  x402Support?: boolean;
+  active?: boolean;
+};
+
+function safeJsonParse<T>(raw: string | null | undefined): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
 
 const walletStore = useWalletStore();
+const router = useRouter();
 
-const text = ref<string>('');
-const chats = ref<Chat[]>([]);
-const showing = ref<boolean>(true);
-const sending = ref<boolean>(false);
-const progress = ref<boolean>(false);
-const scrollContainer = ref<HTMLElement | null>(null);
+const merchantWallet = computed(() => walletStore.address);
 
-const getChats = async (load: boolean = true) => {
-    if (!walletStore.address) return;
-    progress.value = load;
-    chats.value = await Client.getChats(walletStore.address);
-    progress.value = false;
+const agentsQuery = useBeamAgentsQuery(merchantWallet);
 
-    setTimeout(() => {
-        if (scrollContainer.value) {
-            scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
-        }
-    }, 400);
+type UiAgent = {
+  id: string;
+  agentId: string;
+  name: string;
+  description: string;
+  image?: string;
+  x402?: boolean;
+  active?: boolean;
 };
 
-const sendText = async () => {
-    if (sending.value) return;
-    if (!walletStore.address) return;
-    if (text.value == '') return;
+function toUiAgent(a: BeamAgent): UiAgent {
+  const card = safeJsonParse<AgentCardRegistrationV1>(a.uri ?? null);
+  const services = card && Array.isArray(card.services) ? card.services : [];
+  const x402 = Boolean(card?.x402Support) || services.some((s) => String(s?.name).toLowerCase() === "a2a");
+  return {
+    id: a.id,
+    agentId: a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId),
+    name: (card?.name ?? "").trim() || `Agent #${a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId)}`,
+    description: (card?.description ?? "").trim() || "No description",
+    image: card?.image,
+    x402,
+    active: card?.active,
+  };
+}
 
-    sending.value = true;
+const myAgents = computed(() => (agentsQuery.data.value ?? []).map(toUiAgent));
 
-    showing.value = false;
-    const message = text.value;
-
-    chats.value.push({
-        _id: 'text',
-        from: walletStore.address,
-        text: message,
-        to: '0x',
-        createdAt: new Date()
-    });
-
-    chats.value.push({
-        _id: 'reply',
-        from: '0x',
-        text: 'Thinking...',
-        to: walletStore.address,
-        createdAt: new Date()
-    });
-
-    setTimeout(() => {
-        if (scrollContainer.value) {
-            scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
-        }
-    }, 400);
-
-    text.value = '';
-
-    const sent = await Client.sendChat(walletStore.address, message);
-
-    if (!sent) {
-        notify.push({
-            title: 'Failed to chat with AI!',
-            description: 'Try again',
-            category: "error"
-        });
-    }
-
-    sending.value = false;
-    getChats(false);
-};
-
-onMounted(() => {
-    getChats();
-    document.body.style.overflowY = 'hidden';
-
-});
-
-onUnmounted(() => {
-    document.body.style.overflowY = 'auto';
-});
+function openCreate() {
+  router.push({ name: "agents-new" });
+}
 </script>
 
 <template>
-    <ProgressBox v-if="progress" />
+    <ProgressBox v-if="agentsQuery.isLoading.value" />
 
     <div class="container" v-else>
-        <div class="messages" ref="scrollContainer">
-            <div class="no_message" v-if="chats.length == 0">
-                <div class="icon">
-                    <AIIcon />
-                </div>
-
-                <h3>What can I help you with?</h3>
-                <p>Your payments AI assistant.</p>
+        <div class="head">
+            <div class="title">
+                <h3>My Agents</h3>
+                <p>Agents are loaded from the Beam subgraph via the Beam SDK.</p>
             </div>
 
-            <div v-for="chat in chats"
-                :class="chat.from.toLowerCase() == walletStore.address?.toLowerCase() ? 'message message_user' : 'message'">
-                <img v-if="chat.from.toLowerCase() == walletStore.address?.toLowerCase()" src="/images/colors.png"
-                    alt="">
-                <img v-else src="/images/ai.png" alt="">
-                <div class="text" v-html="chat.text?.replace('```html', '').replace('```', '')"></div>
-            </div>
+            <button class="primary" type="button" @click="openCreate">
+                <PlusIcon />
+                <span>New Agent</span>
+            </button>
         </div>
-        <div class="form">
-            <div class="faq" v-if="showing">
-                <div class="title">
-                    <BulbIcon />
-                    <p>FAQs</p>
-                </div>
-                <div class="close" @click="showing = false">
-                    <CloseIcon />
-                </div>
-                <div class="items">
-                    <div class="item" v-for="faq in faqs" @click="text = faq">{{ faq }}</div>
-                </div>
+
+        <div v-if="!merchantWallet" class="empty">
+            <h4>Connect a wallet to continue</h4>
+            <p>My Agents is tied to your merchant wallet address.</p>
+        </div>
+
+        <div v-else class="panel">
+            <div v-if="agentsQuery.isError.value" class="empty">
+                <h4>Could not load agents</h4>
+                <p>Check your graph URL / network config and try again.</p>
+            </div>
+            <div v-else-if="myAgents.length === 0" class="empty">
+                <h4>No agents yet</h4>
+                <p>Once you mint/register an agent on-chain, it will appear here.</p>
             </div>
 
-            <div class="input">
-                <input type="text" v-model="text" placeholder="Ask a question">
-                <button @click="sendText">
-                    <SendIcon />
-                    <p>Send</p>
-                </button>
+            <div v-else class="list">
+                <div v-for="a in myAgents" :key="a.id" class="row">
+          <img class="avatar" :src="a.image || '/images/colors.png'" alt="" />
+                    <div class="main">
+                        <div class="row_top">
+                            <p class="name">{{ a.name }}</p>
+                            <div class="badges">
+                                <span v-if="a.active !== undefined" class="badge" :class="a.active ? 'on' : 'off'">
+                                    {{ a.active ? "Active" : "Inactive" }}
+                                </span>
+                <span v-if="a.x402" class="badge x402">x402</span>
+                            </div>
+                        </div>
+                        <p class="desc">{{ a.description }}</p>
+            <p class="meta">Agent ID: {{ a.agentId }}</p>
+                    </div>
+
+                    <div class="actions">
+                        <button class="secondary" type="button" disabled>On-chain</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -146,182 +124,186 @@ onUnmounted(() => {
 
 <style scoped>
 .container {
-    height: calc(100dvh - 90px);
+    min-height: calc(100dvh - 90px);
+    padding: 24px 50px;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    gap: 18px;
 }
 
-.messages {
-    padding: 0 50px;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    padding-bottom: 18px;
-}
-
-.messages::-webkit-scrollbar {
-    display: none;
-}
-
-.message {
-    padding: 30px 40px;
-    display: grid;
-    grid-template-columns: 40px 1fr;
-    gap: 30px;
-    font-size: 14px;
-    color: var(--tx-normal);
-    align-items: flex-end;
-}
-
-.message div {
-    margin-bottom: 10px;
-}
-
-.message_user,
-.message_user * {
-    background: var(--bg-light) !important;
-}
-
-.message img {
-    height: 40px;
-    width: 40px;
-    border-radius: 8px;
-}
-
-.text * {
-    margin-bottom: 4px;
-    font-weight: 400;
-    color: var(--tx-normal);
-    background: var(--bg);
-    border-color: var(--bg-lightest);
-}
-
-
-.no_message {
+.head {
     display: flex;
     align-items: center;
-    flex-direction: column;
-    padding: 80px 0;
-    text-align: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--bg-lightest);
+    padding-bottom: 16px;
 }
 
-.no_message .icon {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    background: var(--bg-light);
-    border: 1px solid var(--bg-lightest);
-}
-
-.no_message h3 {
-    margin-top: 40px;
+.title h3 {
+    margin: 0;
     font-size: 24px;
     color: var(--tx-normal);
 }
 
-.no_message p {
-    margin-top: 12px;
-    font-size: 16px;
+.title p {
+    margin: 8px 0 0;
+    font-size: 14px;
     color: var(--tx-dimmed);
 }
 
-.form {
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 30px 40px;
-    z-index: 10;
-    background: rgba(23, 23, 23, 0.92);
-    backdrop-filter: blur(18px) saturate(1.4);
-    -webkit-backdrop-filter: blur(18px) saturate(1.4);
-    border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+.panel {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
-.faq .title {
+.list {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    position: relative;
+    flex-direction: column;
+    gap: 14px;
 }
 
-.close {
-    position: absolute;
-    right: 40px;
-    top: 40px;
-    width: 36px;
-    height: 30px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: 1px solid var(--bg-lightest);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.faq .title p {
-    font-size: 16px;
-    color: var(--tx-normal);
-}
-
-.faq .items {
-    padding: 30px 0;
-    width: 100%;
+.row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px;
-}
-
-.faq .item {
-    padding: 25px 22px;
-    text-align: center;
-    border-radius: 8px;
-    border: 1px solid var(--bg-lighter);
-    color: var(--tx-normal);
-    background: var(--bg);
-    font-size: 14px;
-    line-height: 26px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.input {
-    width: 100%;
-    height: 44px;
-    border-radius: 8px;
+  grid-template-columns: 44px 1fr auto;
+    gap: 18px;
+    padding: 18px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--bg-lightest);
     background: var(--bg-light);
-    border: 1px solid var(--bg-lightest);
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 1fr 100px;
 }
 
-.input input {
-    height: 100%;
-    background: none;
-    padding: 0 20px;
-    border: none;
-    outline: none;
-    color: var(--tx-normal);
-    font-size: 16px;
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--bg-lightest);
 }
 
-.input button {
+.row_top {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: var(--bg-lightest);
-    gap: 8px;
-    border: none;
-    cursor: pointer;
+    justify-content: space-between;
+    gap: 12px;
 }
 
-.input button p {
-    font-size: 14px;
+.name {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
     color: var(--tx-normal);
+}
+
+.desc {
+    margin: 10px 0 0;
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--tx-semi);
+}
+
+.topics {
+    margin: 12px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.topic {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--bg-lightest);
+    color: var(--tx-dimmed);
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badges {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--bg-lightest);
+}
+
+.badge.on {
+    border-color: rgba(20, 245, 120, 0.35);
+    background: rgba(20, 245, 120, 0.08);
+    color: rgba(160, 255, 210, 0.95);
+}
+
+.badge.off {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--tx-dimmed);
+}
+
+.badge.x402 {
+  border-color: rgba(245, 95, 20, 0.35);
+  background: rgba(245, 95, 20, 0.08);
+  color: rgba(255, 210, 190, 0.95);
+}
+
+.meta {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--tx-dimmed);
+  word-break: break-word;
+}
+
+.primary,
+.secondary {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid var(--bg-lightest);
+    color: var(--tx-normal);
+}
+
+.primary {
+    background: var(--bg-lightest);
+}
+
+.secondary {
+    background: var(--bg);
+}
+
+.primary.full {
+    width: 100%;
+    height: 46px;
+}
+
+.empty {
+    padding: 24px 0;
+    text-align: center;
+}
+
+.empty h4 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--tx-normal);
+}
+
+.empty p {
+    margin: 10px 0 0;
+    font-size: 14px;
+    color: var(--tx-dimmed);
 }
 </style>

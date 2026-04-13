@@ -6,7 +6,7 @@ import { MultiSigContract } from '@/scripts/contract';
 import { useWalletStore } from '@/stores/wallet';
 import type { Hex } from 'viem';
 import { onMounted, ref, watch } from 'vue';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import { beamSdk } from '@/scripts/beamSdk';
 import { notify } from '@/reactives/notify';
 
@@ -80,7 +80,7 @@ const getSigners = async () => {
 
 onMounted(() => {
     if (!walletStore.merchant) return;
-    signers.value = walletStore.merchant.signers.map((s, index) => {
+    signers.value = walletStore.merchant.signers.map((s: any, index: number) => {
         return {
             address: s,
             name: index == 0 ? 'My Main Wallet' : `Signer ${index}`,
@@ -94,7 +94,7 @@ onMounted(() => {
 
 watch(walletStore, () => {
     if (!walletStore.merchant) return;
-    signers.value = walletStore.merchant.signers.map((s, index) => {
+    signers.value = walletStore.merchant.signers.map((s: any, index: number) => {
         return {
             address: s,
             name: index == 0 ? 'My Main Wallet' : `Signer ${index}`,
@@ -126,11 +126,6 @@ watch(signers, () => {
                 <RouterLink to="/settings/wallet">
                     <button class="title title_active">
                         <p>MultiSig Wallet</p>
-                    </button>
-                </RouterLink>
-                <RouterLink to="/settings/developer">
-                    <button class="title">
-                        <p>Dev & Plugins</p>
                     </button>
                 </RouterLink>
             </div>

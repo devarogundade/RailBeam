@@ -4,10 +4,9 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const ReceiptModule = buildModule("ReceiptModule", (m) => {
-  const controller = m.getParameter("CONTROLLER", m.getAccount(0));
   const baseURI = m.getParameter("baseURI_", "");
 
-  const receipt = m.contract("Receipt", [baseURI, controller]);
+  const receipt = m.contract("Receipt", [baseURI]);
 
   return { receipt };
 });

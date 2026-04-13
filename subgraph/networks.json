@@ -1,6 +1,18 @@
 {
-  "scroll-sepolia": {
+  "zogTestnet": {
     "Beam": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 8500684
+    },
+    "IdentityRegistry": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 8500684
+    },
+    "ReputationRegistry": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 8500684
+    },
+    "ValidationRegistry": {
       "address": "0x0000000000000000000000000000000000000000",
       "startBlock": 8500684
     },

@@ -1,23 +1,13 @@
 <script setup lang="ts">
 import EyeIcon from '@/components/icons/EyeIcon.vue';
 import WalletIcon from '@/components/icons/WalletIcon.vue';
-import { config, chains } from '@/scripts/config';
+import { config } from '@/scripts/config';
 import { useWalletStore } from '@/stores/wallet';
-import { createWeb3Modal } from '@web3modal/wagmi/vue';
 import { useWeb3Modal } from '@web3modal/wagmi/vue';
 import { watchAccount } from '@wagmi/core';
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Connection } from '@/scripts/types';
-
-createWeb3Modal({
-    wagmiConfig: config,
-    projectId: import.meta.env.VITE_PROJECT_ID,
-    // @ts-ignore
-    chains: chains,
-    enableAnalytics: true,
-    themeMode: 'dark'
-});
+import { Connection } from '@/types/app';
 
 const router = useRouter();
 const modal = useWeb3Modal();
@@ -29,7 +19,7 @@ onMounted(() => {
             if (account.address) {
                 walletStore.setAddress(account.address);
                 walletStore.setConnection(Connection.Wallet);
-                router.push('/');
+                router.push('/onboarding/profile');
             }
         },
     });

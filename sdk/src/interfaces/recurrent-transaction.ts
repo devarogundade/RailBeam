@@ -8,7 +8,7 @@ import type {
   Transaction,
   GetTransactions,
   GetTransaction,
-  Subscription,
+  SubscriptionPlan,
   GetSubscription,
   GetSubscriptions,
   GetTransactionHash,
@@ -26,13 +26,13 @@ export interface IRecurrentTransaction {
     params: PrepareCancelRecurrentTransaction
   ): Promise<TransactionCallback>;
 
-  getSubscription(params: GetSubscription): Promise<Subscription | null>;
+  getSubscription(params: GetSubscription): Promise<SubscriptionPlan | null>;
 
   getSubscriptionFromHash(
     params: GetSubscriptionsHash
-  ): Promise<Subscription[]>;
+  ): Promise<SubscriptionPlan[]>;
 
-  getSubscriptions(params: GetSubscriptions): Promise<Subscription[]>;
+  getSubscriptions(params: GetSubscriptions): Promise<SubscriptionPlan[]>;
 
   getTransaction(params: GetTransaction): Promise<Transaction | null>;
 

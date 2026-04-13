@@ -3,13 +3,13 @@ import ChevronRightIcon from '@/components/icons/ChevronRightIcon.vue';
 import UploadIcon from '@/components/icons/UploadIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
 import { onMounted, ref, watch } from 'vue';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import Storage from '@/scripts/storage';
 import { beamSdk } from '@/scripts/beamSdk';
 import { getEthersSigner } from '@/scripts/ethersSigner';
 import { displayImageUrl } from '@/scripts/displayImageUrl';
 import { MerchantContract } from '@/scripts/contract';
-import { SCHEMA_JSON } from 'beam-ts/src/utils/constants';
+import { SCHEMA_JSON } from 'beam-ts';
 import { notify } from '@/reactives/notify';
 import Converter from '@/scripts/converter';
 
@@ -145,11 +145,6 @@ onMounted(() => {
                 <RouterLink to="/settings/wallet">
                     <button class="title">
                         <p>MultiSig Wallet</p>
-                    </button>
-                </RouterLink>
-                <RouterLink to="/settings/developer">
-                    <button class="title">
-                        <p>Dev & Plugins</p>
                     </button>
                 </RouterLink>
             </div>

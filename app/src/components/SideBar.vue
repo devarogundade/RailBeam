@@ -9,7 +9,7 @@ import TreasuryIcon from '@/components/icons/TreasuryIcon.vue';
 import { useRoute } from 'vue-router';
 import ChevronRightIcon from './icons/ChevronRightIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import Converter from '@/scripts/converter';
 import { displayImageUrl } from '@/scripts/displayImageUrl';
 import AIIcon from './icons/AIIcon.vue';
@@ -19,20 +19,20 @@ const route = useRoute();
 const walletStore = useWalletStore();
 
 const merchantMeta = computed(() => {
-  if (!walletStore.merchant?.metadata_value) return null;
-  const o = Converter.parseMerchantMetadata(walletStore.merchant.metadata_value);
-  const imageURL = typeof o.imageURL === "string" ? o.imageURL : undefined;
-  const name = typeof o.name === "string" ? o.name : undefined;
-  return { imageURL, name };
+    if (!walletStore.merchant?.metadata_value) return null;
+    const o = Converter.parseMerchantMetadata(walletStore.merchant.metadata_value);
+    const imageURL = typeof o.imageURL === "string" ? o.imageURL : undefined;
+    const name = typeof o.name === "string" ? o.name : undefined;
+    return { imageURL, name };
 });
 
 const copyAddress = async () => {
-  if (!walletStore.address) return;
-  try {
-    await navigator.clipboard.writeText(walletStore.address);
-  } catch {
-    /* ignore */
-  }
+    if (!walletStore.address) return;
+    try {
+        await navigator.clipboard.writeText(walletStore.address);
+    } catch {
+        /* ignore */
+    }
 };
 </script>
 
@@ -60,7 +60,8 @@ const copyAddress = async () => {
                 </RouterLink>
 
                 <RouterLink to="/accept-payment">
-                    <div :class="route.name?.toString().startsWith('accept-payment') ? 'option option_selected' : 'option'">
+                    <div
+                        :class="route.name?.toString().startsWith('accept-payment') ? 'option option_selected' : 'option'">
                         <div class="selector"></div>
 
                         <button>
@@ -87,7 +88,8 @@ const copyAddress = async () => {
                 </div>
 
                 <RouterLink to="/subscriptions" v-if="walletStore.connection == Connection.Wallet">
-                    <div :class="route.name?.toString().startsWith('subscriptions') ? 'option option_selected' : 'option'">
+                    <div
+                        :class="route.name?.toString().startsWith('subscriptions') ? 'option option_selected' : 'option'">
                         <div class="selector"></div>
 
                         <button>
@@ -106,16 +108,31 @@ const copyAddress = async () => {
                     </RouterLink>
                 </div>
 
-                <RouterLink to="/chat" v-if="walletStore.connection == Connection.Wallet">
-                    <div :class="route.name?.toString().startsWith('chat') ? 'option option_selected' : 'option'">
+                <RouterLink to="/agents" v-if="walletStore.connection == Connection.Wallet">
+                    <div :class="route.name?.toString().startsWith('agents') ? 'option option_selected' : 'option'">
                         <div class="selector"></div>
 
                         <button>
                             <AIIcon />
-                            <p>Chatbot</p>
+                            <p>Agents</p>
                         </button>
                     </div>
                 </RouterLink>
+
+                <div class="option_children">
+                    <RouterLink to="/agents">
+                        <button
+                            :class="route.name === 'agents' ? 'option_child option_child_selected' : 'option_child'">
+                            My Agents
+                        </button>
+                    </RouterLink>
+                    <RouterLink to="/agents/new">
+                        <button
+                            :class="route.name?.toString().startsWith('agents-new') ? 'option_child option_child_selected' : 'option_child'">
+                            Create
+                        </button>
+                    </RouterLink>
+                </div>
             </div>
         </main>
 
@@ -134,11 +151,11 @@ const copyAddress = async () => {
 
             <div class="account">
                 <div class="account_info">
-                    <img :src="displayImageUrl(merchantMeta?.imageURL, '/images/colors.png')"
-                        alt="account">
+                    <img :src="displayImageUrl(merchantMeta?.imageURL, '/images/colors.png')" alt="account">
                     <div class="account_name">
                         <p>{{ merchantMeta?.name ?? 'Wallet' }}</p>
-                        <div class="address_row" role="button" tabindex="0" @click="copyAddress" @keydown.enter.prevent="copyAddress">
+                        <div class="address_row" role="button" tabindex="0" @click="copyAddress"
+                            @keydown.enter.prevent="copyAddress">
                             <p>{{ Converter.fineAddress(walletStore.address, 5) }}</p>
                             <CopyIcon />
                         </div>

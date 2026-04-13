@@ -4,7 +4,7 @@ import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue';
 import { ref } from 'vue';
 import type { Hex } from 'viem';
 import { useWalletStore } from '@/stores/wallet';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();

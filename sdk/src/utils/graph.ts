@@ -2,19 +2,26 @@ import type {
   Merchant,
   Transaction,
   Confirmation,
-  Subscription,
-  CatalogPlan,
+  SubscriptionPlan,
+  Agent,
+  AgentMetadata,
+  Feedback,
+  FeedbackResponse,
+  Validation,
 } from "../types";
 import type { Hex } from "viem";
 import { TransactionStatus, TransactionType } from "../enums";
 import { BeamClient } from "../client";
-import { catalogFromMetadata } from "./catalog";
 
 export class Graph {
   private client: BeamClient;
 
   constructor(client: BeamClient) {
     this.client = client;
+  }
+
+  private bigIntValue(v: bigint | number | string): string {
+    return typeof v === "bigint" ? v.toString() : String(v);
   }
 
   async getMerchant(merchant: Hex): Promise<Merchant | null> {
@@ -41,6 +48,297 @@ export class Graph {
       return data.data.merchant;
     } catch (error) {
       return null;
+    }
+  }
+
+  async getAgent(id: Hex): Promise<Agent | null> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          agent(id: "${id.toLowerCase()}") {
+            id
+            agentId
+            owner
+            uri
+            agentWallet
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.agent as Agent | null) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getAgentByAgentId(agentId: bigint | number | string): Promise<Agent | null> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          agents(where: { agentId: ${this.bigIntValue(agentId)} }, first: 1) {
+            id
+            agentId
+            owner
+            uri
+            agentWallet
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      const rows = (data?.data?.agents as Agent[] | undefined) ?? [];
+      return rows[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getAgents(
+    page: number,
+    limit: number,
+    owner?: Hex
+  ): Promise<Agent[]> {
+    try {
+      const where = owner ? `where: { owner: "${owner.toLowerCase()}" }` : "";
+      const data = await this.client.graphCall<any>({
+        query: `{
+          agents(
+            ${where}
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+            orderBy: blockTimestamp
+            orderDirection: desc
+          ) {
+            id
+            agentId
+            owner
+            uri
+            agentWallet
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.agents as Agent[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getAgentMetadata(
+    agentId: bigint | number | string,
+    key?: string,
+    page = 1,
+    limit = 100
+  ): Promise<AgentMetadata[]> {
+    try {
+      let filters = `agentId: ${this.bigIntValue(agentId)}`;
+      if (key) filters += `, key: "${key}"`;
+
+      const data = await this.client.graphCall<any>({
+        query: `{
+          agentMetadatas(
+            where: { ${filters} }
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+            orderBy: blockTimestamp
+            orderDirection: desc
+          ) {
+            id
+            agentId
+            key
+            value
+            updatedBy
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.agentMetadatas as AgentMetadata[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getFeedback(id: Hex): Promise<Feedback | null> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          feedback(id: "${id.toLowerCase()}") {
+            id
+            agentId
+            clientAddress
+            feedbackIndex
+            value
+            valueDecimals
+            tag1
+            tag2
+            endpoint
+            feedbackURI
+            feedbackHash
+            revoked
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.feedback as Feedback | null) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getFeedbackResponses(feedbackId: Hex): Promise<FeedbackResponse[]> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          feedbackResponses(where: { feedback: "${feedbackId.toLowerCase()}" }, orderBy: blockTimestamp, orderDirection: desc, first: 1000) {
+            id
+            agentId
+            clientAddress
+            feedbackIndex
+            responder
+            responseURI
+            responseHash
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.feedbackResponses as FeedbackResponse[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getFeedbacks(
+    page: number,
+    limit: number,
+    agentId?: bigint | number | string,
+    clientAddress?: Hex,
+    revoked?: boolean
+  ): Promise<Feedback[]> {
+    try {
+      let filters: string[] = [];
+      if (agentId !== undefined) filters.push(`agentId: ${this.bigIntValue(agentId)}`);
+      if (clientAddress) filters.push(`clientAddress: "${clientAddress.toLowerCase()}"`);
+      if (revoked !== undefined) filters.push(`revoked: ${revoked}`);
+
+      const where = filters.length ? `where: { ${filters.join(", ")} }` : "";
+      const data = await this.client.graphCall<any>({
+        query: `{
+          feedbacks(
+            ${where}
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+            orderBy: blockTimestamp
+            orderDirection: desc
+          ) {
+            id
+            agentId
+            clientAddress
+            feedbackIndex
+            value
+            valueDecimals
+            tag1
+            tag2
+            endpoint
+            feedbackURI
+            feedbackHash
+            revoked
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.feedbacks as Feedback[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getValidation(requestHash: Hex): Promise<Validation | null> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          validation(id: "${requestHash.toLowerCase()}") {
+            id
+            requestHash
+            validatorAddress
+            agentId
+            requestURI
+            response
+            responseURI
+            responseHash
+            tag
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.validation as Validation | null) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getValidations(
+    page: number,
+    limit: number,
+    agentId?: bigint | number | string,
+    validatorAddress?: Hex
+  ): Promise<Validation[]> {
+    try {
+      let filters: string[] = [];
+      if (agentId !== undefined) filters.push(`agentId: ${this.bigIntValue(agentId)}`);
+      if (validatorAddress) filters.push(`validatorAddress: "${validatorAddress.toLowerCase()}"`);
+
+      const where = filters.length ? `where: { ${filters.join(", ")} }` : "";
+      const data = await this.client.graphCall<any>({
+        query: `{
+          validations(
+            ${where}
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+            orderBy: blockTimestamp
+            orderDirection: desc
+          ) {
+            id
+            requestHash
+            validatorAddress
+            agentId
+            requestURI
+            response
+            responseURI
+            responseHash
+            tag
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.validations as Validation[] | undefined) ?? [];
+    } catch {
+      return [];
     }
   }
 
@@ -316,7 +614,7 @@ export class Graph {
     }
   }
 
-  async getSubscription(subsciptionId: Hex): Promise<Subscription | null> {
+  async getSubscription(subsciptionId: Hex): Promise<SubscriptionPlan | null> {
     try {
       const data = await this.client.graphCall<any>({
         query: `{
@@ -347,7 +645,7 @@ export class Graph {
 
   async getSubscriptionsFromHash(
     transactionHash: Hex
-  ): Promise<Subscription[]> {
+  ): Promise<SubscriptionPlan[]> {
     try {
       const data = await this.client.graphCall<any>({
         query: `{
@@ -380,7 +678,7 @@ export class Graph {
     merchant: Hex,
     page: number,
     limit: number
-  ): Promise<Subscription[]> {
+  ): Promise<SubscriptionPlan[]> {
     try {
       const skip = (page - 1) * limit;
 
@@ -415,128 +713,6 @@ export class Graph {
     } catch (error) {
       console.error("Error fetching subscriptions:", error);
       return [];
-    }
-  }
-
-  async getPlans(merchant: Hex, first = 1000): Promise<CatalogPlan[]> {
-    try {
-      const data = await this.client.graphCall<any>({
-        query: `{
-          subscriptionPlans(
-            where: { merchant: "${merchant.toLowerCase()}", trashed: false }
-            orderBy: blockTimestamp
-            orderDirection: desc
-            first: ${first}
-          ) {
-            id
-            subsciptionId
-            merchant
-            token
-            interval
-            amount
-            gracePeriod
-            description
-            catalog_metadata_value
-            transactionHash
-            blockTimestamp
-          }
-        }`,
-      });
-      const rows = data?.data?.subscriptionPlans as
-        | {
-            subsciptionId: string;
-            merchant: string;
-            token: string;
-            interval: string;
-            amount: string;
-            gracePeriod: string;
-            description: string;
-            catalog_metadata_value: string;
-            transactionHash: string;
-            blockTimestamp: string;
-          }[]
-        | undefined;
-      if (!rows) return [];
-      return rows.map((s) => {
-        const c = catalogFromMetadata(s.catalog_metadata_value);
-        return {
-          _id: s.subsciptionId,
-          transactionHash: s.transactionHash as Hex,
-          merchant: s.merchant as Hex,
-          name: c.name || s.description,
-          description: c.description || s.description,
-          images: c.images,
-          category: c.category,
-          gracePeriod: Number(s.gracePeriod),
-          available: true,
-          interval: Number(s.interval),
-          amount: Number(s.amount),
-          token: s.token as Hex,
-          sold: 0,
-          createdAt: new Date(Number(s.blockTimestamp) * 1000),
-          updatedAt: null,
-        };
-      });
-    } catch {
-      return [];
-    }
-  }
-
-  async getPlan(id: string): Promise<CatalogPlan | null> {
-    try {
-      const data = await this.client.graphCall<any>({
-        query: `{
-          subscriptionPlan(id: "${id.toLowerCase()}") {
-            id
-            subsciptionId
-            merchant
-            token
-            interval
-            amount
-            gracePeriod
-            description
-            catalog_metadata_value
-            transactionHash
-            blockTimestamp
-          }
-        }`,
-      });
-      const s = data?.data?.subscriptionPlan as
-        | {
-            subsciptionId: string;
-            merchant: string;
-            token: string;
-            interval: string;
-            amount: string;
-            gracePeriod: string;
-            description: string;
-            catalog_metadata_value: string;
-            transactionHash: string;
-            blockTimestamp: string;
-          }
-        | null
-        | undefined;
-      if (!s) return null;
-      const c = catalogFromMetadata(s.catalog_metadata_value);
-      return {
-        _id: s.subsciptionId,
-        transactionHash: s.transactionHash as Hex,
-        merchant: s.merchant as Hex,
-        name: c.name || s.description,
-        description: c.description || s.description,
-        images: c.images,
-        category: c.category,
-        gracePeriod: Number(s.gracePeriod),
-        available: true,
-        interval: Number(s.interval),
-        amount: Number(s.amount),
-        token: s.token as Hex,
-        sold: 0,
-        createdAt: new Date(Number(s.blockTimestamp) * 1000),
-        updatedAt: null,
-      };
-    } catch {
-      return null;
     }
   }
 }

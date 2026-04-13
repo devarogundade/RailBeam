@@ -1,5 +1,5 @@
 import { type Hex } from "viem";
-import type { Metadata } from "./types";
+import type { Metadata } from "beam-ts";
 
 export type CreateMerchant = {
   metadata: Metadata;
@@ -36,4 +36,9 @@ export type DeleteSubscription = {
 
 export type RegisterHook = {
   hook: Hex;
+};
+
+export type MetadataEntry = {
+  metadataKey: string;
+  metadataValue: string;
 };

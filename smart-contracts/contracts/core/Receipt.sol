@@ -18,12 +18,9 @@ contract Receipt is ERC721, IReceipt, AccessControl {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    constructor(
-        string memory baseURI_,
-        address CONTROLLER
-    ) ERC721("Beam Receipt", "BMRPT") {
+    constructor(string memory baseURI_) ERC721("Raybeam Receipt", "RBRPT") {
         BASE_URL = baseURI_;
-        _grantRole(DEFAULT_ADMIN_ROLE, CONTROLLER);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function mint(
@@ -56,13 +53,6 @@ contract Receipt is ERC721, IReceipt, AccessControl {
 
     function _beforeNewReceipt() internal {
         _lastTokenId = _lastTokenId + 1;
-    }
-
-    function grantRole(
-        address account,
-        bytes32 role
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(role, account);
     }
 
     // Explicitly override supportsInterface

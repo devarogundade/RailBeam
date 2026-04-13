@@ -58,23 +58,48 @@ export type GetMerchant = {
   merchant: Hex;
 };
 
-/** Subgraph subscription plan with catalog fields. */
-export type CatalogPlan = {
-  _id: string;
-  transactionHash: Hex;
-  merchant: Hex;
-  name: string;
-  description: string;
-  images: string[];
-  category: string;
-  gracePeriod: number;
-  available: boolean;
-  interval: number;
-  amount: number;
-  token: Hex;
-  sold: number;
-  createdAt: Date;
-  updatedAt: Date | null;
+export type GetAgent = {
+  id: Hex;
+};
+
+export type GetAgentByAgentId = {
+  agentId: bigint | number | string;
+};
+
+export type GetAgents = {
+  page: number;
+  limit: number;
+  owner?: Hex;
+};
+
+export type GetAgentMetadata = {
+  agentId: bigint | number | string;
+  key?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type GetFeedback = {
+  id: Hex;
+};
+
+export type GetFeedbacks = {
+  page: number;
+  limit: number;
+  agentId?: bigint | number | string;
+  clientAddress?: Hex;
+  revoked?: boolean;
+};
+
+export type GetValidation = {
+  requestHash: Hex;
+};
+
+export type GetValidations = {
+  page: number;
+  limit: number;
+  agentId?: bigint | number | string;
+  validatorAddress?: Hex;
 };
 
 export type BeamSDKOptions = {
@@ -142,7 +167,7 @@ export type Confirmation = {
   transactionHash: Hex;
 };
 
-export type Subscription = {
+export type SubscriptionPlan = {
   id: Hex;
   subsciptionId: Hex;
   merchant: Hex;
@@ -154,6 +179,74 @@ export type Subscription = {
   catalog_metadata_schemaVersion: number;
   catalog_metadata_value: string;
   trashed: boolean;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type Agent = {
+  id: Hex;
+  agentId: bigint;
+  owner: Hex;
+  uri: string | null;
+  agentWallet: Hex | null;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type AgentMetadata = {
+  id: Hex;
+  agentId: bigint;
+  key: string;
+  value: Hex;
+  updatedBy: Hex;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type Feedback = {
+  id: Hex;
+  agentId: bigint;
+  clientAddress: Hex;
+  feedbackIndex: bigint;
+  value: bigint;
+  valueDecimals: number;
+  tag1: string;
+  tag2: string;
+  endpoint: string;
+  feedbackURI: string;
+  feedbackHash: Hex;
+  revoked: boolean;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type FeedbackResponse = {
+  id: Hex;
+  agentId: bigint;
+  clientAddress: Hex;
+  feedbackIndex: bigint;
+  responder: Hex;
+  responseURI: string;
+  responseHash: Hex;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type Validation = {
+  id: Hex; // requestHash
+  requestHash: Hex;
+  validatorAddress: Hex;
+  agentId: bigint;
+  requestURI: string;
+  response: number | null;
+  responseURI: string | null;
+  responseHash: Hex | null;
+  tag: string | null;
   blockNumber: number;
   blockTimestamp: number;
   transactionHash: Hex;

@@ -2,6 +2,8 @@
 import NotifyPop from '@/components/NotifyPop.vue';
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { createWeb3Modal } from "@web3modal/wagmi/vue";
+import { config, chains } from "@/scripts/config";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FS_API_KEY,
@@ -19,6 +21,15 @@ void isSupported().then((supported) => {
     if (supported && firebaseConfig.measurementId) {
         getAnalytics(app);
     }
+});
+
+createWeb3Modal({
+    wagmiConfig: config,
+    projectId: import.meta.env.VITE_PROJECT_ID,
+    // @ts-ignore
+    chains: chains,
+    enableAnalytics: true,
+    themeMode: "dark",
 });
 </script>
 

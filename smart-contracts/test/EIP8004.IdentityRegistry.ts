@@ -1,6 +1,6 @@
 import hre from "hardhat";
 import { expect } from "chai";
-import { getAddress, keccak256, toHex, zeroHash } from "viem";
+import { getAddress } from "viem";
 
 describe("ERC-8004 IdentityRegistry", function () {
   it("sets agentWallet to a BeamAgent using ERC-1271 proof", async function () {
@@ -8,20 +8,12 @@ describe("ERC-8004 IdentityRegistry", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     const identity = await hre.viem.deployContract("IdentityRegistry");
-    const mockBeam = await hre.viem.deployContract("MockBeam");
-    const factory = await hre.viem.deployContract("BeamAgentFactory", [
-      mockBeam.address as `0x${string}`,
-    ]);
 
-    const agentAddress = (await factory.read.predictDeterministicAddress([
+    // A minimal ERC-1271 wallet that validates EIP-712 signatures by `owner`.
+    const wallet1271 = await hre.viem.deployContract("MockERC1271Wallet", [
       getAddress(owner.account.address),
-      zeroHash,
-    ])) as `0x${string}`;
-
-    await factory.write.deployDeterministic(
-      [getAddress(owner.account.address), zeroHash],
-      {}
-    );
+    ]);
+    const agentAddress = wallet1271.address as `0x${string}`;
 
     // register agentId=1 to owner
     await identity.write.register(["ipfs://agent.json"]);
@@ -50,7 +42,7 @@ describe("ERC-8004 IdentityRegistry", function () {
       deadline,
     } as const;
 
-    // Owner signs; BeamAgent will validate via ERC-1271 (owner() == signer)
+    // Owner signs; contract validates via ERC-1271
     const signature = await owner.signTypedData({
       domain,
       types,
@@ -60,7 +52,9 @@ describe("ERC-8004 IdentityRegistry", function () {
 
     await identity.write.setAgentWallet([1n, agentAddress, deadline, signature]);
 
-    expect(await identity.read.getAgentWallet([1n])).to.equal(agentAddress);
+    expect(getAddress(await identity.read.getAgentWallet([1n]))).to.equal(
+      getAddress(agentAddress)
+    );
   });
 });
 

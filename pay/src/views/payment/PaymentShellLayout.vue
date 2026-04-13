@@ -276,14 +276,9 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
               <div class="sheet-cvv-row">
                 <span class="sheet-v sheet-v--mono sheet-cvv-value">{{
                   cvvVisible ? sheetCardCvvReveal : "•••"
-                }}</span>
-                <button
-                  type="button"
-                  class="sheet-cvv-toggle"
-                  :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
-                  :aria-pressed="cvvVisible"
-                  @click="cvvVisible = !cvvVisible"
-                >
+                  }}</span>
+                <button type="button" class="sheet-cvv-toggle" :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
+                  :aria-pressed="cvvVisible" @click="cvvVisible = !cvvVisible">
                   <EyeOffIcon v-if="cvvVisible" class="sheet-cvv-ico" />
                   <EyeIcon v-else class="sheet-cvv-ico" />
                 </button>
@@ -313,24 +308,13 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
         <button type="button" class="sheet-primary" @click="openFundFromSheet">
           Add funds
         </button>
-        <button
-          type="button"
-          class="sheet-secondary"
-          :disabled="cardFrozen"
-          @click="cardSheetStep = 'remove'"
-        >
+        <button type="button" class="sheet-secondary" :disabled="cardFrozen" @click="cardSheetStep = 'remove'">
           Remove funds
         </button>
         <div class="sheet-row">
           <span>Freeze card</span>
-          <button
-            type="button"
-            class="toggle"
-            :class="{ on: cardFrozen }"
-            role="switch"
-            :aria-checked="cardFrozen"
-            @click="toggleFreeze"
-          >
+          <button type="button" class="toggle" :class="{ on: cardFrozen }" role="switch" :aria-checked="cardFrozen"
+            @click="toggleFreeze">
             <span class="knob" />
           </button>
         </div>
@@ -340,76 +324,33 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
         <div class="sheet-field">
           <span id="rm-asset-label" class="sheet-label">Asset</span>
           <div class="asset-dd">
-            <button
-              id="rm-asset-trigger"
-              type="button"
-              class="asset-trigger"
-              :aria-expanded="removeAssetMenuOpen"
-              aria-haspopup="listbox"
-              aria-labelledby="rm-asset-label rm-asset-trigger"
-              @click="toggleRemoveAssetMenu"
-            >
-              <img
-                v-if="selectedRemoveToken"
-                class="asset-trigger-ico"
-                :src="selectedRemoveToken.image"
-                alt=""
-                width="28"
-                height="28"
-                @error="onRemoveTokenImgError"
-              />
+            <button id="rm-asset-trigger" type="button" class="asset-trigger" :aria-expanded="removeAssetMenuOpen"
+              aria-haspopup="listbox" aria-labelledby="rm-asset-label rm-asset-trigger" @click="toggleRemoveAssetMenu">
+              <img v-if="selectedRemoveToken" class="asset-trigger-ico" :src="selectedRemoveToken.image" alt=""
+                width="28" height="28" @error="onRemoveTokenImgError" />
               <span class="asset-trigger-sym">{{ selectedRemoveToken?.symbol ?? "—" }}</span>
-              <ChevronDownIcon
-                class="asset-trigger-chev"
-                :class="{ 'asset-trigger-chev--open': removeAssetMenuOpen }"
-              />
+              <ChevronDownIcon class="asset-trigger-chev"
+                :class="{ 'asset-trigger-chev--open': removeAssetMenuOpen }" />
             </button>
 
-            <div
-              v-if="removeAssetMenuOpen"
-              class="asset-backdrop"
-              aria-hidden="true"
-              @click="removeAssetMenuOpen = false"
-            />
+            <div v-if="removeAssetMenuOpen" class="asset-backdrop" aria-hidden="true"
+              @click="removeAssetMenuOpen = false" />
 
-            <ul
-              v-if="removeAssetMenuOpen"
-              class="asset-menu"
-              role="listbox"
-              aria-labelledby="rm-asset-label"
-            >
-              <li
-                v-for="t in getTokens"
-                :key="t.address"
-                role="option"
-                :aria-selected="t.address === removeAssetAddress"
-                class="asset-menu-item"
+            <ul v-if="removeAssetMenuOpen" class="asset-menu" role="listbox" aria-labelledby="rm-asset-label">
+              <li v-for="t in getTokens" :key="t.address" role="option"
+                :aria-selected="t.address === removeAssetAddress" class="asset-menu-item"
                 :class="{ 'asset-menu-item--active': t.address === removeAssetAddress }"
-                @click="pickRemoveAsset(t.address)"
-              >
-                <img
-                  class="asset-menu-ico"
-                  :src="t.image"
-                  alt=""
-                  width="28"
-                  height="28"
-                  @error="onRemoveTokenImgError"
-                />
+                @click="pickRemoveAsset(t.address)">
+                <img class="asset-menu-ico" :src="t.image" alt="" width="28" height="28"
+                  @error="onRemoveTokenImgError" />
                 <span class="asset-menu-sym">{{ t.symbol }}</span>
               </li>
             </ul>
           </div>
         </div>
         <label class="sheet-label" for="rm-amt">Amount (USD)</label>
-        <input
-          id="rm-amt"
-          v-model="removeAmount"
-          class="sheet-input"
-          type="number"
-          min="0"
-          step="any"
-          placeholder="0.00"
-        />
+        <input id="rm-amt" v-model="removeAmount" class="sheet-input" type="number" min="0" step="any"
+          placeholder="0.00" />
         <div class="sheet-hint-row">
           <span class="sheet-hint">Equivalent asset amount</span>
           <span class="sheet-hint sheet-hint--right">{{ removeAssetEquivalentDisplay }}</span>

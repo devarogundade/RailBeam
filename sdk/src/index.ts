@@ -5,11 +5,25 @@ import { IMerchant } from "./interfaces/merchant";
 import { Merchant } from "./merchant/index";
 import { IRecurrentTransaction } from "./interfaces/recurrent-transaction";
 import { IOneTimeTransaction } from "./interfaces/one-time-transaction";
+import type { IAgents } from "./interfaces/agents";
+import { Agents } from "./agents";
 import type { BeamSDKOptions } from "./types";
+export { getToken, getTokens, SCHEMA_JSON, SCHEMA_URL } from "./utils/constants";
 
-export type { CatalogPlan, Transaction } from "./types";
-export { TransactionStatus, TransactionType } from "./enums";
-export { catalogFromMetadata } from "./utils/catalog";
+export type {
+  Token,
+  Metadata,
+  Merchant,
+  Confirmation,
+  Transaction,
+  SubscriptionPlan,
+  Agent,
+  AgentMetadata,
+  Feedback,
+  FeedbackResponse,
+  Validation,
+} from "./types";
+export { Network, TransactionStatus, TransactionType } from "./enums";
 
 class BeamSDK {
   private readonly options: BeamSDKOptions;
@@ -17,6 +31,7 @@ class BeamSDK {
   public merchant: IMerchant;
   public oneTimeTransaction: IOneTimeTransaction;
   public recurrentTransaction: IRecurrentTransaction;
+  public agents: IAgents;
 
   constructor(options: BeamSDKOptions) {
     this.options = options;
@@ -26,6 +41,7 @@ class BeamSDK {
     this.merchant = new Merchant(client);
     this.oneTimeTransaction = new OneTimeTransaction(client);
     this.recurrentTransaction = new RecurrentTransaction(client);
+    this.agents = new Agents(client);
   }
 }
 

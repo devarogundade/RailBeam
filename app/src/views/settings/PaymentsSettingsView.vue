@@ -4,9 +4,9 @@ import { MultiSigContract } from '@/scripts/contract';
 import { useWalletStore } from '@/stores/wallet';
 import type { Hex } from 'viem';
 import { onMounted, ref, watch } from 'vue';
-import { Connection } from '@/scripts/types';
+import { Connection } from '@/types/app';
 import { beamSdk } from '@/scripts/beamSdk';
-import { getTokens } from 'beam-ts/src/utils/constants';
+import { getTokens } from 'beam-ts';
 import { notify } from '@/reactives/notify';
 
 const walletStore = useWalletStore();
@@ -98,11 +98,6 @@ watch(walletStore, () => {
                 <RouterLink to="/settings/wallet">
                     <button class="title ">
                         <p>MultiSig Wallet</p>
-                    </button>
-                </RouterLink>
-                <RouterLink to="/settings/developer">
-                    <button class="title">
-                        <p>Dev & Plugins</p>
                     </button>
                 </RouterLink>
             </div>

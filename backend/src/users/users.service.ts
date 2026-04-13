@@ -16,7 +16,9 @@ export class UsersService {
   }
 
   async findByWallet(wallet: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ walletAddress: wallet.toLowerCase() }).exec();
+    return this.userModel
+      .findOne({ walletAddress: wallet.toLowerCase() })
+      .exec();
   }
 
   async upsertWallet(wallet: string): Promise<UserDocument> {
@@ -34,7 +36,9 @@ export class UsersService {
 
   async setStripeIds(
     wallet: string,
-    patch: Partial<Pick<User, 'stripeCardholderId' | 'stripeCardId' | 'lastIssuedCardStatus'>>,
+    patch: Partial<
+      Pick<User, 'stripeCardholderId' | 'stripeCardId' | 'lastIssuedCardStatus'>
+    >,
   ): Promise<UserDocument | null> {
     const key = wallet.toLowerCase();
     const doc = await this.userModel
@@ -44,11 +48,22 @@ export class UsersService {
     return doc;
   }
 
-  async getCachedIssuingSummary(wallet: string): Promise<Record<string, unknown> | null> {
-    return this.redis.getJson<Record<string, unknown>>(this.cacheKey(wallet.toLowerCase()));
+  async getCachedIssuingSummary(
+    wallet: string,
+  ): Promise<Record<string, unknown> | null> {
+    return this.redis.getJson<Record<string, unknown>>(
+      this.cacheKey(wallet.toLowerCase()),
+    );
   }
 
-  async setCachedIssuingSummary(wallet: string, summary: Record<string, unknown>): Promise<void> {
-    await this.redis.cacheJson(this.cacheKey(wallet.toLowerCase()), summary, 300);
+  async setCachedIssuingSummary(
+    wallet: string,
+    summary: Record<string, unknown>,
+  ): Promise<void> {
+    await this.redis.cacheJson(
+      this.cacheKey(wallet.toLowerCase()),
+      summary,
+      300,
+    );
   }
 }
