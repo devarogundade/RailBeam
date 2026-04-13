@@ -1,0 +1,119 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+# Replace Beam / Merchant / HookManager addresses in networks.json before deploy.
+dataSources:
+  - kind: ethereum
+    name: Beam
+    network: scroll-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: Beam
+      startBlock: 8500684
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Transaction
+        - Confirmation
+        - SubscriptionPlan
+      abis:
+        - name: Beam
+          file: ./abis/Beam.json
+      eventHandlers:
+        - event: OneTimeTransactionCreated(bytes32,address,address[],address,address,uint256[],address,uint256,uint256,string,(uint8,string),uint8)
+          handler: handleOneTimeTransactionCreated
+        - event: OneTimeTransactionFulfilled(bytes32,address,address,address,uint256,address,uint256,uint256,uint8)
+          handler: handleOneTimeTransactionFulfilled
+        - event: RecurrentTransactionCancelled(bytes32)
+          handler: handleRecurrentTransactionCancelled
+        - event: RecurrentTransactionCreated(bytes32,address,address,bytes32,uint256,address,uint256,address,uint256,uint256,string,(uint8,string),uint8)
+          handler: handleRecurrentTransactionCreated
+        - event: RecurrentTransactionFulfilled(bytes32,address,address,bytes32,uint256,address,uint256,address,uint256,uint256,uint8)
+          handler: handleRecurrentTransactionFulfilled
+      file: ./src/events.ts
+  - kind: ethereum
+    name: Merchant
+    network: scroll-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: Merchant
+      startBlock: 8500684
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Merchant
+        - SubscriptionPlan
+        - Transaction
+        - Confirmation
+      abis:
+        - name: Merchant
+          file: ./abis/Merchant.json
+      eventHandlers:
+        - event: MerchantCreated(indexed address,(uint8,string),address,address[],address[],uint256)
+          handler: handleMerchantCreated
+        - event: MerchantMetadataUpdated(indexed address,(uint8,string))
+          handler: handleMerchantMetadataUpdated
+        - event: SubsciptionDeleted(indexed bytes32)
+          handler: handleSubsciptionDeleted
+        - event: SubscriptionCreated(indexed bytes32,indexed address,address,uint256,uint256,uint256,string,(uint8,string))
+          handler: handleSubscriptionCreated
+        - event: SubscriptionUpdated(indexed bytes32,uint256,uint256,string,(uint8,string),bool)
+          handler: handleSubscriptionUpdated
+      file: ./src/events.ts
+  - kind: ethereum
+    name: HookManager
+    network: scroll-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: HookManager
+      startBlock: 8500684
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Merchant
+      abis:
+        - name: HookManager
+          file: ./abis/HookManager.json
+      eventHandlers:
+        - event: HookRegistered(indexed address,address)
+          handler: handleHookRegistered
+        - event: HookUnRegistered(indexed address,address)
+          handler: handleHookUnRegistered
+      file: ./src/events.ts
+templates:
+  - kind: ethereum
+    name: MultiSigWallet
+    network: scroll-sepolia
+    source:
+      abi: MultiSigWallet
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Merchant
+        - Transaction
+        - Confirmation
+      abis:
+        - name: MultiSigWallet
+          file: ./abis/MultiSigWallet.json
+      eventHandlers:
+        - event: SignersUpdated(indexed address,address[],uint256)
+          handler: handleSignersUpdated
+        - event: TokensUpdated(indexed address,address[])
+          handler: handleTokensUpdated
+        - event: WithdrawRequestApproved(indexed address,indexed uint256,address)
+          handler: handleWithdrawRequestApproved
+        - event: WithdrawRequestCreated(indexed address,indexed uint256,address,uint256,address,address[],bool)
+          handler: handleWithdrawRequestCreated
+        - event: WithdrawRequestExecuted(indexed address,indexed uint256)
+          handler: handleWithdrawRequestExecuted
+      file: ./src/events.ts

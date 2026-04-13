@@ -1,0 +1,77 @@
+type Merchant @entity(immutable: false) {
+  id: Bytes!
+  merchant: Bytes! # address
+  metadata_schemaVersion: Int! # uint8
+  metadata_value: String! # string
+  wallet: Bytes! # address
+  tokens: [Bytes!]! # address[]
+  hook: Bytes! # address
+  signers: [Bytes!]! # address[]
+  minSigners: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Transaction @entity(immutable: false) {
+  id: Bytes!
+  transactionId: Bytes! # bytes32
+  payer: Bytes! # address
+  recipient: Bytes # address
+  payers: [Bytes!] # address[]
+  signers: [Bytes!]! # address[]
+  fulfilleds: [Bytes!]! # address[]
+  merchant: Bytes! # address
+  token: Bytes! # address
+  amounts: [BigInt!] # uint256[]
+  adjustedToken: Bytes! # address
+  adjustedAmount: BigInt! # uint256
+  dueDate: BigInt # uint256
+  amount: BigInt # uint256
+  timestamp: BigInt # uint256
+  description: String # string
+  metadata_schemaVersion: Int! # uint8
+  metadata_value: String! # string
+  status: Int # uint8
+  executed: Boolean # bool
+  type: Int! # uint8
+  subscriptionId: Bytes
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  confirmations: [Confirmation!]! @derivedFrom(field: "transaction")
+}
+
+type Confirmation @entity(immutable: true) {
+  id: Bytes!
+  transactionId: Bytes! # bytes32
+  from: Bytes # address
+  recipient: Bytes # address
+  token: Bytes # address
+  amount: BigInt # uint256
+  adjustedToken: Bytes # address
+  adjustedAmount: BigInt # uint256
+  description: String # string
+  type: Int! # uint8
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  transaction: Transaction!
+}
+
+type SubscriptionPlan @entity(immutable: false) {
+  id: Bytes!
+  subsciptionId: Bytes!
+  merchant: Bytes! # address
+  token: Bytes! # address
+  interval: BigInt! # uint256
+  amount: BigInt! # uint256
+  gracePeriod: BigInt! # uint256
+  description: String! # string
+  catalog_metadata_schemaVersion: Int!
+  catalog_metadata_value: String!
+  trashed: Boolean!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

@@ -1,0 +1,33 @@
+{
+  "name": "beam-ts",
+  "version": "2.2.6",
+  "description": "TS library for beam payment.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devarogundade/beam.git"
+  },
+  "keywords": [
+    "sdk",
+    "blockchain",
+    "web3",
+    "typescript"
+  ],
+  "author": "Arogundade Ibrahim",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "uuid": "^11.0.5",
+    "viem": "^2.23.5"
+  },
+  "scripts": {
+    "build": "tsc"
+  }
+}

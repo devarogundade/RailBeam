@@ -1,0 +1,86 @@
+:root {
+  /* Native-like UI (iOS / Material touch targets, materials) */
+  --native-tap: 44px;
+  --hairline: rgba(255, 255, 255, 0.09);
+  --frost-bg: rgba(22, 22, 24, 0.78);
+  --frost-bg-strong: rgba(22, 22, 24, 0.92);
+  --native-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --native-shadow-md: 0 8px 28px rgba(0, 0, 0, 0.42);
+  --native-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --ease-native: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Corner radii (aligned with beam-app: CustomerView, x402View, AppHeader, token rows) */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-14: 14px;
+  --radius-16: 16px;
+  --radius-20: 20px;
+  --radius-30: 30px;
+  --radius-full: 999px;
+  --radius-round: 50%;
+  --radius-token: 8px 10px 10px 8px;
+
+  --bg: rgba(23, 23, 23, 1);
+  --bg-light: rgba(28, 28, 28, 1);
+  --bg-lighter: rgba(33, 33, 33, 1);
+  --bg-lightest: rgba(41, 41, 41, 1);
+
+  --primary: rgba(245, 95, 20, 1);
+  --primary-light: rgba(245, 137, 83, 1);
+
+  --tx-normal: rgba(254, 254, 254, 1);
+  --tx-semi: rgba(162, 162, 162, 1);
+  --tx-dimmed: rgba(107, 107, 107, 1);
+
+  --accent-green: rgba(25, 176, 99, 1);
+  --accent-red: rgba(245, 59, 81, 1);
+
+  --slider-bg: rgba(33, 33, 33, 1);
+  --slider-connect-bg: rgba(245, 95, 20, 1);
+  --slider-connect-bg-disabled: rgba(33, 33, 33, 1);
+  --slider-height: 10px;
+  --slider-vertical-height: 300px;
+  --slider-radius: 0;
+
+  --slider-handle-bg: rgba(33, 33, 33, 1);
+  --slider-handle-border: 0;
+  --slider-handle-width: 20px;
+  --slider-handle-height: 20px;
+  --slider-handle-radius: 6px;
+  --slider-handle-shadow: 0.5px 0.5px 2px 1px rgba(0, 0, 0, 0);
+  --slider-handle-shadow-active: 0.5px 0.5px 2px 1px rgba(0, 0, 0, 0);
+  --slider-handle-ring-width: 5px;
+  --slider-handle-ring-color: rgba(245, 137, 83, 1);
+
+  --slider-tooltip-font-size: 0.875rem;
+  --slider-tooltip-line-height: 1.25rem;
+  --slider-tooltip-font-weight: 400;
+  --slider-tooltip-min-width: 40px;
+  --slider-tooltip-bg: rgba(245, 95, 20, 1);
+  --slider-tooltip-bg-disabled: rgba(33, 33, 33, 1);
+  --slider-tooltip-color: #eef1f8;
+  --slider-tooltip-radius: 5px;
+  --slider-tooltip-py: 2px;
+  --slider-tooltip-px: 6px;
+  --slider-tooltip-arrow-size: 6px;
+  --slider-tooltip-distance: 6px;
+}
+
+/* Shared sticky header utility for pay views */
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: 0 -2px;
+  padding-left: 2px;
+  padding-right: 2px;
+  border-radius: 0 0 var(--radius-14) var(--radius-14);
+  background: var(--frost-bg, rgba(22, 22, 24, 0.78));
+  backdrop-filter: blur(24px) saturate(1.65);
+  -webkit-backdrop-filter: blur(24px) saturate(1.65);
+  border-bottom: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
+}

@@ -1,0 +1,102 @@
+@import "./base.css";
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap");
+
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "Lexend", serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  overflow-x: clip;
+  max-width: 100%;
+  background: var(--bg);
+  color: var(--tx-normal);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  transition:
+    color 0.15s var(--ease-native, ease),
+    background-color 0.15s var(--ease-native, ease),
+    border-color 0.15s var(--ease-native, ease),
+    opacity 0.15s var(--ease-native, ease),
+    transform 0.12s var(--ease-native, ease);
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/** Legacy helper: same horizontal rhythm as the app column (Root + payment shell). */
+.app_width {
+  width: 100%;
+  max-width: min(430px, calc(100vw - 24px));
+  margin: 0 auto;
+  padding: 0 max(12px, env(safe-area-inset-left, 0px)) 0
+    max(12px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+
+.swiper-pagination-bullet {
+  width: 12px !important;
+  height: 4px !important;
+  border-radius: var(--radius-2) !important;
+  background: var(--bg-lightest) !important;
+  transform: scale(1) !important;
+  opacity: 1 !important;
+}
+
+.swiper-pagination-bullet-active {
+  width: 20px !important;
+  background: var(--tx-dimmed) !important;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Native-like touch targets (mobile shell + checkout) */
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input[type="submit"],
+input[type="button"] {
+  touch-action: manipulation;
+}
