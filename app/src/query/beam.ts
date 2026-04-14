@@ -2,7 +2,8 @@ import type { Hex } from "viem";
 import { beamSdk } from "@/scripts/beamSdk";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import type { Merchant, Transaction } from "beam-ts";
-import type { Plan } from "@/types/app";
+import type { Plan } from "beam-ts";
+import { mapSubscriptionPlanToPlan } from "beam-ts";
 import { computed, unref, type Ref } from "vue";
 
 type MaybeRef<T> = T | Ref<T>;
@@ -53,45 +54,9 @@ export function useBeamPlansQuery(merchant: MaybeRef<Hex | null | undefined>) {
         limit: 1000,
       })) as any[];
 
-      const parseCatalog = (value: unknown): { name?: string; description?: string; images?: string[]; category?: string } => {
-        if (typeof value !== "string") return {};
-        try {
-          const obj = JSON.parse(value);
-          if (!obj || typeof obj !== "object") return {};
-          return {
-            name: typeof obj.name === "string" ? obj.name : undefined,
-            description: typeof obj.description === "string" ? obj.description : undefined,
-            images: Array.isArray(obj.images)
-              ? obj.images.filter((x: unknown) => typeof x === "string")
-              : undefined,
-            category: typeof obj.category === "string" ? obj.category : undefined,
-          };
-        } catch {
-          return {};
-        }
-      };
-
       return rows
         .filter((r) => !r.trashed)
-        .map((r) => {
-          const c = parseCatalog(r.catalog_metadata_value);
-          return {
-            _id: r.subsciptionId,
-            transactionHash: r.transactionHash,
-            merchant: r.merchant,
-            name: c.name || r.description,
-            description: c.description || r.description,
-            images: c.images ?? [],
-            category: c.category ?? "",
-            gracePeriod: Number(r.gracePeriod),
-            available: true,
-            interval: Number(r.interval),
-            amount: Number(r.amount),
-            token: r.token,
-            createdAt: new Date(Number(r.blockTimestamp) * 1000),
-            updatedAt: null,
-          } satisfies Plan;
-        });
+        .map((r) => mapSubscriptionPlanToPlan(r));
     },
   });
 }

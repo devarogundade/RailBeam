@@ -2,48 +2,138 @@
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ChevronLeftIcon from "@/components/icons/ChevronLeftIcon.vue";
-import { getDemoShellSubscription } from "@/data/demoShellSubscriptions";
+import { useShellSubscriptionDetail } from "@/composables/useBeamShellQueries";
 import { notify } from "@/reactives/notify";
 import AppFrame from "@/components/layout/AppFrame.vue";
+import { mapSubscriptionToShellRow } from "@/scripts/shellActivity";
+import { useWalletStore } from "@/stores/wallet";
+import { TransactionType } from "beam-ts/src/enums";
+import type { Transaction } from "beam-ts/src/types";
+import type { Hex } from "viem";
+import { getBeamSdk } from "@/scripts/beamSdk";
+import { BeamContract } from "@/scripts/contract";
+import { SCHEMA_JSON } from "beam-ts/src/utils/constants";
+import { zeroAddress } from "viem";
+import StorageImage from "@/components/StorageImage.vue";
 
 const route = useRoute();
 const router = useRouter();
+const walletStore = useWalletStore();
 
 const id = computed(() => (route.params.id as string) ?? "");
 
-const sub = computed(() => getDemoShellSubscription(id.value));
+const { data: plan, isFetching } = useShellSubscriptionDetail(id);
 
-/** Demo: local cancel state until a real API exists. */
 const cancelledLocal = ref(false);
+const cancelling = ref(false);
+const renewing = ref(false);
+
+const latestTx = ref<Transaction | null>(null);
 watch(id, () => {
   cancelledLocal.value = false;
+  latestTx.value = null;
+});
+
+const sub = computed(() => {
+  const p = plan.value;
+  if (!p) return null;
+  return mapSubscriptionToShellRow(p, latestTx.value);
 });
 
 const statusDisplay = computed(() => {
-  if (cancelledLocal.value) return "Cancelled (demo)";
+  if (cancelledLocal.value) return "Cancelled (local)";
   return sub.value?.status ?? "—";
+});
+
+const planImage = computed(() => {
+  const p = plan.value;
+  const rawValue = p?.catalog_metadata_value;
+  if (typeof rawValue !== "string" || rawValue.trim().length === 0) return null;
+  try {
+    const obj = JSON.parse(rawValue) as unknown;
+    if (!obj || typeof obj !== "object") return null;
+    const images = (obj as Record<string, unknown>).images;
+    if (!Array.isArray(images) || images.length === 0) return null;
+    const first = images[0];
+    if (typeof first !== "string") return null;
+    const trimmed = first.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+});
+
+function toBigIntSafe(v: unknown): bigint {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return 0n;
+    return BigInt(Math.trunc(v));
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return 0n;
+    try {
+      return BigInt(s);
+    } catch {
+      return 0n;
+    }
+  }
+  return 0n;
+}
+
+function daysUntil(tsSec: number): number | null {
+  if (!Number.isFinite(tsSec) || tsSec <= 0) return null;
+  const nowSec = Date.now() / 1000;
+  return Math.ceil((tsSec - nowSec) / 86400);
+}
+
+const nextChargeDays = computed(() => {
+  const p = plan.value;
+  const txDue = latestTx.value?.dueDate;
+  const txDueNum =
+    typeof txDue === "string" ? Number(txDue) : typeof txDue === "number" ? txDue : 0;
+
+  const startedSec = p ? Number(p.blockTimestamp) : 0;
+  const durationSec = p ? Number(p.interval) : 0;
+  const computedDueSec =
+    startedSec > 0 && durationSec > 0 ? startedSec + durationSec : 0;
+
+  const dueSec = computedDueSec > 0 ? computedDueSec : txDueNum;
+  return daysUntil(dueSec);
+});
+
+const nextChargeDisplay = computed(() => {
+  if (nextChargeDays.value == null) return sub.value?.next ?? "—";
+  if (nextChargeDays.value <= 0) return "Due now";
+  if (nextChargeDays.value === 1) return "In 1 day";
+  return `In ${nextChargeDays.value} days`;
 });
 
 const metaRows = computed(() => {
   const s = sub.value;
-  if (!s) {
+  const p = plan.value;
+  if (!s || !p) {
     return [
-      { k: "Subscription", v: `#${id.value}` },
-      { k: "Status", v: "Not found (demo)" },
+      { k: "Subscription", v: id.value.slice(0, 18) + (id.value.length > 18 ? "…" : "") },
+      { k: "Status", v: "Not found" },
     ];
   }
   return [
-    { k: "Subscription", v: s.id },
+    { k: "Subscription", v: `${p.subsciptionId.slice(0, 10)}…${p.subsciptionId.slice(-6)}` },
     { k: "Status", v: statusDisplay.value },
     { k: "Merchant", v: s.merchant },
-    { k: "Plan", v: s.planId },
+    { k: "Plan", v: p.description?.trim() || "—" },
     { k: "Cadence", v: s.cadence },
-    { k: "Next charge", v: s.next },
+    { k: "Due date", v: `${s.next}${nextChargeDays.value != null ? ` · ${nextChargeDisplay.value}` : ""}` },
     { k: "Amount", v: `${s.amount} / ${s.cadence.toLowerCase()}` },
     { k: "Started", v: s.started },
     { k: "Network", v: s.network },
   ];
 });
+
+const invalidId = computed(
+  () => !!id.value && !id.value.toLowerCase().startsWith("0x")
+);
 
 function goBack() {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -59,21 +149,143 @@ function mintReceipt() {
   notify.push({
     title: "Mint Receipt",
     description: cancelledLocal.value
-      ? `Demo: past-period receipt for “${s.name}”.`
-      : `Demo: minting a subscription receipt for “${s.name}” (${s.amount}).`,
+      ? `Past-period receipt for “${s.name}”.`
+      : `Minting a subscription receipt for “${s.name}” (${s.amount}).`,
     category: "success",
   });
 }
 
-function cancelSubscription() {
-  const s = sub.value;
-  if (!s || cancelledLocal.value) return;
-  cancelledLocal.value = true;
-  notify.push({
-    title: "Subscription cancelled",
-    description: `Demo: “${s.name}” will not renew. You can still mint a receipt for past charges.`,
-    category: "success",
-  });
+async function loadLatestSubscriptionTx() {
+  const p = plan.value;
+  const addr = walletStore.address;
+  if (!p || !addr || !addr.toLowerCase().startsWith("0x")) {
+    latestTx.value = null;
+    return;
+  }
+  const sdk = getBeamSdk();
+  const txs = await sdk.recurrentTransaction
+    .getPayerTransactions({
+      payer: addr as Hex,
+      page: 1,
+      limit: 100,
+      type: TransactionType.Recurrent,
+    })
+    .catch(() => []);
+
+  const matches = txs.filter(
+    (t) =>
+      (t.subscriptionId ?? "").toLowerCase() === p.subsciptionId.toLowerCase(),
+  );
+  if (matches.length === 0) {
+    latestTx.value = null;
+    return;
+  }
+  latestTx.value = matches.reduce((best, t) => {
+    const bt = toBigIntSafe(t.timestamp ?? 0);
+    const bb = toBigIntSafe(best.timestamp ?? 0);
+    return bt > bb ? t : best;
+  }, matches[0]!);
+}
+
+watch([id, () => walletStore.address], () => {
+  void loadLatestSubscriptionTx();
+});
+
+async function cancelSubscription() {
+  const p = plan.value;
+  const addr = walletStore.address;
+  if (!p || cancelledLocal.value || !addr || cancelling.value) return;
+  cancelling.value = true;
+  try {
+    const sdk = getBeamSdk();
+    const txs = await sdk.recurrentTransaction
+      .getPayerTransactions({
+        payer: addr as Hex,
+        page: 1,
+        limit: 100,
+        type: TransactionType.Recurrent,
+      })
+      .catch(() => []);
+    const match = txs.find(
+      (t) =>
+        (t.subscriptionId ?? "").toLowerCase() === p.subsciptionId.toLowerCase(),
+    );
+    if (!match) {
+      notify.push({
+        title: "Cancel",
+        description:
+          "No matching recurrent transaction for this wallet. Connect the wallet that originally subscribed.",
+        category: "error",
+      });
+      return;
+    }
+
+    const txHash = await BeamContract.cancelRecurrentTransaction({
+      transactionId: match.id as Hex,
+    });
+
+    if (!txHash) {
+      notify.push({
+        title: "Cancel failed",
+        description: "Transaction was rejected or failed.",
+        category: "error",
+      });
+      return;
+    }
+
+    cancelledLocal.value = true;
+    notify.push({
+      title: "Cancellation sent",
+      description: "Your subscription cancellation was submitted on-chain.",
+      category: "success",
+      linkTitle: "View Tx",
+      linkUrl: `${import.meta.env.VITE_EXPLORER_URL}/tx/${txHash}`,
+    });
+    await loadLatestSubscriptionTx();
+  } finally {
+    cancelling.value = false;
+  }
+}
+
+async function renewSubscription() {
+  const p = plan.value;
+  const addr = walletStore.address;
+  if (!p || !addr || renewing.value) return;
+  renewing.value = true;
+  try {
+    const value =
+      (p.token ?? zeroAddress) === zeroAddress ? toBigIntSafe(p.amount) : 0n;
+    const txHash = await BeamContract.recurrentTransaction(
+      {
+        merchant: p.merchant as Hex,
+        subscriptionId: p.subsciptionId as Hex,
+        description: p.description?.trim() || "",
+        metadata: { schemaVersion: SCHEMA_JSON, value: "{}" },
+      },
+      value,
+    );
+
+    if (!txHash) {
+      notify.push({
+        title: "Renew failed",
+        description: "Transaction was rejected or failed.",
+        category: "error",
+      });
+      return;
+    }
+
+    cancelledLocal.value = false;
+    notify.push({
+      title: "Renewal sent",
+      description: "Your subscription renewal was submitted on-chain.",
+      category: "success",
+      linkTitle: "View Tx",
+      linkUrl: `${import.meta.env.VITE_EXPLORER_URL}/tx/${txHash}`,
+    });
+    await loadLatestSubscriptionTx();
+  } finally {
+    renewing.value = false;
+  }
 }
 </script>
 
@@ -93,12 +305,25 @@ function cancelSubscription() {
 
     <AppFrame :topInset="false">
       <div class="page-body">
-        <template v-if="sub">
+        <p v-if="invalidId" class="warn">
+          Invalid subscription id. Open this screen from Activity or Home.
+        </p>
+        <p v-else-if="isFetching && !plan" class="muted">Loading…</p>
+
+        <template v-else-if="sub && plan">
           <div class="hero">
-            <img class="hero-av" :src="sub.img" alt="" width="56" height="56" />
+            <StorageImage
+              class="hero-av"
+              :src="planImage || sub.img"
+              alt=""
+              width="56"
+              height="56"
+            />
             <div class="hero-text">
               <p class="hero-title">{{ sub.name }}</p>
-              <p class="hero-amt">{{ sub.amount }} <span class="per">/ {{ sub.cadence.toLowerCase() }}</span></p>
+              <p class="hero-amt">
+                {{ sub.amount }} <span class="per">/ {{ sub.cadence.toLowerCase() }}</span>
+              </p>
               <p class="hero-merchant">{{ sub.merchant }}</p>
             </div>
           </div>
@@ -113,17 +338,32 @@ function cancelSubscription() {
           </ul>
 
           <p class="note">
-            Cancelling stops future renewals in this demo. On-chain billing would call your wallet/SDK here.
+            Cancelling is handled through the Beam recurrent checkout when your wallet matches the payer on-chain.
           </p>
 
           <div class="sub-actions">
             <button
               type="button"
               class="cancel-sub"
-              :disabled="cancelledLocal"
+              :disabled="cancelledLocal || cancelling"
               @click="cancelSubscription"
             >
-              {{ cancelledLocal ? "Cancelled" : "Cancel subscription" }}
+              {{
+                cancelledLocal
+                  ? "Cancelled"
+                  : cancelling
+                    ? "Cancelling…"
+                    : "Cancel subscription"
+              }}
+            </button>
+
+            <button
+              type="button"
+              class="renew-sub"
+              :disabled="renewing"
+              @click="renewSubscription"
+            >
+              {{ renewing ? "Renewing…" : "Renew subscription" }}
             </button>
           </div>
 
@@ -132,8 +372,10 @@ function cancelSubscription() {
           </footer>
         </template>
 
-        <template v-else>
-          <p class="warn">No demo subscription for id “{{ id }}”. Open this screen from Activity or Home.</p>
+        <template v-else-if="!invalidId">
+          <p class="warn">
+            No subscription found for this id. Try again later.
+          </p>
           <button type="button" class="link-back" @click="goBack">Back</button>
         </template>
       </div>
@@ -150,6 +392,11 @@ function cancelSubscription() {
 
 .page-body {
   padding: 12px 0 max(28px, env(safe-area-inset-bottom, 0px));
+}
+
+.muted {
+  font-size: 14px;
+  color: var(--tx-dimmed);
 }
 
 .bar {
@@ -277,6 +524,8 @@ function cancelSubscription() {
 }
 .sub-actions {
   margin-top: 20px;
+  display: grid;
+  gap: 10px;
 }
 .cancel-sub {
   width: 100%;
@@ -298,6 +547,27 @@ function cancelSubscription() {
 }
 .cancel-sub:not(:disabled):active {
   opacity: 0.88;
+}
+
+.renew-sub {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-14);
+  border: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.12));
+  background: rgba(36, 36, 38, 0.95);
+  color: var(--tx-normal);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.renew-sub:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.renew-sub:not(:disabled):active {
+  transform: scale(0.99);
+  opacity: 0.9;
 }
 .mint-footer {
   margin-top: 20px;

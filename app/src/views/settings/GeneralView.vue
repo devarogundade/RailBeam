@@ -7,11 +7,11 @@ import { Connection } from '@/types/app';
 import Storage from '@/scripts/storage';
 import { beamSdk } from '@/scripts/beamSdk';
 import { getEthersSigner } from '@/scripts/ethersSigner';
-import { displayImageUrl } from '@/scripts/displayImageUrl';
 import { MerchantContract } from '@/scripts/contract';
 import { SCHEMA_JSON } from 'beam-ts';
 import { notify } from '@/reactives/notify';
 import Converter from '@/scripts/converter';
+import StorageImage from '@/components/StorageImage.vue';
 
 const walletStore = useWalletStore();
 const name = ref<string | null>(null);
@@ -52,10 +52,10 @@ const saveChanges = async () => {
         return;
     }
 
-    if (walletStore.image) {
+    if (image.value) {
         const signer = await getEthersSigner();
         imageURL.value = await Storage.awaitUpload(
-            walletStore.image,
+            image.value,
             `merchant_image_${walletStore.address}`,
             signer
         );
@@ -163,7 +163,7 @@ onMounted(() => {
                     <label>Merchant Image</label>
                     <div class="file">
                         <div class="upload">
-                            <img :src="displayImageUrl(imageURL)" alt="">
+                            <StorageImage :src="imageURL || undefined" alt="" />
                         </div>
 
                         <div class="upload_text">

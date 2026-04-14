@@ -42,10 +42,18 @@ export class UsersService {
   ): Promise<UserDocument | null> {
     const key = wallet.toLowerCase();
     const doc = await this.userModel
-      .findOneAndUpdate({ walletAddress: key }, { $set: patch }, { new: true })
+      .findOneAndUpdate(
+        { walletAddress: key },
+        { $set: { walletAddress: key, ...patch } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
       .exec();
     await this.redis.del(this.cacheKey(key));
     return doc;
+  }
+
+  async findByStripeCardId(cardId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ stripeCardId: cardId }).exec();
   }
 
   async getCachedIssuingSummary(

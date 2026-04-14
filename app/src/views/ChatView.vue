@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { computed } from "vue";
 import { useBeamAgentsQuery } from "@/query/agents";
 import type { Agent as BeamAgent } from "beam-ts";
+import StorageImage from "@/components/StorageImage.vue";
 
 type AgentCardRegistrationV1 = {
   type?: string;
@@ -98,7 +99,7 @@ function openCreate() {
 
             <div v-else class="list">
                 <div v-for="a in myAgents" :key="a.id" class="row">
-          <img class="avatar" :src="a.image || '/images/colors.png'" alt="" />
+          <StorageImage class="avatar" :src="a.image || '/images/colors.png'" alt="" />
                     <div class="main">
                         <div class="row_top">
                             <p class="name">{{ a.name }}</p>

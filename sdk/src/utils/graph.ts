@@ -5,6 +5,7 @@ import type {
   SubscriptionPlan,
   Agent,
   AgentMetadata,
+  User,
   Feedback,
   FeedbackResponse,
   Validation,
@@ -22,6 +23,26 @@ export class Graph {
 
   private bigIntValue(v: bigint | number | string): string {
     return typeof v === "bigint" ? v.toString() : String(v);
+  }
+
+  private normalizeTransaction<T extends { payer?: string; payers?: string[] }>(
+    tx: T,
+  ): T {
+    const payer = tx?.payer?.toLowerCase();
+    if (!payer) return tx;
+
+    const payers = (tx.payers ?? []).map((p) => p.toLowerCase());
+    if (payers.includes(payer)) return tx;
+
+    return { ...tx, payers: [...(tx.payers ?? []), tx.payer] };
+  }
+
+  private normalizeTransactions<
+    T extends { payer?: string; payers?: string[] } | null | undefined,
+  >(txs: T[]): NonNullable<T>[] {
+    return (txs ?? [])
+      .filter((t): t is NonNullable<T> => Boolean(t))
+      .map((t) => this.normalizeTransaction(t));
   }
 
   async getMerchant(merchant: Hex): Promise<Merchant | null> {
@@ -74,7 +95,84 @@ export class Graph {
     }
   }
 
-  async getAgentByAgentId(agentId: bigint | number | string): Promise<Agent | null> {
+  async getUser(user: Hex): Promise<User | null> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          user(id: "${user.toLowerCase()}") {
+            id
+            user
+            username
+            metadataURI
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.user as User | null | undefined) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getUsers(page: number, limit: number): Promise<User[]> {
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          users(
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+            orderBy: blockTimestamp
+            orderDirection: desc
+          ) {
+            id
+            user
+            username
+            metadataURI
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+
+      return (data?.data?.users as User[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    const u = String(username ?? "").trim();
+    if (!u) return null;
+    // Username matching in the subgraph is case-sensitive; normalize to exact user input.
+    // Apps can decide their own casing policy at the UX layer.
+    try {
+      const data = await this.client.graphCall<any>({
+        query: `{
+          users(where: { username: "${u}" }, first: 1) {
+            id
+            user
+            username
+            metadataURI
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }`,
+      });
+      const rows = (data?.data?.users as User[] | undefined) ?? [];
+      return rows[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getAgentByAgentId(
+    agentId: bigint | number | string,
+  ): Promise<Agent | null> {
     try {
       const data = await this.client.graphCall<any>({
         query: `{
@@ -98,11 +196,7 @@ export class Graph {
     }
   }
 
-  async getAgents(
-    page: number,
-    limit: number,
-    owner?: Hex
-  ): Promise<Agent[]> {
+  async getAgents(page: number, limit: number, owner?: Hex): Promise<Agent[]> {
     try {
       const where = owner ? `where: { owner: "${owner.toLowerCase()}" }` : "";
       const data = await this.client.graphCall<any>({
@@ -136,7 +230,7 @@ export class Graph {
     agentId: bigint | number | string,
     key?: string,
     page = 1,
-    limit = 100
+    limit = 100,
   ): Promise<AgentMetadata[]> {
     try {
       let filters = `agentId: ${this.bigIntValue(agentId)}`;
@@ -218,7 +312,9 @@ export class Graph {
         }`,
       });
 
-      return (data?.data?.feedbackResponses as FeedbackResponse[] | undefined) ?? [];
+      return (
+        (data?.data?.feedbackResponses as FeedbackResponse[] | undefined) ?? []
+      );
     } catch {
       return [];
     }
@@ -229,12 +325,14 @@ export class Graph {
     limit: number,
     agentId?: bigint | number | string,
     clientAddress?: Hex,
-    revoked?: boolean
+    revoked?: boolean,
   ): Promise<Feedback[]> {
     try {
       let filters: string[] = [];
-      if (agentId !== undefined) filters.push(`agentId: ${this.bigIntValue(agentId)}`);
-      if (clientAddress) filters.push(`clientAddress: "${clientAddress.toLowerCase()}"`);
+      if (agentId !== undefined)
+        filters.push(`agentId: ${this.bigIntValue(agentId)}`);
+      if (clientAddress)
+        filters.push(`clientAddress: "${clientAddress.toLowerCase()}"`);
       if (revoked !== undefined) filters.push(`revoked: ${revoked}`);
 
       const where = filters.length ? `where: { ${filters.join(", ")} }` : "";
@@ -303,12 +401,14 @@ export class Graph {
     page: number,
     limit: number,
     agentId?: bigint | number | string,
-    validatorAddress?: Hex
+    validatorAddress?: Hex,
   ): Promise<Validation[]> {
     try {
       let filters: string[] = [];
-      if (agentId !== undefined) filters.push(`agentId: ${this.bigIntValue(agentId)}`);
-      if (validatorAddress) filters.push(`validatorAddress: "${validatorAddress.toLowerCase()}"`);
+      if (agentId !== undefined)
+        filters.push(`agentId: ${this.bigIntValue(agentId)}`);
+      if (validatorAddress)
+        filters.push(`validatorAddress: "${validatorAddress.toLowerCase()}"`);
 
       const where = filters.length ? `where: { ${filters.join(", ")} }` : "";
       const data = await this.client.graphCall<any>({
@@ -388,7 +488,9 @@ export class Graph {
         }`,
       });
 
-      return data.data.transaction;
+      const tx =
+        (data?.data?.transaction as Transaction | null | undefined) ?? null;
+      return tx ? this.normalizeTransaction(tx) : null;
     } catch (error) {
       return null;
     }
@@ -440,7 +542,9 @@ export class Graph {
         }`,
       });
 
-      return data.data.transactions;
+      return this.normalizeTransactions(
+        (data?.data?.transactions as Transaction[] | undefined) ?? [],
+      );
     } catch (error) {
       return [];
     }
@@ -456,25 +560,32 @@ export class Graph {
     timestampMin?: number,
     timestampMax?: number,
     status?: TransactionStatus,
-    type?: TransactionType
+    type?: TransactionType,
   ): Promise<Transaction[]> {
     try {
-      let filters = `merchant: "${merchant.toLowerCase()}"`;
+      const base: string[] = [`merchant: "${merchant.toLowerCase()}"`];
 
-      if (payer) filters += `, payer: "${payer.toLowerCase()}"`;
-      if (amountMin !== undefined) filters += `, amount_gte: ${amountMin}`;
-      if (amountMax !== undefined) filters += `, amount_lte: ${amountMax}`;
-      if (timestampMin !== undefined)
-        filters += `, timestamp_gte: ${timestampMin}`;
-      if (timestampMax !== undefined)
-        filters += `, timestamp_lte: ${timestampMax}`;
-      if (status !== undefined) filters += `, status: ${status}`;
-      if (type !== undefined) filters += `, type: ${type}`;
+      if (amountMin !== undefined) base.push(`amount_gte: ${amountMin}`);
+      if (amountMax !== undefined) base.push(`amount_lte: ${amountMax}`);
+      if (timestampMin !== undefined) base.push(`timestamp_gte: ${timestampMin}`);
+      if (timestampMax !== undefined) base.push(`timestamp_lte: ${timestampMax}`);
+      if (status !== undefined) base.push(`status: ${status}`);
+      if (type !== undefined) base.push(`type: ${type}`);
+
+      // This Graph endpoint rejects mixing column filters with `or` at the same level.
+      // So when `payer` is provided, duplicate `base` into each `or` branch.
+      const where = payer
+        ? (() => {
+            const p = payer.toLowerCase();
+            const baseStr = base.join(", ");
+            return `or: [{ ${baseStr}, payer: "${p}" }, { ${baseStr}, payers_contains: ["${p}"] }]`;
+          })()
+        : base.join(", ");
 
       const data = await this.client.graphCall<any>({
         query: `{
         transactions(
-          where: { ${filters} }
+          where: { ${where} }
           first: ${limit}
           skip: ${(page - 1) * limit}
           orderBy: timestamp
@@ -521,9 +632,86 @@ export class Graph {
       }`,
       });
 
-      return data?.data?.transactions ?? [];
+      return this.normalizeTransactions(
+        (data?.data?.transactions as Transaction[] | undefined) ?? [],
+      );
     } catch (error) {
       console.error("Error fetching payments:", error);
+      return [];
+    }
+  }
+
+  async getTransactionsByPayer(
+    payer: Hex,
+    page: number,
+    limit: number,
+    status?: TransactionStatus,
+    type?: TransactionType,
+  ): Promise<Transaction[]> {
+    try {
+      const base: string[] = [];
+      if (status !== undefined) base.push(`status: ${status}`);
+      if (type !== undefined) base.push(`type: ${type}`);
+
+      const p = payer.toLowerCase();
+      const baseStr = base.length ? `${base.join(", ")}, ` : "";
+      const where = `or: [{ ${baseStr}payer: "${p}" }, { ${baseStr}payers_contains: ["${p}"] }]`;
+
+      const data = await this.client.graphCall<any>({
+        query: `{
+        transactions(
+          where: { ${where} }
+          first: ${limit}
+          skip: ${(page - 1) * limit}
+          orderBy: timestamp
+          orderDirection: desc
+        ) {
+          id
+          transactionId
+          payer
+          payers
+          fulfilleds
+          merchant
+          token
+          amounts
+          adjustedToken
+          adjustedAmount
+          dueDate
+          amount
+          timestamp
+          description
+          metadata_schemaVersion
+          metadata_value
+          status
+          type
+          subscriptionId
+          blockNumber
+          blockTimestamp
+          transactionHash
+          confirmations {
+            id
+            transactionId
+            from
+            recipient
+            token
+            amount
+            adjustedToken
+            adjustedAmount
+            description
+            type      
+            blockNumber
+            blockTimestamp
+            transactionHash
+          }
+        }
+      }`,
+      });
+
+      return this.normalizeTransactions(
+        (data?.data?.transactions as Transaction[] | undefined) ?? [],
+      );
+    } catch (error) {
+      console.error("Error fetching payer transactions:", error);
       return [];
     }
   }
@@ -557,7 +745,7 @@ export class Graph {
   }
 
   async getTransactionConfirmations(
-    transactionId: Hex
+    transactionId: Hex,
   ): Promise<Confirmation[]> {
     try {
       const data = await this.client.graphCall<any>({
@@ -644,7 +832,7 @@ export class Graph {
   }
 
   async getSubscriptionsFromHash(
-    transactionHash: Hex
+    transactionHash: Hex,
   ): Promise<SubscriptionPlan[]> {
     try {
       const data = await this.client.graphCall<any>({
@@ -677,7 +865,7 @@ export class Graph {
   async getSubscriptions(
     merchant: Hex,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<SubscriptionPlan[]> {
     try {
       const skip = (page - 1) * limit;

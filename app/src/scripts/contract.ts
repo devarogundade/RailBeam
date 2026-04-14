@@ -9,11 +9,6 @@ import { merchantAbi } from "../abis/merchant";
 import { walletAbi } from "../abis/wallet";
 import { hookManagerAbi } from "../abis/hookManager";
 import { identityRegistryAbi } from "../abis/identityRegistry";
-import {
-  HOOK_MANAGER_ADDRESS,
-  MERCHANT_MODULE_ADDRESS,
-  IDENTITY_REGISTRY_ADDRESS,
-} from "./contractEnv";
 import type {
   CreateMerchant,
   CreateSubscription,
@@ -23,9 +18,10 @@ import type {
   UpdateSubscription,
   MetadataEntry,
 } from "./params";
+import { ContractAddresses } from "beam-ts";
 
 export const HookManagerContract = {
-  address: HOOK_MANAGER_ADDRESS,
+  address: ContractAddresses.Testnet.HookManager,
 
   async register(params: RegisterHook): Promise<Hex | null> {
     try {
@@ -38,6 +34,7 @@ export const HookManagerContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -56,6 +53,7 @@ export const HookManagerContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -95,6 +93,7 @@ export const MultiSigContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -103,7 +102,7 @@ export const MultiSigContract = {
     }
   },
 
-  async approveWithdraw(wallet: Hex, requestId: Hex): Promise<Hex | null> {
+  async approveWithdraw(wallet: Hex, requestId: bigint): Promise<Hex | null> {
     try {
       const result = await writeContract(config, {
         abi: walletAbi,
@@ -114,6 +113,7 @@ export const MultiSigContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -122,7 +122,7 @@ export const MultiSigContract = {
     }
   },
 
-  async executeWithdraw(wallet: Hex, requestId: Hex): Promise<Hex | null> {
+  async executeWithdraw(wallet: Hex, requestId: bigint): Promise<Hex | null> {
     try {
       const result = await writeContract(config, {
         abi: walletAbi,
@@ -133,6 +133,7 @@ export const MultiSigContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -190,6 +191,7 @@ export const MultiSigContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -213,6 +215,7 @@ export const MultiSigContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -223,7 +226,7 @@ export const MultiSigContract = {
 };
 
 export const MerchantContract = {
-  address: MERCHANT_MODULE_ADDRESS,
+  address: ContractAddresses.Testnet.Merchant,
 
   async create(params: CreateMerchant): Promise<Hex | null> {
     console.log(params);
@@ -238,6 +241,7 @@ export const MerchantContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -259,6 +263,7 @@ export const MerchantContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -278,6 +283,7 @@ export const MerchantContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -297,6 +303,7 @@ export const MerchantContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -316,6 +323,7 @@ export const MerchantContract = {
 
       const receipt = await waitForTransactionReceipt(config, {
         hash: result,
+        confirmations: 2,
       });
 
       return receipt.transactionHash;
@@ -352,7 +360,7 @@ export const MerchantContract = {
 };
 
 export const IdentityRegistryContract = {
-  address: IDENTITY_REGISTRY_ADDRESS,
+  address: ContractAddresses.Testnet.IdentityRegistry,
 
   async register(
     agentURI: string,
@@ -366,7 +374,10 @@ export const IdentityRegistryContract = {
         args: [agentURI, metadata],
       });
 
-      const receipt = await waitForTransactionReceipt(config, { hash: result });
+      const receipt = await waitForTransactionReceipt(config, {
+        hash: result,
+        confirmations: 2,
+      });
 
       return receipt.transactionHash;
     } catch {
@@ -383,7 +394,10 @@ export const IdentityRegistryContract = {
         args: [agentId, newURI],
       });
 
-      const receipt = await waitForTransactionReceipt(config, { hash: result });
+      const receipt = await waitForTransactionReceipt(config, {
+        hash: result,
+        confirmations: 2,
+      });
 
       return receipt.transactionHash;
     } catch {

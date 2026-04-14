@@ -7,7 +7,7 @@ import AppFrame from "@/components/layout/AppFrame.vue";
     <AppFrame :topInset="false">
       <div class="shell-head__inner">
         <h1 class="shell-head__title">Activity</h1>
-        <p class="shell-head__copy">Recent sends, receives, and subscription charges (demo data).</p>
+        <p class="shell-head__copy">Recent sends, receives, and subscription charges.</p>
       </div>
     </AppFrame>
   </header>

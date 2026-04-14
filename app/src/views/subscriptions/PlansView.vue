@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import PlanDetails from '@/components/PlanDetails.vue';
+import StorageImage from '@/components/StorageImage.vue';
 import { useWalletStore } from '@/stores/wallet';
 import { computed, ref, watchEffect } from 'vue';
 import ProgressBox from '@/components/ProgressBox.vue';
-import type { Plan } from '@/types/app';
+import type { Plan } from 'beam-ts';
 import Converter from '@/scripts/converter';
 import CreatePlan from '@/components/CreatePlan.vue';
 import { getToken } from 'beam-ts';
-import { displayImageUrl } from '@/scripts/displayImageUrl';
 import { useBeamPlansQuery } from '@/query/beam';
 import { useQueryClient } from '@tanstack/vue-query';
+import { formatUnits } from 'viem';
 
 const walletStore = useWalletStore();
 const plans = ref<Plan[]>([]);
@@ -40,7 +41,12 @@ const getPlans = async () => {
     <ProgressBox v-if="progress" />
     <div class="plans">
         <div class="plan" v-for="plan, index in plans" :key="index" @click="selectedPlan = plan">
-            <img :src="displayImageUrl(plan.images[0])" alt="">
+            <StorageImage
+                v-if="plan.images?.[0]"
+                :src="plan.images[0]"
+                :alt="plan.name"
+            />
+            <StorageImage v-else :alt="plan.name" />
 
             <div class="plan_info">
                 <h3 class="name">{{ plan.name }}</h3>
@@ -48,17 +54,24 @@ const getPlans = async () => {
 
                 <div class="plan_type">
                     <div class="duration">
-                        <p>Duration: <span>{{ plan.interval / (24 * 60 * 60 * 1000) }} days</span></p>
+                        <p>Duration: <span>{{ plan.interval / (24 * 60 * 60) }} days</span></p>
                         <p>{{ plan.available ? 'Active' : 'Not active' }}</p>
                     </div>
 
-                    <div class="amount">{{ Converter.toMoney(plan.amount) }} {{ getToken(plan.token)?.symbol }}</div>
+                    <div class="amount">
+                        {{
+                            Converter.toMoney(
+                                formatUnits(plan.amount, getToken(plan.token)?.decimals ?? 18)
+                            )
+                        }}
+                        {{ getToken(plan.token)?.symbol }}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="empty" v-if="!progress && plans.length == 0">
-        <img src="/images/empty.png" alt="">
+        <StorageImage src="/images/empty.png" alt="" />
         <p>No plans.</p>
     </div>
 
@@ -85,7 +98,7 @@ const getPlans = async () => {
     cursor: pointer;
 }
 
-.plan img {
+.plan :deep(img) {
     width: 200px;
     height: 200px;
     object-fit: contain;
@@ -105,6 +118,7 @@ const getPlans = async () => {
     margin-top: 16px;
     font-size: 14px;
     color: var(--tx-dimmed);
+    line-clamp: 3;
     -webkit-line-clamp: 3;
     overflow: hidden;
     text-overflow: ellipsis;

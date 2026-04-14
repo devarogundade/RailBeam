@@ -48,6 +48,169 @@ export const beamAbi = [
     type: "error",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "transactionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "payer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address[]",
+        name: "payers",
+        type: "address[]",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "merchant",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[]",
+        name: "amounts",
+        type: "uint256[]",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "adjustedToken",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "adjustedAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
+      {
+        components: [
+          {
+            internalType: "uint8",
+            name: "schemaVersion",
+            type: "uint8",
+          },
+          {
+            internalType: "string",
+            name: "value",
+            type: "string",
+          },
+        ],
+        indexed: false,
+        internalType: "struct Types.Metadata",
+        name: "metadata",
+        type: "tuple",
+      },
+      {
+        indexed: false,
+        internalType: "enum Enums.TransactionStatus",
+        name: "status",
+        type: "uint8",
+      },
+    ],
+    name: "OneTimeTransactionCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "transactionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "payer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "merchant",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "adjustedToken",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "adjustedAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "enum Enums.TransactionStatus",
+        name: "status",
+        type: "uint8",
+      },
+    ],
+    name: "OneTimeTransactionFulfilled",
+    type: "event",
+  },
+  {
     anonymous: false,
     inputs: [
       {
@@ -64,6 +227,189 @@ export const beamAbi = [
       },
     ],
     name: "OwnershipTransferred",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "transactionId",
+        type: "bytes32",
+      },
+    ],
+    name: "RecurrentTransactionCancelled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "transactionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "payer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "merchant",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "subscriptionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "dueDate",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "adjustedToken",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "adjustedAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
+      {
+        components: [
+          {
+            internalType: "uint8",
+            name: "schemaVersion",
+            type: "uint8",
+          },
+          {
+            internalType: "string",
+            name: "value",
+            type: "string",
+          },
+        ],
+        indexed: false,
+        internalType: "struct Types.Metadata",
+        name: "metadata",
+        type: "tuple",
+      },
+      {
+        indexed: false,
+        internalType: "enum Enums.TransactionStatus",
+        name: "status",
+        type: "uint8",
+      },
+    ],
+    name: "RecurrentTransactionCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "transactionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "payer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "merchant",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "subscriptionId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "dueDate",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "adjustedToken",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "adjustedAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "enum Enums.TransactionStatus",
+        name: "status",
+        type: "uint8",
+      },
+    ],
+    name: "RecurrentTransactionFulfilled",
     type: "event",
   },
   {
@@ -124,112 +470,6 @@ export const beamAbi = [
     name: "fulfillRecurrentTransaction",
     outputs: [],
     stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: "address",
-            name: "merchant",
-            type: "address",
-          },
-          {
-            internalType: "address",
-            name: "payer",
-            type: "address",
-          },
-          {
-            internalType: "address",
-            name: "token",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        internalType: "struct Params.AdjustTokenAmount",
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "getAdjustTokenAmount",
-    outputs: [
-      {
-        internalType: "address",
-        name: "adjustedToken",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "adjustedAmount",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: "address",
-            name: "to",
-            type: "address",
-          },
-          {
-            internalType: "bytes32",
-            name: "transactionId",
-            type: "bytes32",
-          },
-          {
-            internalType: "string",
-            name: "URI",
-            type: "string",
-          },
-        ],
-        internalType: "struct Params.MintReceipt",
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "mintOneTimeTransactionReceipt",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: "address",
-            name: "to",
-            type: "address",
-          },
-          {
-            internalType: "bytes32",
-            name: "transactionId",
-            type: "bytes32",
-          },
-          {
-            internalType: "string",
-            name: "URI",
-            type: "string",
-          },
-        ],
-        internalType: "struct Params.MintReceipt",
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "mintRecurrentTransactionReceipt",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -359,32 +599,6 @@ export const beamAbi = [
   {
     inputs: [
       {
-        internalType: "contract IOneTimeTransaction",
-        name: "transaction",
-        type: "address",
-      },
-    ],
-    name: "setOneTimeTransaction",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "contract IRecurrentTransaction",
-        name: "transaction",
-        type: "address",
-      },
-    ],
-    name: "setRecurentTransaction",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
         internalType: "address",
         name: "newOwner",
         type: "address",
@@ -394,9 +608,5 @@ export const beamAbi = [
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
-  },
-  {
-    stateMutability: "payable",
-    type: "receive",
   },
 ];

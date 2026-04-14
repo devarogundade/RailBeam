@@ -6,6 +6,7 @@ import type { Hex } from 'viem';
 import { useWalletStore } from '@/stores/wallet';
 import { Connection } from '@/types/app';
 import { useRouter } from 'vue-router';
+import StorageImage from '@/components/StorageImage.vue';
 
 const router = useRouter();
 const walletStore = useWalletStore();
@@ -51,7 +52,7 @@ const watch = () => {
                         </div>
 
                         <div class="input">
-                            <img src="/images/colors.png" alt="colors">
+                            <StorageImage src="/images/colors.png" alt="colors" />
                             <input type="text" v-model="address"
                                 placeholder="0xd2dABBDbD69cE434Ce2b152fddad81C6a88ahsu4" />
                         </div>
@@ -155,7 +156,7 @@ const watch = () => {
     gap: 20px;
 }
 
-.input img {
+.input :deep(img) {
     width: 44px;
     height: 44px;
     border-radius: 6px;

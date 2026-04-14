@@ -1,4 +1,4 @@
-import { walletConnect } from "@wagmi/connectors";
+import { injected, walletConnect } from "@wagmi/connectors";
 import { defaultWagmiConfig } from "@web3modal/wagmi";
 import { ogGalileoTestnet } from "./ogChain";
 
@@ -17,8 +17,10 @@ export const config = defaultWagmiConfig({
   projectId: import.meta.env.VITE_PROJECT_ID,
   metadata,
   connectors: [
+    injected(),
     walletConnect({
       projectId: import.meta.env.VITE_PROJECT_ID,
+      showQrModal: false,
     }),
   ],
 });

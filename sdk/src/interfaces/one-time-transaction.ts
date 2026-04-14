@@ -4,6 +4,7 @@ import {
 } from "../params";
 import type {
   TransactionCallback,
+  GetPayerTransactions,
   GetTransaction,
   GetTransactions,
   Transaction,
@@ -22,6 +23,8 @@ export interface IOneTimeTransaction {
   getTransactions(params: GetTransactions): Promise<Transaction[]>;
 
   getTransactionsFromHash(params: GetTransactionHash): Promise<Transaction[]>;
+
+  getPayerTransactions(params: GetPayerTransactions): Promise<Transaction[]>;
 
   getOneTimeTransactions(params: GetTransactions): Promise<Transaction[]>;
 }

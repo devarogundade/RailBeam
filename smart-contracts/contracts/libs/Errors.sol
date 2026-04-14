@@ -54,4 +54,11 @@ library Errors {
     // Wallet Errors
     string public constant MIN_SIGNER_MUST_BE_GRT_ONE = "800";
     string public constant INSUFFICIENT_APPROVALS = "801";
+
+    // User Registry Errors
+    string public constant INVALID_USERNAME = "900";
+    string public constant INVALID_METADATA_URI = "901";
+    string public constant USERNAME_ALREADY_TAKEN = "902";
+    string public constant USER_ALREADY_REGISTERED = "903";
+    string public constant USER_NOT_REGISTERED = "904";
 }

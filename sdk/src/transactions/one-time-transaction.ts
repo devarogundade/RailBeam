@@ -16,7 +16,7 @@ export class OneTimeTransaction
   implements IOneTimeTransaction
 {
   async create(
-    params: PrepareOneTimeTransaction
+    params: PrepareOneTimeTransaction,
   ): Promise<TransactionCallback> {
     return new Promise((resolve, reject) => {
       const session = this.createSession();
@@ -32,7 +32,7 @@ export class OneTimeTransaction
             if (data.session == session) {
               resolve(data);
             }
-          }
+          },
         );
       } catch (error) {
         reject(error);
@@ -41,7 +41,7 @@ export class OneTimeTransaction
   }
 
   async fulfill(
-    params: PrepareFulfillOneTimeTransaction
+    params: PrepareFulfillOneTimeTransaction,
   ): Promise<TransactionCallback> {
     return new Promise((resolve, reject) => {
       const session = this.createSession();
@@ -57,7 +57,7 @@ export class OneTimeTransaction
             if (data.session == session) {
               resolve(data);
             }
-          }
+          },
         );
       } catch (error) {
         reject(error);
@@ -76,7 +76,7 @@ export class OneTimeTransaction
       params.timestampMin,
       params.timestampMax,
       params.status,
-      TransactionType.OneTime
+      TransactionType.OneTime,
     );
   }
 }

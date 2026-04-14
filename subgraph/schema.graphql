@@ -147,3 +147,13 @@ type Validation @entity(immutable: false) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type User @entity(immutable: false) {
+  id: Bytes! # user address
+  user: Bytes! # address
+  username: String!
+  metadataURI: String!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

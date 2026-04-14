@@ -7,7 +7,7 @@ import AppFrame from "@/components/layout/AppFrame.vue";
     <AppFrame :topInset="false">
       <div class="shell-head__inner">
         <h1 class="shell-head__title">Assets</h1>
-        <p class="shell-head__copy">Tokens available for payments (demo balances).</p>
+        <p class="shell-head__copy">Tokens available for payments.</p>
       </div>
     </AppFrame>
   </header>

@@ -3,6 +3,10 @@
 interface ImportMetaEnv {
   readonly VITE_PROJECT_ID: string;
   readonly VITE_CLIENT_URL: string;
+  /** CAIP-2 network id for x402 (e.g. eip155:16601). Must match your facilitator. */
+  readonly VITE_X402_NETWORK?: string;
+  /** USDC contract on that chain, required when the backend has no built-in address for `VITE_X402_NETWORK`. */
+  readonly VITE_X402_USDC_ASSET?: string;
   readonly VITE_EXPLORER_URL: string;
   readonly VITE_BEAM_GRAPH_URL?: string;
   readonly VITE_BEAM_TRANSACTION_URL?: string;

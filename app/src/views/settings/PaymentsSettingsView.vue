@@ -8,6 +8,7 @@ import { Connection } from '@/types/app';
 import { beamSdk } from '@/scripts/beamSdk';
 import { getTokens } from 'beam-ts';
 import { notify } from '@/reactives/notify';
+import StorageImage from '@/components/StorageImage.vue';
 
 const walletStore = useWalletStore();
 const tokens = ref<Hex[]>();
@@ -133,7 +134,7 @@ watch(walletStore, () => {
                             :class="tokens?.includes(token.address) ? 'token token_selected' : 'token'"
                             @click="addOrRemoveToken(token.address)">
                             <div class="token_info">
-                                <img :src="token.image" alt="">
+                                <StorageImage :src="token.image" alt="" />
                                 <p>{{ token.symbol }}</p>
                             </div>
                             <div class="radio">
@@ -305,7 +306,7 @@ watch(walletStore, () => {
     gap: 12px;
 }
 
-.token_info img {
+.token_info :deep(img) {
     width: 20px;
     height: 20px;
     border-radius: 10px;

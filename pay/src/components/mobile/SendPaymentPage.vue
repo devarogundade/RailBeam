@@ -108,8 +108,8 @@ function submit() {
     : `Prepared ${amount.value} ${sym} to ${u}`;
 
   notify.push({
-    title: "Demo send",
-    description: desc,
+    title: "Send",
+    description: `Sending isn’t enabled in this shell yet. ${desc}.`,
     category: "success",
   });
   router.push({ name: "payment-home" });

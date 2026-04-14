@@ -1,5 +1,5 @@
-import { scrollSepolia } from "viem/chains";
-import { walletConnect } from "@wagmi/connectors";
+import { zeroGGalileoTestnet, zeroGMainnet } from "viem/chains";
+import { injected, walletConnect } from "@wagmi/connectors";
 import { defaultWagmiConfig } from "@web3modal/wagmi";
 
 const metadata = {
@@ -9,7 +9,7 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-export const chains = [scrollSepolia];
+export const chains = [zeroGGalileoTestnet, zeroGMainnet];
 
 export const config = defaultWagmiConfig({
   // @ts-ignore
@@ -17,8 +17,10 @@ export const config = defaultWagmiConfig({
   projectId: import.meta.env.VITE_PROJECT_ID,
   metadata,
   connectors: [
+    injected(),
     walletConnect({
       projectId: import.meta.env.VITE_PROJECT_ID,
+      showQrModal: false,
     }),
   ],
 });

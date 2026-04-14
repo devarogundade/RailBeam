@@ -5,6 +5,7 @@ import {
 } from "vue-router";
 import DefaultView from "../views/DefaultView.vue";
 import ReceiptView from "@/views/ReceiptView.vue";
+import X402View from "@/views/X402View.vue";
 import App from "@/App.vue";
 import Home from "@/Home.vue";
 import PaymentRoot from "@/views/payment/PaymentRoot.vue";
@@ -21,9 +22,9 @@ import PaymentShellScan from "@/views/payment/PaymentShellScan.vue";
 import PaymentShellActivity from "@/views/payment/PaymentShellActivity.vue";
 import PaymentShellAssets from "@/views/payment/PaymentShellAssets.vue";
 import PaymentShellAgents from "@/views/payment/PaymentShellAgents.vue";
-import PaymentShellAgentNew from "@/views/payment/PaymentShellAgentNew.vue";
 import PaymentShellAgentDetail from "@/views/payment/PaymentShellAgentDetail.vue";
 import PaymentShellTxDetail from "@/views/payment/PaymentShellTxDetail.vue";
+import PaymentShellTxSuccess from "@/views/payment/PaymentShellTxSuccess.vue";
 import PaymentShellSubscriptionDetail from "@/views/payment/PaymentShellSubscriptionDetail.vue";
 import { paymentUrlSignalsFromQuery } from "@/router/paymentSession";
 import { useUiStore } from "@/stores/ui";
@@ -47,6 +48,11 @@ const router = createRouter({
           path: "",
           name: "default",
           component: DefaultView,
+        },
+        {
+          path: "x402/:resourceId",
+          name: "x402",
+          component: X402View,
         },
         {
           path: "p",
@@ -104,12 +110,7 @@ const router = createRouter({
             { path: "fund", name: "payment-fund", component: FundCardPage },
             { path: "scan", name: "payment-scan", component: PaymentShellScan },
             {
-              path: "agents/new",
-              name: "payment-agent-new",
-              component: PaymentShellAgentNew,
-            },
-            {
-              path: "agents/:id",
+              path: "agents/:agentId",
               name: "payment-agent-detail",
               component: PaymentShellAgentDetail,
             },
@@ -117,6 +118,11 @@ const router = createRouter({
               path: "tx/:id",
               name: "payment-tx",
               component: PaymentShellTxDetail,
+            },
+            {
+              path: "tx/:id/success",
+              name: "payment-tx-success",
+              component: PaymentShellTxSuccess,
             },
             {
               path: "subscription/:id",

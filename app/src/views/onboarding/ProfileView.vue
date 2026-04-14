@@ -8,6 +8,7 @@ import { zeroAddress } from 'viem';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import Converter from '@/scripts/converter';
+import StorageImage from '@/components/StorageImage.vue';
 
 const router = useRouter();
 const walletStore = useWalletStore();
@@ -120,7 +121,7 @@ onMounted(() => {
                             <label>Merchant Image</label>
                             <div class="file">
                                 <div class="upload">
-                                    <img :src="imageURL ? imageURL : '/images/placeholder.png'" alt="">
+                                    <StorageImage :src="imageURL ? imageURL : '/images/placeholder.png'" alt="" />
                                 </div>
 
                                 <div class="upload_text">
@@ -254,7 +255,7 @@ onMounted(() => {
     z-index: 1;
 }
 
-.upload img {
+.upload :deep(img) {
     width: 100%;
     height: 100%;
     object-fit: cover;

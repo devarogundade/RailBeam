@@ -13,7 +13,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import Converter from '@/scripts/converter';
 import { getToken } from 'beam-ts';
 import { notify } from '@/reactives/notify';
-import { displayImageUrl } from '@/scripts/displayImageUrl';
+import StorageImage from '@/components/StorageImage.vue';
 
 const modules = [Pagination];
 const planLink = ref<string>('');
@@ -86,7 +86,7 @@ onUnmounted(() => {
                         dynamicBullets: true,
                     }" :modules="modules">
                         <SwiperSlide v-for="image in props.plan.images" :key="image">
-                            <img :src="displayImageUrl(image)" :alt="props.plan.name">
+                            <StorageImage :src="image" :alt="props.plan.name" />
                         </SwiperSlide>
                     </swiper>
                 </div>

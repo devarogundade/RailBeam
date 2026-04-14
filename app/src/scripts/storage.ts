@@ -1,5 +1,7 @@
 import { MemData, Indexer } from "@0gfoundation/0g-ts-sdk";
 import type { JsonRpcSigner } from "ethers";
+import { Client } from "./client";
+import { Buffer } from "buffer";
 
 const RPC_URL =
   import.meta.env.VITE_0G_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
@@ -18,14 +20,21 @@ export function ogRootFromRef(ref: string): string {
 }
 
 const Storage = {
-  /**
-   * Upload to 0G Storage (browser) per https://docs.0g.ai/developer-hub/building-on-0g/storage/sdk
-   * Returns `0g-storage:<rootHash>` for persistence.
-   */
+  async download(ref: string): Promise<Buffer | null> {
+    try {
+      const response = await Client.client.get(`/storage/${ogRootFromRef(ref)}`, {
+        responseType: "arraybuffer",
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
+    }
+  },
+
   async awaitUpload(
     file: File,
     name: string,
-    signer: JsonRpcSigner
+    signer: JsonRpcSigner,
   ): Promise<string> {
     void name;
     const bytes = new Uint8Array(await file.arrayBuffer());

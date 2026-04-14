@@ -18,6 +18,7 @@ import PaymentsSettingsView from "@/views/settings/PaymentsSettingsView.vue";
 import AcceptPaymentView from "@/views/accept-payments/AcceptPaymentView.vue";
 import CustomerView from "@/views/accept-payments/CustomerView.vue";
 import X402View from "@/views/accept-payments/x402View.vue";
+import X402CreateView from "@/views/accept-payments/X402CreateView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -82,6 +83,11 @@ const router = createRouter({
             },
             {
               path: "x402",
+              name: "accept-payment-x402-create",
+              component: X402CreateView,
+            },
+            {
+              path: "x402/:resourceId",
               name: "accept-payment-x402",
               component: X402View,
             },

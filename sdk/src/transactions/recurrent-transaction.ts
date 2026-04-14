@@ -21,7 +21,7 @@ export class RecurrentTransaction
   implements IRecurrentTransaction
 {
   async create(
-    params: PrepareRecurrentTransaction
+    params: PrepareRecurrentTransaction,
   ): Promise<TransactionCallback> {
     return new Promise((resolve, reject) => {
       const session = this.createSession();
@@ -37,7 +37,7 @@ export class RecurrentTransaction
             if (data.session == session) {
               resolve(data);
             }
-          }
+          },
         );
       } catch (error) {
         reject(error);
@@ -46,7 +46,7 @@ export class RecurrentTransaction
   }
 
   async fulfill(
-    params: PrepareFulfillRecurrentTransaction
+    params: PrepareFulfillRecurrentTransaction,
   ): Promise<TransactionCallback> {
     return new Promise((resolve, reject) => {
       const session = this.createSession();
@@ -65,7 +65,7 @@ export class RecurrentTransaction
             if (data.session == session) {
               resolve(data);
             }
-          }
+          },
         );
       } catch (error) {
         reject(error);
@@ -74,7 +74,7 @@ export class RecurrentTransaction
   }
 
   cancel(
-    params: PrepareCancelRecurrentTransaction
+    params: PrepareCancelRecurrentTransaction,
   ): Promise<TransactionCallback> {
     return new Promise((resolve, reject) => {
       const session = this.createSession();
@@ -93,7 +93,7 @@ export class RecurrentTransaction
             if (data.session == session) {
               resolve(data);
             }
-          }
+          },
         );
       } catch (error) {
         reject(error);
@@ -106,7 +106,7 @@ export class RecurrentTransaction
   }
 
   getSubscriptionFromHash(
-    params: GetSubscriptionsHash
+    params: GetSubscriptionsHash,
   ): Promise<SubscriptionPlan[]> {
     return this.graph.getSubscriptionsFromHash(params.transactionHash);
   }
@@ -115,7 +115,7 @@ export class RecurrentTransaction
     return this.graph.getSubscriptions(
       params.merchant,
       params.page,
-      params.limit
+      params.limit,
     );
   }
 
@@ -130,7 +130,7 @@ export class RecurrentTransaction
       params.timestampMin,
       params.timestampMax,
       params.status,
-      TransactionType.Recurrent
+      TransactionType.Recurrent,
     );
   }
 }

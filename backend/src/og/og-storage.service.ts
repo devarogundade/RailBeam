@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Indexer, MemData } from '@0gfoundation/0g-ts-sdk';
 import { ethers } from 'ethers';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -90,6 +91,24 @@ export class OgStorageService {
 
     try {
       return await fs.readFile(tmp, 'utf-8');
+    } finally {
+      await fs.unlink(tmp).catch(() => undefined);
+    }
+  }
+
+  /** Raw bytes from 0G Storage (single-root object). */
+  async getBytes(rootHash: string): Promise<Buffer> {
+    const indexer = new Indexer(this.indexerUrl());
+    const tmp = path.join(
+      os.tmpdir(),
+      `beam-og-${rootHash}-${randomUUID()}.bin`,
+    );
+    console.log('tmp', tmp);
+    const err = await indexer.download(rootHash, tmp);
+    if (err) throw new Error(`Storage get error: ${String(err)}`);
+
+    try {
+      return await fs.readFile(tmp);
     } finally {
       await fs.unlink(tmp).catch(() => undefined);
     }

@@ -26,7 +26,6 @@ export class BeamClient {
     try {
       const response = await this.graphClient.request<T>({
         method: "POST",
-        url: "/",
         data,
       });
       return response.data;

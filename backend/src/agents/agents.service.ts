@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { OgComputeService, type ChatMessage } from '../og/og-compute.service';
 import { OgStorageService } from '../og/og-storage.service';
 import { decryptString, encryptString } from '../crypto/seal';
+import { RedisService } from '../redis/redis.service';
 import type {
   AgentCardRegistrationV1,
   ChainAgent,
@@ -30,6 +31,7 @@ export class AgentsService {
     private readonly config: ConfigService,
     private readonly compute: OgComputeService,
     private readonly storage: OgStorageService,
+    private readonly redis: RedisService,
   ) {}
 
   private pk(): string {
@@ -55,6 +57,34 @@ export class AgentsService {
     return new ethers.Contract(addr, IDENTITY_REGISTRY_ABI, provider);
   }
 
+  private getAgentOnchainCacheKey(params: { agentId: number }): string {
+    // Cache must vary by chain RPC + registry address, since those fully determine onchain reads.
+    return [
+      'agents',
+      'getAgentOnchain',
+      this.rpcUrl(),
+      this.identityRegistryAddress(),
+      String(params.agentId),
+    ].join(':');
+  }
+
+  private async getAgentOnchainCached(agentId: number): Promise<ChainAgent> {
+    const ttlSeconds = 10 * 60;
+    const key = this.getAgentOnchainCacheKey({ agentId });
+
+    try {
+      const cached = await this.redis.getJson<ChainAgent>(key);
+      if (cached) return cached;
+    } catch {
+      // If cache is corrupted/unparseable, evict and continue.
+      await this.redis.del(key);
+    }
+
+    const fresh = await this.getAgentOnchain(agentId);
+    await this.redis.cacheJson(key, fresh, ttlSeconds);
+    return fresh;
+  }
+
   async getAgentOnchain(agentId: number): Promise<ChainAgent> {
     const reg = this.identityRegistryContract();
 
@@ -63,6 +93,10 @@ export class AgentsService {
       agentId,
       'encryptedConfig',
     )) as ethers.BytesLike;
+    const agentWallet = (await reg.getMetadata(
+      agentId,
+      'agentWallet',
+    )) as string;
 
     const parsedTokenURI = safeJsonParse<AgentCardRegistrationV1>(tokenURIJson);
     const encryptedConfig = await this.storage.getString(
@@ -71,16 +105,18 @@ export class AgentsService {
 
     const decryptedConfig = decryptString(encryptedConfig, this.pk());
 
-    return { parsedTokenURI, decryptedConfig };
+    return { parsedTokenURI, decryptedConfig, agentWallet };
   }
 
   async chatWithAgent(params: {
     agentId: number;
     message: string;
     network?: string;
+    userAddress?: string;
     providerAddress?: string;
   }): Promise<ChatWithAgentResponse> {
-    const agent = await this.getAgentOnchain(params.agentId);
+    // Cache onchain reads for chat, to avoid repeated RPC/storage hits.
+    const agent = await this.getAgentOnchainCached(params.agentId);
 
     try {
       const messages: ChatMessage[] = [
@@ -101,13 +137,24 @@ export class AgentsService {
         {
           role: 'system',
           content: `
+            Agent config may include x402 payment acceptance details. If present, use them to guide the user to pay for paid content/actions.
+
+            When you want the client to initiate an x402 payment flow, respond with type "x402" and put a JSON-stringified payload in "content".
+
             Reply format: { "type": "text" | "x402", "content": <string> }
-            
-            Example1: { "type": "text", "content": "Hello, world!" }
-            Example2: { "type": "x402", "content": "{"text": "Hello, world!", "resource": "https://example.com/resource", "amount": 100, "asset": "USD" }" }
+
+            Example (text):
+            { "type": "text", "content": "Hello, world!" }
+
+            Example (x402):
+            {
+              "type": "x402",
+              "content": "{\\"text\\":\\"Please complete payment to continue.\\",\\"resource\\":\\"https://example.com/resource/pay/<resourceId>\\",\\"amount\\":\\"1000000\\",\\"currency\\":\\"USDC\\",\\"network\\":\\"eip155:16601\\",\\"payTo\\":\\"<agentWallet>\\",\\"asset\\":\\"0x...\\",\\"title\\":\\"Paid resource\\"}"
+            }
           `,
         },
         { role: 'user', content: params.message },
+        { role: 'user', content: `Wallet address: ${params.userAddress}` },
       ];
 
       const result = await this.compute.chat({

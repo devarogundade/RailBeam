@@ -2,6 +2,7 @@
 import Converter from '@/scripts/converter';
 import { onMounted, onUnmounted } from 'vue';
 import CloseIcon from './icons/CloseIcon.vue';
+import StorageImage from '@/components/StorageImage.vue';
 
 const emit = defineEmits(['close']);
 
@@ -39,7 +40,7 @@ onUnmounted(() => {
                 <div class="assets">
                     <div class="asset" v-for="token in props.tokens">
                         <div class=" info">
-                            <img :src="token.image" alt="">
+                            <StorageImage :src="token.image" alt="" />
                             <div class="name">
                                 <p>{{ token.name }}</p>
                                 <p>{{ token.symbol }}</p>
@@ -145,7 +146,7 @@ onUnmounted(() => {
     gap: 14px;
 }
 
-.asset img {
+.asset :deep(img) {
     width: 40px;
     width: 40px;
     border-radius: 8px;

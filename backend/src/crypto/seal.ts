@@ -35,11 +35,19 @@ function pkToKey(pk: string): Buffer {
 }
 
 export function encryptString(value: string, pk: string): string {
+  const pt = Buffer.from(value, 'utf-8');
+  return encryptBytesToSealedEnvelopeJson(pt, pk);
+}
+
+export function decryptString(encrypted: string, pk: string): string {
+  return decryptBytesFromSealedEnvelopeJson(encrypted, pk).toString('utf-8');
+}
+
+export function encryptBytesToSealedEnvelopeJson(value: Buffer, pk: string): string {
   const key = pkToKey(pk);
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const pt = Buffer.from(value, 'utf-8');
-  const ct = Buffer.concat([cipher.update(pt), cipher.final()]);
+  const ct = Buffer.concat([cipher.update(value), cipher.final()]);
   const tag = cipher.getAuthTag();
 
   const env: SealedEnvelopeV1 = {
@@ -52,11 +60,14 @@ export function encryptString(value: string, pk: string): string {
   return JSON.stringify(env);
 }
 
-export function decryptString(encrypted: string, pk: string): string {
+export function decryptBytesFromSealedEnvelopeJson(
+  encrypted: string,
+  pk: string,
+): Buffer {
   const key = pkToKey(pk);
   const parsed: unknown = JSON.parse(encrypted);
   if (!isSealedEnvelopeV1(parsed)) {
-    throw new Error('Unsupported encrypted string');
+    throw new Error('Unsupported encrypted payload');
   }
   const env = parsed;
   const iv = Buffer.from(env.ivB64, 'base64');
@@ -65,6 +76,5 @@ export function decryptString(encrypted: string, pk: string): string {
 
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
-  const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
-  return pt.toString('utf-8');
+  return Buffer.concat([decipher.update(ct), decipher.final()]);
 }

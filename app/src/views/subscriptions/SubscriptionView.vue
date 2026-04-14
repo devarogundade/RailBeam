@@ -42,9 +42,8 @@ const creatingPlan = ref<boolean>(false);
 
         <div class="toolbar">
             <div class="tabs">
-                <RouterLink to="/subscriptions/plans">
-                    <button
-                        :class="route.name == 'subscriptions-plans' ? 'tab tab_active' : 'tab'">Plans</button>
+                <RouterLink to="/subscriptions">
+                    <button :class="route.name == 'subscriptions-plans' ? 'tab tab_active' : 'tab'">Plans</button>
                 </RouterLink>
             </div>
 

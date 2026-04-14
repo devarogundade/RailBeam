@@ -38,18 +38,18 @@ const Converter = {
     }
   },
 
-  toMoney: function (amount: number, max = null) {
+  toMoney: function (amount: bigint | number | string, max = null) {
     let maxF = max ? max : 6;
 
-    if (amount > 1) {
+    if (Number(amount) > 1) {
       maxF = 3;
     }
 
-    if (amount > 10) {
+    if (Number(amount) > 10) {
       maxF = 2;
     }
 
-    if (amount > 200) {
+    if (Number(amount) > 200) {
       maxF = 0;
     }
 
@@ -60,7 +60,7 @@ const Converter = {
       maximumFractionDigits: maxF,
     });
 
-    return formatter.format(amount).replace("$", "");
+    return formatter.format(Number(amount)).replace("$", "");
   },
 
   fullMonth: function (date: Date): string {

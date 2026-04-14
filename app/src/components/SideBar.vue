@@ -11,9 +11,9 @@ import ChevronRightIcon from './icons/ChevronRightIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
 import { Connection } from '@/types/app';
 import Converter from '@/scripts/converter';
-import { displayImageUrl } from '@/scripts/displayImageUrl';
 import AIIcon from './icons/AIIcon.vue';
 import { computed } from 'vue';
+import StorageImage from '@/components/StorageImage.vue';
 
 const route = useRoute();
 const walletStore = useWalletStore();
@@ -81,7 +81,7 @@ const copyAddress = async () => {
 
                     <RouterLink to="/accept-payment/x402">
                         <button
-                            :class="route.name === 'accept-payment-x402' ? 'option_child option_child_selected' : 'option_child'">
+                            :class="route.name === 'accept-payment-x402-create' ? 'option_child option_child_selected' : 'option_child'">
                             x402
                         </button>
                     </RouterLink>
@@ -151,7 +151,7 @@ const copyAddress = async () => {
 
             <div class="account">
                 <div class="account_info">
-                    <img :src="displayImageUrl(merchantMeta?.imageURL, '/images/colors.png')" alt="account">
+                    <StorageImage :src="merchantMeta?.imageURL || '/images/colors.png'" alt="account" />
                     <div class="account_name">
                         <p>{{ merchantMeta?.name ?? 'Wallet' }}</p>
                         <div class="address_row" role="button" tabindex="0" @click="copyAddress"

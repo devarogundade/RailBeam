@@ -1,479 +1,409 @@
 <script setup lang="ts">
-import { useWalletStore } from '@/stores/wallet';
-import { computed, onMounted, ref, watch } from 'vue';
-import { getTokens } from 'beam-ts';
-import type { Token } from "beam-ts";
-import { notify } from '@/reactives/notify';
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import type { X402ResourceView } from "@/types/app";
+import { Client } from "@/scripts/client";
+import { notify } from "@/reactives/notify";
 
-type SourceKind = 'link' | 'file';
+type PayState =
+  | { kind: "idle" }
+  | { kind: "paying" }
+  | { kind: "paid"; message: string }
+  | { kind: "requires-payment"; paymentRequired: string; details: any }
+  | { kind: "error"; message: string };
 
-const walletStore = useWalletStore();
-const sourceKind = ref<SourceKind>('link');
-const resourceUrl = ref('');
-const selectedFile = ref<File | null>(null);
-const fileInputRef = ref<HTMLInputElement | null>(null);
+const route = useRoute();
+const router = useRouter();
 
-const token = ref<Token | null>(null);
-const tokens = ref<Token[]>([]);
-const amount = ref('' as string | number);
+const resourceId = computed(() => String(route.params.resourceId ?? "").trim());
 
-const syncTokens = () => {
-    tokens.value = getTokens.filter((t) => walletStore.merchant?.tokens.includes(t.address));
-    if (tokens.value.length === 0) {
-        token.value = null;
-        return;
+const loading = ref(false);
+const resource = ref<X402ResourceView | null>(null);
+const loadError = ref<string | null>(null);
+
+const payState = ref<PayState>({ kind: "idle" });
+
+function abToText(ab: ArrayBuffer): string {
+  return new TextDecoder().decode(new Uint8Array(ab));
+}
+
+function downloadBytes(bytes: ArrayBuffer, filename: string, mimeType?: string) {
+  const blob = new Blob([bytes], { type: mimeType || "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function loadView() {
+  if (!resourceId.value) {
+    loadError.value = "Missing resourceId";
+    return;
+  }
+  loading.value = true;
+  loadError.value = null;
+  try {
+    resource.value = await Client.viewResource(resourceId.value);
+  } catch (e: unknown) {
+    loadError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function onPay() {
+  if (!resourceId.value) return;
+  payState.value = { kind: "paying" };
+  try {
+    const res = await Client.payResource(resourceId.value);
+
+    if (res.status === 402) {
+      const paymentRequired = String(res.headers?.["payment-required"] ?? "");
+      const detailsText = abToText(res.data);
+      let details: any = null;
+      try {
+        details = JSON.parse(detailsText);
+      } catch {
+        details = { raw: detailsText };
+      }
+      payState.value = {
+        kind: "requires-payment",
+        paymentRequired,
+        details,
+      };
+      notify.push({
+        title: "Payment required",
+        description: "Complete the x402 payment in your wallet to access the resource.",
+        category: "error",
+      });
+      return;
     }
-    if (!token.value || !tokens.value.some((t) => t.address === token.value?.address)) {
-        token.value = tokens.value[0];
-    }
-};
 
-const isValidHttpUrl = (value: string): boolean => {
-    const t = value.trim();
-    if (!t) return false;
-    try {
-        const u = new URL(t);
-        return u.protocol === 'http:' || u.protocol === 'https:';
-    } catch {
-        return false;
-    }
-};
+    const contentType = String(res.headers?.["content-type"] ?? "");
+    const paymentResponse = String(res.headers?.["payment-response"] ?? "");
 
-const canContinue = computed(() => {
-    if (!walletStore.merchant || !token.value) return false;
-    const n = Number(amount.value);
-    if (!Number.isFinite(n) || n <= 0) return false;
-    if (sourceKind.value === 'link') {
-        return isValidHttpUrl(resourceUrl.value);
-    }
-    return selectedFile.value !== null;
-});
-
-const onFileChange = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const f = input.files?.[0];
-    selectedFile.value = f ?? null;
-};
-
-const triggerFilePick = () => {
-    fileInputRef.value?.click();
-};
-
-const clearFile = () => {
-    selectedFile.value = null;
-    if (fileInputRef.value) fileInputRef.value.value = '';
-};
-
-const onContinue = () => {
-    if (!canContinue.value) return;
-    const source =
-        sourceKind.value === 'link'
-            ? resourceUrl.value.trim()
-            : selectedFile.value?.name ?? 'file';
-    notify.push({
-        title: 'x402 configuration saved',
-        description: `${sourceKind.value === 'link' ? 'URL' : 'File'}: ${source} · ${token.value?.symbol} ${amount.value}`,
-        category: 'success',
-    });
-};
-
-watch(() => walletStore.merchant, syncTokens, { deep: true });
-
-watch(sourceKind, (k) => {
-    if (k === 'link') {
-        clearFile();
+    if (contentType.includes("application/json")) {
+      const txt = abToText(res.data);
+      const json = JSON.parse(txt) as { kind?: string; link?: string };
+      if (json.kind === "link" && typeof json.link === "string") {
+        payState.value = { kind: "paid", message: "Paid. Opening link…" };
+        window.open(json.link, "_blank", "noopener,noreferrer");
+      } else {
+        payState.value = { kind: "paid", message: "Paid. Resource returned." };
+      }
     } else {
-        resourceUrl.value = '';
+      const filename =
+        resource.value?.filename ||
+        resource.value?.title ||
+        `${resourceId.value}`;
+      downloadBytes(res.data, filename, contentType || resource.value?.mimeType);
+      payState.value = { kind: "paid", message: "Paid. Download started." };
     }
+
+    if (paymentResponse) {
+      // show a small success toast with proof header available if needed
+      notify.push({
+        title: "Paid",
+        description: "Access granted.",
+        category: "success",
+      });
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    payState.value = { kind: "error", message: msg };
+    notify.push({ title: "Payment failed", description: msg, category: "error" });
+  }
+}
+
+async function copyPaymentRequiredHeader() {
+  if (payState.value.kind !== "requires-payment") return;
+  const text = payState.value.paymentRequired || "";
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    notify.push({
+      title: "Copied",
+      description: "PAYMENT-REQUIRED header copied.",
+      category: "success",
+    });
+  } catch {
+    notify.push({
+      title: "Copy failed",
+      description: "Clipboard permission was denied.",
+      category: "error",
+    });
+  }
+}
+
+watch(resourceId, async () => {
+  resource.value = null;
+  payState.value = { kind: "idle" };
+  await loadView();
 });
 
-onMounted(() => {
-    syncTokens();
+onMounted(async () => {
+  await loadView();
 });
 </script>
 
 <template>
-    <div class="page">
-        <div class="toolbar">
-            <p class="options_label">x402 source</p>
-            <div class="tabs" role="tablist" aria-label="Resource source">
-                <button type="button" role="tab" :aria-selected="sourceKind === 'link'"
-                    :class="sourceKind === 'link' ? 'tab tab_active' : 'tab'" @click="sourceKind = 'link'">
-                    Link
-                </button>
-                <button type="button" role="tab" :aria-selected="sourceKind === 'file'"
-                    :class="sourceKind === 'file' ? 'tab tab_active' : 'tab'" @click="sourceKind = 'file'">
-                    File
-                </button>
-            </div>
-        </div>
-
-        <div class="form">
-            <div v-if="sourceKind === 'link'" class="inputs">
-                <div class="field_label">
-                    <p>Resource URL</p>
-                </div>
-                <input v-model="resourceUrl" type="url" class="text_input" inputmode="url" autocomplete="url"
-                    placeholder="https://api.example.com/resource">
-            </div>
-
-            <div v-else class="inputs">
-                <div class="field_label">
-                    <p>OpenAPI / x402 descriptor</p>
-                </div>
-                <input ref="fileInputRef" type="file" class="sr_only" accept=".json,.yaml,.yml,.txt,application/json"
-                    @change="onFileChange">
-                <div class="file_row">
-                    <button type="button" class="btn_file" @click="triggerFilePick">
-                        Choose file
-                    </button>
-                    <span class="file_name" :class="{ file_name_empty: !selectedFile }">
-                        {{ selectedFile?.name ?? 'No file selected' }}
-                    </span>
-                    <button v-if="selectedFile" type="button" class="btn_clear" @click="clearFile">
-                        Clear
-                    </button>
-                </div>
-            </div>
-
-            <div class="asset">
-                <div class="field_label">
-                    <p>Asset</p>
-                </div>
-                <div v-if="tokens.length === 0" class="empty_tokens">
-                    <p>No tokens available for this merchant.</p>
-                </div>
-                <div v-else class="tokens">
-                    <div v-for="t in tokens" :key="t.address"
-                        :class="t.address === token?.address ? 'token token_selected' : 'token'" @click="token = t">
-                        <div class="token_info">
-                            <img :src="t.image" alt="">
-                            <p>{{ t.symbol }}</p>
-                        </div>
-                        <div class="radio">
-                            <div>
-                                <span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="inputs">
-                <div class="field_label">
-                    <p>Amount</p>
-                </div>
-                <div class="input_grid">
-                    <p>{{ token?.symbol ?? '—' }}</p>
-                    <input v-model="amount" type="number" min="0" step="any" placeholder="0" :disabled="!token">
-                </div>
-            </div>
-
-            <div class="actions">
-                <button type="button" class="btn_primary" :disabled="!canContinue" @click="onContinue">
-                    Continue
-                </button>
-            </div>
-        </div>
+  <div class="page">
+    <div class="toolbar">
+      <button type="button" class="btn_text" @click="router.back()">Back</button>
+      <p class="options_label">x402 payment</p>
+      <span class="sp" />
     </div>
+
+    <div class="form">
+      <div v-if="loading" class="banner"><p>Loading resource…</p></div>
+      <div v-else-if="loadError" class="banner banner_error">
+        <p>{{ loadError }}</p>
+      </div>
+
+      <div v-else-if="resource" class="card">
+        <p class="title">{{ resource.title || "Paid resource" }}</p>
+        <p class="sub">
+          {{ resource.kind.toUpperCase() }} · {{ resource.currency }} · {{ resource.network }}
+        </p>
+
+        <div class="row">
+          <p class="label">Price</p>
+          <p class="value">
+            {{ resource.assetAmount.amount }} {{ resource.currency }}
+          </p>
+        </div>
+        <div class="row">
+          <p class="label">Pay to</p>
+          <p class="value mono">{{ resource.payTo }}</p>
+        </div>
+        <div class="row">
+          <p class="label">Resource</p>
+          <p class="value mono">{{ resource.id }}</p>
+        </div>
+
+        <div class="actions">
+          <button
+            type="button"
+            class="btn_primary"
+            :disabled="payState.kind === 'paying'"
+            @click="onPay"
+          >
+            {{ payState.kind === "paying" ? "Paying…" : "Pay to access" }}
+          </button>
+        </div>
+
+        <div v-if="payState.kind === 'requires-payment'" class="requires">
+          <p class="req_title">PAYMENT-REQUIRED</p>
+          <p class="req_hint">
+            Your wallet/client needs to attach payment to this request. Copy the header below for debugging.
+          </p>
+          <pre class="req_box"><code>{{ payState.paymentRequired || "—" }}</code></pre>
+          <div class="req_actions">
+            <button type="button" class="btn_secondary" :disabled="!payState.paymentRequired" @click="copyPaymentRequiredHeader">
+              Copy header
+            </button>
+          </div>
+        </div>
+
+        <div v-else-if="payState.kind === 'error'" class="banner banner_error">
+          <p>{{ payState.message }}</p>
+        </div>
+      </div>
+
+      <div v-else class="banner"><p>Resource not found.</p></div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .page {
-    padding: 0 50px 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-sizing: border-box;
+  padding: 0 50px 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    gap: 16px;
-    margin: 20px 0 28px;
-    padding: 10px 0;
-    width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 16px;
+  margin: 20px 0 28px;
+  padding: 10px 0;
+  width: 100%;
 }
 
 .options_label {
-    font-size: 14px;
-    color: var(--tx-dimmed);
-    margin: 0;
+  font-size: 14px;
+  color: var(--tx-dimmed);
+  margin: 0;
 }
 
-.tabs {
-    display: flex;
-    align-items: center;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--bg-lightest);
-}
-
-.tab {
-    padding: 0 26px;
-    color: var(--tx-dimmed);
-    background: none;
-    border: none;
-    font-size: 16px;
-    height: 40px;
-    cursor: pointer;
-}
-
-.tab:first-of-type {
-    border-right: 1px solid var(--bg-lightest);
-}
-
-.tab_active {
-    color: var(--tx-normal);
-    background: var(--bg-lighter);
+.sp {
+  flex: 1;
 }
 
 .form {
-    width: 520px;
-    max-width: min(520px, calc(100vw - 100px));
-    box-sizing: border-box;
+  width: 640px;
+  max-width: min(640px, calc(100vw - 100px));
+  box-sizing: border-box;
 }
 
-.field_label {
-    margin-bottom: 10px;
+.card {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg-light);
 }
 
-.field_label p {
-    font-size: 14px;
-    color: var(--tx-dimmed);
-    margin: 0;
+.title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--tx-normal);
+  font-weight: 600;
 }
 
-.inputs+.asset {
-    margin-top: 28px;
+.sub {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--tx-semi);
 }
 
-.asset+.inputs {
-    margin-top: 28px;
+.row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--bg-lightest);
 }
 
-.inputs+.inputs {
-    margin-top: 28px;
+.row:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 
-.text_input {
-    width: 100%;
-    height: 44px;
-    box-sizing: border-box;
-    border-radius: 8px;
-    background: var(--bg);
-    border: 1px solid var(--bg-lightest);
-    color: var(--tx-normal);
-    padding: 0 16px;
-    outline: none;
-    font-size: 14px;
+.label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tx-dimmed);
 }
 
-.text_input::placeholder {
-    color: var(--tx-dimmed);
+.value {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tx-normal);
+  word-break: break-word;
 }
 
-.file_row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.btn_file {
-    height: 40px;
-    padding: 0 18px;
-    border-radius: 8px;
-    border: 1px solid var(--bg-lightest);
-    background: var(--bg-light);
-    color: var(--tx-normal);
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.file_name {
-    font-size: 14px;
-    color: var(--tx-normal);
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.file_name_empty {
-    color: var(--tx-dimmed);
-}
-
-.btn_clear {
-    height: 36px;
-    padding: 0 12px;
-    border-radius: 8px;
-    border: none;
-    background: none;
-    color: var(--tx-semi);
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.sr_only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-.empty_tokens {
-    padding: 16px;
-    border-radius: 8px;
-    border: 1px dashed var(--bg-lightest);
-}
-
-.empty_tokens p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--tx-semi);
-}
-
-.tokens {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-}
-
-.token {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 44px;
-    border-radius: 8px 10px 10px 8px;
-    border: 1px solid var(--bg-lighter);
-    cursor: pointer;
-    user-select: none;
-    background: var(--bg);
-}
-
-.token_info {
-    padding: 0 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.token_info img {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-}
-
-.token_info p {
-    color: var(--tx-normal);
-    font-size: 14px;
-    margin: 0;
-}
-
-.token .radio {
-    width: 44px;
-    height: 100%;
-    border: 1px solid var(--bg-lightest);
-    border-radius: 0 8px 8px 0;
-    background: var(--bg-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.token .radio div {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    border: 1px solid var(--bg-lightest);
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.token .radio div span {
-    width: 10px;
-    height: 10px;
-    border-radius: 10px;
-}
-
-.token_selected .radio div {
-    border: 1px solid var(--primary-light);
-}
-
-.token_selected .radio div span {
-    background: var(--primary);
-}
-
-.input_grid {
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 72px 1fr;
-    border: 1px solid var(--bg-lightest);
-    border-radius: 8px;
-    background: var(--bg);
-}
-
-.input_grid>p {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-right: 1px solid var(--bg-lightest);
-    background: var(--bg-light);
-    color: var(--tx-normal);
-    font-size: 14px;
-    margin: 0;
-}
-
-.input_grid input {
-    height: 44px;
-    width: 100%;
-    border: none;
-    background: none;
-    color: var(--tx-normal);
-    padding: 0 16px;
-    outline: none;
-    font-size: 14px;
-}
-
-.input_grid input::placeholder {
-    color: var(--tx-dimmed);
-}
-
-.input_grid input:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .actions {
-    margin-top: 28px;
+  margin-top: 18px;
 }
 
 .btn_primary {
-    height: 40px;
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    background: var(--primary);
-    color: var(--tx-normal);
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
+  height: 40px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--tx-normal);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .btn_primary:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn_secondary {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg-light);
+  color: var(--tx-normal);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn_secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn_text {
+  border: none;
+  background: none;
+  color: var(--tx-semi);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  height: 32px;
+}
+
+.banner {
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px dashed var(--bg-lightest);
+}
+
+.banner_error {
+  border-style: solid;
+  border-color: rgba(232, 93, 93, 0.35);
+}
+
+.banner p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tx-semi);
+  text-align: center;
+}
+
+.requires {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--bg-lightest);
+}
+
+.req_title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--tx-dimmed);
+}
+
+.req_hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--tx-semi);
+  line-height: 1.45;
+}
+
+.req_box {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--bg-lightest);
+  overflow-x: auto;
+  font-size: 12px;
+  color: var(--tx-normal);
+}
+
+.req_actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

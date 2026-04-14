@@ -5,10 +5,10 @@ import {
   Transfer as AgentTransferEvent,
 } from "../generated/IdentityRegistry/IdentityRegistry";
 import { Agent, AgentMetadata } from "../generated/schema";
-import { BigInt, Bytes, crypto } from "@graphprotocol/graph-ts";
+import { BigInt, ByteArray, Bytes, crypto } from "@graphprotocol/graph-ts";
 
 function agentIdToBytes(agentId: BigInt): Bytes {
-  return Bytes.fromHexString(agentId.toHexString()) as Bytes;
+  return Bytes.fromByteArray(ByteArray.fromBigInt(agentId));
 }
 
 function decodeAbiEncodedAddress(value: Bytes): Bytes | null {
@@ -115,4 +115,3 @@ export function handleAgentTransfer(event: AgentTransferEvent): void {
   agent.transactionHash = event.transaction.hash;
   agent.save();
 }
-

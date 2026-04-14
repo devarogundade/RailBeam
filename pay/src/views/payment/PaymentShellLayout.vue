@@ -3,9 +3,16 @@ import type { Ref } from "vue";
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { useWeb3Modal } from "@web3modal/wagmi/vue";
-import { watchAccount } from "@wagmi/core";
+import { getWalletClient, watchAccount } from "@wagmi/core";
 import { config } from "@/scripts/config";
 import { useWalletStore } from "@/stores/wallet";
+import {
+  buildProfileUriString,
+  normalizeHandle,
+  parseProfileUri,
+  type ProfileUri,
+  useProfileStore,
+} from "@/stores/profile";
 import Converter from "@/scripts/converter";
 import EyeIcon from "@/components/icons/EyeIcon.vue";
 import EyeOffIcon from "@/components/icons/EyeOffIcon.vue";
@@ -18,17 +25,36 @@ import ChevronDownIcon from "@/components/icons/ChevronDownIcon.vue";
 import { getTokens } from "beam-ts/src/utils/constants";
 import type { Hex } from "viem";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
+import StorageImage from "@/components/StorageImage.vue";
+import OgStorage from "@/scripts/ogStorage";
+import { getEthersSigner } from "@/scripts/ethersSigner";
+import type { User } from "beam-ts";
+import { UserRegistryContract } from "@/scripts/contract";
+import { getClientApi, type VirtualCardSummary } from "@/scripts/clientApi";
+import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
 const route = useRoute();
 const modal = useWeb3Modal();
 const walletStore = useWalletStore();
+const profileStore = useProfileStore();
+const authStore = useAuthStore();
 
 const cardSheetOpen = ref(false);
 const profileSheetOpen = ref(false);
 const assetsSheetOpen = ref(false);
 const cardSheetStep = ref<"details" | "remove">("details");
 const cardFrozen = ref(false);
+const cardLoading = ref(false);
+const cardSummary = ref<VirtualCardSummary | null>(null);
+const cardLoadError = ref<string | null>(null);
+
+const createCardOpen = ref(false);
+const creatingCard = ref(false);
+const createCardError = ref<string | null>(null);
+const createCardName = ref("");
+const createCardEmail = ref("");
+const createCardPhone = ref("");
 const removeAmount = ref("");
 const removeAssetAddress = ref<Hex | "">((getTokens[0]?.address as Hex | undefined) ?? "");
 const removeAssetMenuOpen = ref(false);
@@ -45,9 +71,17 @@ watch(cardSheetOpen, (open) => {
   }
 });
 
+watch(createCardOpen, (open) => {
+  if (!open) {
+    createCardError.value = null;
+  }
+});
+
 const cardSuffix = computed(() => {
+  const last4 = cardSummary.value?.last4;
+  if (last4 && last4.trim()) return last4;
   const a = walletStore.address;
-  if (!a || a.length < 6) return "4242";
+  if (!a || a.length < 6) return "—";
   return a.slice(-4);
 });
 
@@ -83,28 +117,49 @@ function toggleRemoveAssetMenu() {
   removeAssetMenuOpen.value = !removeAssetMenuOpen.value;
 }
 
-/** Demo / read-only strings for the virtual card sheet (not real PAN/CVV). */
-const sheetCardName = "ALEX BEAM";
-const sheetCardPan = computed(() => `4532 12•• •••• ${cardSuffix.value}`);
-/** Demo CVV only — toggled with the eye control in the sheet. */
-const sheetCardCvvReveal = "782";
-const sheetCardExp = "12 / 28";
-const sheetBillingLine1 = "400 Market Street";
-const sheetBillingLine2 = "San Francisco, CA";
-const sheetBillingPostal = "94105";
-const sheetBillingCountry = "United States";
+const sheetCardName = computed(() =>
+  walletStore.address ? Converter.fineAddress(walletStore.address, 4) : "—"
+);
+const sheetCardPan = computed(() => "•••• •••• •••• ••••");
+const sheetCardCvvReveal = "•••";
+const sheetCardExp = computed(() => {
+  const m = cardSummary.value?.expMonth;
+  const y = cardSummary.value?.expYear;
+  if (!m || !y) return "—";
+  const mm = String(m).padStart(2, "0");
+  const yy = String(y).slice(-2);
+  return `${mm}/${yy}`;
+});
+const sheetBillingLine1 = "—";
+const sheetBillingLine2 = "—";
+const sheetBillingPostal = "—";
+const sheetBillingCountry = "—";
+
+const chainUser = computed<User | null>(() => profileStore.user);
+const chainProfileUri = computed<ProfileUri>(() => parseProfileUri(chainUser.value?.metadataURI));
+const pendingImage = ref<string>("");
+
+async function refreshChainUser() {
+  await profileStore.refresh(walletStore.address);
+}
 
 const greetingName = computed(() =>
-  walletStore.address
-    ? Converter.fineAddress(walletStore.address, 4)
-    : "there"
+  (() => {
+    if (!walletStore.address) return "there";
+    const u = chainUser.value?.username?.trim();
+    if (u && u.toLowerCase().startsWith("@") && u.length > 1) return u;
+    return Converter.fineAddress(walletStore.address, 4);
+  })()
 );
 
 const headerAvatar = computed(() =>
-  walletStore.address ? USER_AVATAR_SELF : USER_AVATAR_OTHER
+  (() => {
+    if (!walletStore.address) return USER_AVATAR_OTHER;
+    const img = (pendingImage.value || chainProfileUri.value.image || "").trim();
+    return img ? img : USER_AVATAR_SELF;
+  })()
 );
 
-/** Line shown as “username” in the profile sheet (demo). */
 const profileUsername = computed(() =>
   walletStore.address ? greetingName.value : "Guest"
 );
@@ -123,21 +178,78 @@ provide("paymentShellHeader", {
 });
 
 function onProfileUpdate() {
-  notify.push({
-    title: "Profile",
-    description: walletStore.address
-      ? "Demo: your profile update was saved."
-      : "Connect a wallet to link a Beam profile.",
-    category: "success",
-  });
-  profileSheetOpen.value = false;
+  if (!walletStore.address) {
+    notify.push({
+      title: "Profile",
+      description: "Connect a wallet to set a profile.",
+      category: "error",
+    });
+    return;
+  }
+
+  const normalized = normalizeHandle(editUsername.value);
+  if (normalized === "@" || normalized.length < 2) {
+    notify.push({
+      title: "Username",
+      description: "Enter a username like @yourname (letters, numbers, underscore).",
+      category: "error",
+    });
+    return;
+  }
+  void (async () => {
+    try {
+      const addr = walletStore.address as Hex;
+      const existing = chainUser.value;
+      const image = (pendingImage.value || chainProfileUri.value.image || "").trim();
+      const metadataURI = buildProfileUriString({ image });
+
+      let tx: Hex | null = null;
+      if (!existing) {
+        tx = await UserRegistryContract.register(normalized, metadataURI);
+      } else {
+        if ((existing.username ?? "").trim() !== normalized) {
+          tx = await UserRegistryContract.updateUsername(normalized);
+        }
+        if ((existing.metadataURI ?? "").trim() !== metadataURI) {
+          tx = await UserRegistryContract.updateMetadataURI(metadataURI);
+        }
+      }
+
+      notify.push({
+        title: "Profile saved",
+        description: tx ? "Transaction confirmed." : "No changes to save.",
+        category: "success",
+      });
+      pendingImage.value = "";
+      await refreshChainUser();
+      profileSheetOpen.value = false;
+    } catch (err: any) {
+      notify.push({
+        title: "Profile update failed",
+        description: err?.message ? String(err.message) : "Try again.",
+        category: "error",
+      });
+    }
+  })();
 }
 
 function openCardSheet() {
   profileSheetOpen.value = false;
   assetsSheetOpen.value = false;
   cardSheetStep.value = "details";
+  // If we already know there is no card, go straight to create.
+  if (walletStore.address && cardSummary.value === null) {
+    cardSheetOpen.value = false;
+    createCardOpen.value = true;
+    return;
+  }
   cardSheetOpen.value = true;
+  void loadCardSummary({ refresh: false }).then(() => {
+    if (walletStore.address && cardSummary.value === null) {
+      cardSheetOpen.value = false;
+      createCardOpen.value = true;
+    }
+  });
 }
 
 function openAssetsSheet() {
@@ -182,7 +294,7 @@ function confirmRemove() {
   const sym = selectedRemoveToken.value?.symbol ?? "—";
   notify.push({
     title: "Withdrawal queued",
-    description: `Removing $${removeAmount.value} (≈ ${Converter.toMoney(removeAssetEquivalent.value)} ${sym}) to your wallet (demo).`,
+    description: `Withdrawal requests are not enabled in this shell yet (requested $${removeAmount.value}, ≈ ${Converter.toMoney(removeAssetEquivalent.value)} ${sym}).`,
     category: "success",
   });
   removeAmount.value = "";
@@ -218,6 +330,173 @@ onUnmounted(() => {
 
 /** Layout routes exclude scan; keep class for safety. */
 const isImmersiveScan = computed(() => route.name === "payment-scan");
+
+const editUsername = ref<string>("");
+const uploadingAvatar = ref(false);
+const avatarUploadProgress = ref<number | null>(null);
+
+watch(
+  () => walletStore.address,
+  (addr) => {
+    profileStore.setAddress(addr);
+    if (!addr) {
+      profileStore.clear();
+      pendingImage.value = "";
+      editUsername.value = "";
+      cardSummary.value = null;
+      cardLoadError.value = null;
+      authStore.clear();
+      return;
+    }
+    void profileStore.refresh(addr);
+    void loadCardSummary({ refresh: false });
+    // Pre-fill name for card issuance from profile when available.
+    if (chainUser.value?.username?.trim()) {
+      createCardName.value = chainUser.value.username.trim().replace(/^@/, "");
+    } else {
+      createCardName.value = "";
+    }
+    createCardEmail.value = "";
+    createCardPhone.value = "";
+  },
+  { immediate: true },
+);
+
+watch(
+  [() => profileSheetOpen.value, () => walletStore.address],
+  () => {
+    if (!profileSheetOpen.value) return;
+    if (!walletStore.address) {
+      editUsername.value = "";
+      pendingImage.value = "";
+      profileStore.clear();
+      return;
+    }
+    void refreshChainUser().then(() => {
+      editUsername.value = chainUser.value?.username?.trim() || "";
+      pendingImage.value = "";
+    });
+  },
+  { immediate: true },
+);
+
+async function onPickAvatar(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  if (!walletStore.address) {
+    notify.push({
+      title: "Profile",
+      description: "Connect a wallet to upload an avatar.",
+      category: "error",
+    });
+    return;
+  }
+  if (uploadingAvatar.value) return;
+
+  uploadingAvatar.value = true;
+  avatarUploadProgress.value = null;
+  try {
+    const signer = await getEthersSigner();
+    const ref = await OgStorage.awaitUpload(file, `avatar-${walletStore.address}`, signer);
+    pendingImage.value = ref;
+
+    // If registered, update immediately; otherwise it will be saved on register.
+    if (chainUser.value) {
+      const metadataURI = buildProfileUriString({ image: ref });
+      await UserRegistryContract.updateMetadataURI(metadataURI);
+      await refreshChainUser();
+      pendingImage.value = "";
+    }
+    notify.push({
+      title: "Avatar uploaded",
+      description: chainUser.value ? "Saved to 0G Storage + profile updated." : "Saved to 0G Storage. Tap Save to register.",
+      category: "success",
+    });
+  } catch (err: any) {
+    notify.push({
+      title: "Upload failed",
+      description: err?.message ? String(err.message) : "Try again.",
+      category: "error",
+    });
+  } finally {
+    uploadingAvatar.value = false;
+    avatarUploadProgress.value = null;
+  }
+}
+
+async function loadCardSummary(opts?: { refresh?: boolean }) {
+  if (!walletStore.address) return;
+  cardLoading.value = true;
+  cardLoadError.value = null;
+  try {
+    const res = await getClientApi().getVirtualCard({
+      refresh: opts?.refresh ?? false,
+    });
+    cardSummary.value = res.card ?? null;
+  } catch (e: unknown) {
+    cardLoadError.value = e instanceof Error ? e.message : String(e);
+    cardSummary.value = null;
+  } finally {
+    cardLoading.value = false;
+  }
+}
+
+async function initiateCreateVirtualCard() {
+  if (!walletStore.address) {
+    notify.push({
+      title: "Connect wallet",
+      description: "Connect a wallet to create a virtual card.",
+      category: "error",
+    });
+    return;
+  }
+  if (creatingCard.value) return;
+
+  creatingCard.value = true;
+  createCardError.value = null;
+  try {
+    const walletClient = await getWalletClient(config);
+    const account = walletClient?.account;
+    if (!walletClient || !account) {
+      throw new Error("Wallet client not available");
+    }
+
+    const { message } = await getClientApi().authChallenge(walletStore.address);
+    const signature = await walletClient.signMessage({ account, message });
+    const { accessToken } = await getClientApi().authVerify({
+      walletAddress: walletStore.address,
+      message,
+      signature,
+      setCookie: false,
+    });
+    authStore.setAccessToken(accessToken);
+
+    const created = await getClientApi().ensureVirtualCard({
+      name: createCardName.value.trim() || undefined,
+      email: createCardEmail.value.trim() || undefined,
+      phone: createCardPhone.value.trim() || undefined,
+    });
+    cardSummary.value = created.card;
+    createCardOpen.value = false;
+    notify.push({
+      title: "Card created",
+      description: "Your virtual card is ready.",
+      category: "success",
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    createCardError.value = msg;
+    notify.push({
+      title: "Could not create card",
+      description: msg,
+      category: "error",
+    });
+  } finally {
+    creatingCard.value = false;
+  }
+}
 </script>
 
 <template>
@@ -252,10 +531,31 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
     <BottomSheet v-model="cardSheetOpen" :title="sheetTitle">
       <template v-if="cardSheetStep === 'details'">
         <div class="sheet-card-preview" :class="{ frozen: cardFrozen }">
-          <p class="sheet-net">VISA · ···· {{ cardSuffix }}</p>
-          <p class="sheet-bal">$1,732.10</p>
+          <p class="sheet-net">
+            {{ (cardSummary?.brand || "VISA").toString().toUpperCase() }} · ···· {{ cardSuffix }}
+          </p>
+          <p class="sheet-bal">—</p>
           <p class="sheet-exp">Exp {{ sheetCardExp }}</p>
         </div>
+
+        <div v-if="cardLoading" class="sheet-banner">
+          <p>Loading card…</p>
+        </div>
+        <div v-else-if="cardLoadError" class="sheet-banner sheet-banner--error">
+          <p>{{ cardLoadError }}</p>
+          <button type="button" class="sheet-ghost" @click="loadCardSummary({ refresh: true })">
+            Retry
+          </button>
+        </div>
+
+        <template v-else-if="!cardSummary">
+          <p class="sheet-muted">
+            Create a virtual card to pay merchants that don’t accept crypto directly.
+          </p>
+          <button type="button" class="sheet-primary" :disabled="!walletStore.address" @click="createCardOpen = true">
+            Create virtual card
+          </button>
+        </template>
 
         <section class="sheet-kv-block" aria-label="Card numbers and billing">
           <div class="sheet-kv">
@@ -276,7 +576,7 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
               <div class="sheet-cvv-row">
                 <span class="sheet-v sheet-v--mono sheet-cvv-value">{{
                   cvvVisible ? sheetCardCvvReveal : "•••"
-                  }}</span>
+                }}</span>
                 <button type="button" class="sheet-cvv-toggle" :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
                   :aria-pressed="cvvVisible" @click="cvvVisible = !cvvVisible">
                   <EyeOffIcon v-if="cvvVisible" class="sheet-cvv-ico" />
@@ -305,19 +605,21 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
           </div>
         </section>
 
-        <button type="button" class="sheet-primary" @click="openFundFromSheet">
-          Add funds
-        </button>
-        <button type="button" class="sheet-secondary" :disabled="cardFrozen" @click="cardSheetStep = 'remove'">
-          Remove funds
-        </button>
-        <div class="sheet-row">
-          <span>Freeze card</span>
-          <button type="button" class="toggle" :class="{ on: cardFrozen }" role="switch" :aria-checked="cardFrozen"
-            @click="toggleFreeze">
-            <span class="knob" />
+        <template v-if="cardSummary">
+          <button type="button" class="sheet-primary" @click="openFundFromSheet">
+            Add funds
           </button>
-        </div>
+          <button type="button" class="sheet-secondary" :disabled="cardFrozen" @click="cardSheetStep = 'remove'">
+            Remove funds
+          </button>
+          <div class="sheet-row">
+            <span>Freeze card</span>
+            <button type="button" class="toggle" :class="{ on: cardFrozen }" role="switch" :aria-checked="cardFrozen"
+              @click="toggleFreeze">
+              <span class="knob" />
+            </button>
+          </div>
+        </template>
       </template>
       <template v-else>
         <p class="sheet-muted">Withdraw from your virtual card balance to your wallet.</p>
@@ -364,13 +666,85 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
       </template>
     </BottomSheet>
 
+    <BottomSheet v-model="createCardOpen" title="Create virtual card">
+      <div class="create-card">
+        <p class="sheet-muted">
+          Enter cardholder details, then sign a message to authenticate. We’ll create a Stripe Issuing virtual card for this wallet.
+        </p>
+
+        <label class="sheet-label" for="cc-name">Name</label>
+        <input
+          id="cc-name"
+          v-model="createCardName"
+          class="sheet-input"
+          type="text"
+          autocomplete="name"
+          placeholder="Jane Doe"
+          :disabled="creatingCard"
+        />
+
+        <label class="sheet-label" for="cc-email">Email <span class="sheet-label-optional">(optional)</span></label>
+        <input
+          id="cc-email"
+          v-model="createCardEmail"
+          class="sheet-input"
+          type="email"
+          autocomplete="email"
+          placeholder="jane@example.com"
+          :disabled="creatingCard"
+        />
+
+        <label class="sheet-label" for="cc-phone">Phone <span class="sheet-label-optional">(optional)</span></label>
+        <input
+          id="cc-phone"
+          v-model="createCardPhone"
+          class="sheet-input"
+          type="tel"
+          autocomplete="tel"
+          placeholder="+14155551234"
+          :disabled="creatingCard"
+        />
+
+        <div class="sheet-kv-block" aria-label="Wallet used for issuing">
+          <div class="sheet-kv">
+            <span class="sheet-k">Wallet</span>
+            <span class="sheet-v sheet-v--mono">{{ walletStore.address ?? "—" }}</span>
+          </div>
+        </div>
+
+        <p v-if="createCardError" class="create-card-error">{{ createCardError }}</p>
+
+        <button
+          type="button"
+          class="sheet-primary"
+          :disabled="creatingCard || !walletStore.address || !createCardName.trim()"
+          @click="initiateCreateVirtualCard"
+        >
+          {{ creatingCard ? "Creating…" : "Create card" }}
+        </button>
+        <button type="button" class="sheet-ghost" :disabled="creatingCard" @click="createCardOpen = false">
+          Cancel
+        </button>
+      </div>
+    </BottomSheet>
+
     <BottomSheet v-model="profileSheetOpen" title="Profile">
       <div class="profile-sheet">
-        <img class="profile-sheet-avatar" :src="headerAvatar" width="96" height="96" alt="" />
+        <StorageImage class="profile-sheet-avatar" :src="headerAvatar" width="96" height="96" alt="" />
+
+        <label class="sheet-secondary profile-upload-btn" :class="{ disabled: uploadingAvatar || !walletStore.address }">
+          <input class="profile-upload-input" type="file" accept="image/*"
+            :disabled="uploadingAvatar || !walletStore.address" @change="onPickAvatar" />
+          <span>{{ uploadingAvatar ? "Uploading…" : "Upload image" }}</span>
+        </label>
+
         <p class="profile-sheet-label">Username</p>
-        <p class="profile-sheet-username">{{ profileUsername }}</p>
+        <input v-model="editUsername" class="profile-sheet-input" type="text" autocapitalize="none"
+          autocomplete="off" spellcheck="false" placeholder="@username" />
+        <p class="profile-sheet-hint">Saved as {{ normalizeHandle(editUsername) }} (lowercase)</p>
+
         <button type="button" class="sheet-primary profile-sheet-cta" @click="onProfileUpdate">
-          Update profile
+          Save
         </button>
       </div>
     </BottomSheet>
@@ -444,6 +818,56 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
 
 .profile-sheet-cta {
   margin-top: 28px;
+}
+
+.profile-upload-btn {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-10);
+  user-select: none;
+}
+
+.profile-upload-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.profile-sheet-input {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 10px;
+  height: 48px;
+  border-radius: var(--radius-10);
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg);
+  color: var(--tx-normal);
+  padding: 0 14px;
+  font-size: 16px;
+  outline: none;
+  text-align: center;
+}
+
+.profile-sheet-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--tx-dimmed);
 }
 
 .scroll {
@@ -811,6 +1235,42 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
   color: var(--tx-dimmed);
   line-height: 1.5;
   margin-bottom: 14px;
+}
+
+.sheet-label-optional {
+  font-size: 12px;
+  color: var(--tx-semi);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.create-card {
+  padding: 6px 0 2px;
+}
+
+.create-card-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #e85d5d;
+}
+
+.sheet-banner {
+  padding: 12px 14px;
+  border-radius: var(--radius-10);
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg);
+  margin-bottom: 14px;
+}
+
+.sheet-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tx-semi);
+}
+
+.sheet-banner--error {
+  border-color: rgba(232, 93, 93, 0.35);
 }
 
 .sheet-label {

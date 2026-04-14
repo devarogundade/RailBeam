@@ -2,7 +2,7 @@
 import { BeamContract } from '@/scripts/contract';
 import { useDataStore } from '@/stores/data';
 import { useWalletStore } from '@/stores/wallet';
-import { formatEther, formatUnits, parseUnits, zeroAddress, type Hex } from 'viem';
+import { formatUnits, parseUnits, zeroAddress, type Hex } from 'viem';
 import { computed, onMounted, ref, watch } from 'vue';
 import BeamSDK from "beam-ts/src/index";
 import { Network, TransactionType } from '@/scripts/types';
@@ -17,9 +17,12 @@ import SplitPayments from '@/components/SplitPayments.vue';
 import { PAYMENT_MAX_OTHER_PAYERS, PAYMENT_MAX_PAYER_COUNT } from '@/constants/paymentLimits';
 import { buildPayerShareRows } from '@/utils/payerShares';
 import CheckoutAppShell from '@/components/mobile/CheckoutAppShell.vue';
+import BottomSheet from '@/components/mobile/BottomSheet.vue';
 import { DEFAULT_PLACEHOLDER_IMAGE } from '@/constants/ui';
 import { useWeb3Modal } from '@web3modal/wagmi/vue';
 import AppFrame from "@/components/layout/AppFrame.vue";
+import { mapSubscriptionPlanToPlan, type Plan } from "beam-ts";
+import StorageImage from "@/components/StorageImage.vue";
 
 const web3Modal = useWeb3Modal();
 
@@ -39,20 +42,149 @@ const amount = ref<number>(0);
 const balance = ref<number>(0);
 const allowance = ref<number>(0);
 const token = ref<Token | undefined>(getToken(dataStore.data?.token));
+const tokenDecimals = computed(() => token.value?.decimals ?? 18);
+
+const subscriptionPlan = ref<Plan | null>(null);
+const subscriptionLoading = ref(false);
+const subscriptionCatalogMetadataValue = ref<string | null>(null);
+const subscriptionIntervalSec = ref<number | null>(null);
+const subscriptionGracePeriodSec = ref<number | null>(null);
+
+function toNumberSafe(v: unknown): number | null {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v === 'bigint') {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    }
+    if (typeof v === 'string') {
+        const s = v.trim();
+        if (!s) return null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
+}
+
+function daysFromSeconds(sec: number): number | null {
+    if (!Number.isFinite(sec) || sec <= 0) return null;
+    return Math.round(sec / 86400);
+}
+
+const intervalDays = computed(() => {
+    const d = subscriptionIntervalSec.value == null ? null : daysFromSeconds(subscriptionIntervalSec.value);
+    return d && d > 0 ? d : null;
+});
+
+const gracePeriodDays = computed(() => {
+    const d = subscriptionGracePeriodSec.value == null ? null : daysFromSeconds(subscriptionGracePeriodSec.value);
+    return d && d > 0 ? d : null;
+});
+
+const cadenceLine = computed(() => {
+    const parts: string[] = [];
+    if (intervalDays.value != null) parts.push(`Every ${intervalDays.value} day${intervalDays.value === 1 ? '' : 's'}`);
+    if (gracePeriodDays.value != null) parts.push(`Grace ${gracePeriodDays.value} day${gracePeriodDays.value === 1 ? '' : 's'}`);
+    return parts.length ? parts.join(' · ') : null;
+});
+
+type CatalogMetadata = {
+    name?: string;
+    description?: string;
+    images?: string[];
+};
+
+function parseCatalogMetadataValue(rawValue: unknown): CatalogMetadata | null {
+    if (typeof rawValue !== 'string' || rawValue.trim().length === 0) return null;
+    try {
+        const obj = JSON.parse(rawValue) as unknown;
+        if (!obj || typeof obj !== 'object') return null;
+
+        const rec = obj as Record<string, unknown>;
+        const name = typeof rec.name === 'string' ? rec.name.trim() : '';
+        const description = typeof rec.description === 'string' ? rec.description.trim() : '';
+        const imagesRaw = rec.images;
+        const images =
+            Array.isArray(imagesRaw)
+                ? imagesRaw
+                    .filter((x): x is string => typeof x === 'string')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                : [];
+
+        return {
+            name: name || undefined,
+            description: description || undefined,
+            images: images.length > 0 ? images : undefined,
+        };
+    } catch {
+        return null;
+    }
+}
+
+const subscriptionCatalog = computed(() =>
+    parseCatalogMetadataValue(subscriptionCatalogMetadataValue.value)
+);
+
+async function loadSubscriptionPlan() {
+    subscriptionPlan.value = null;
+    subscriptionCatalogMetadataValue.value = null;
+    subscriptionIntervalSec.value = null;
+    subscriptionGracePeriodSec.value = null;
+    if (!dataStore.data?.subscriptionId) return;
+    subscriptionLoading.value = true;
+    try {
+        const row = await beamSdk.recurrentTransaction.getSubscription({
+            subscriptionId: dataStore.data.subscriptionId,
+        });
+        subscriptionCatalogMetadataValue.value =
+            row && typeof (row as any).catalog_metadata_value === 'string'
+                ? ((row as any).catalog_metadata_value as string)
+                : null;
+        subscriptionIntervalSec.value = row ? toNumberSafe((row as any).interval) : null;
+        subscriptionGracePeriodSec.value = row ? toNumberSafe((row as any).gracePeriod) : null;
+        subscriptionPlan.value = row ? mapSubscriptionPlanToPlan(row as any) : null;
+    } catch {
+        subscriptionPlan.value = null;
+        subscriptionCatalogMetadataValue.value = null;
+        subscriptionIntervalSec.value = null;
+        subscriptionGracePeriodSec.value = null;
+    } finally {
+        subscriptionLoading.value = false;
+    }
+}
 
 const payerSplitRows = computed(() => {
     const d = dataStore.data;
     if (!d) return [];
-    const payers = d.payers;
-    if (!payers?.length) return [];
-    return buildPayerShareRows(payers, d.amounts ?? [], walletStore.address);
+    const amounts = d.amounts ?? [];
+    const payers =
+        d.payers && d.payers.length > 0
+            ? d.payers
+            : walletStore.address
+                ? ([walletStore.address] as Hex[])
+                : [];
+    if (!payers.length) return [];
+
+    // When payers weren't provided (single payer flow), show a sensible split list:
+    // connected wallet pays the full amount (sum of amounts).
+    const amountsForRows =
+        d.payers && d.payers.length > 0
+            ? amounts
+            : [amounts.reduce((a, b) => a + b, 0n)];
+
+    return buildPayerShareRows(payers, amountsForRows, walletStore.address);
 });
 
 const splitPaymentEnabled = computed(() => (dataStore.data?.splitPayment ?? true));
 
-const showPayerSplit = computed(
-    () => splitPaymentEnabled.value && payerSplitRows.value.length > 1
-);
+function ensureDefaultPayer() {
+    if (!dataStore.data) return;
+    if (!walletStore.address) return;
+    const payers = dataStore.data.payers ?? [];
+    if (payers.length === 0) {
+        dataStore.setData({ ...dataStore.data, payers: [walletStore.address] });
+    }
+}
 
 const getAmount = () => {
     amountBlockedReason.value = null;
@@ -85,7 +217,8 @@ const getAmount = () => {
         return;
     }
 
-    const values = amounts.map((amount) => formatEther(amount));
+    const decimals = tokenDecimals.value;
+    const values = amounts.map((a) => formatUnits(a, decimals));
     amount.value = Number(values[index]);
 };
 
@@ -101,9 +234,7 @@ const getBalance = async () => {
         walletStore.address
     );
 
-    const decimals = token.value?.decimals || 18;
-
-    balance.value = Number(formatUnits(result, decimals));
+    balance.value = Number(formatUnits(result, tokenDecimals.value));
 };
 
 const getAllowance = async () => {
@@ -123,9 +254,7 @@ const getAllowance = async () => {
         BeamContract.address
     );
 
-    const decimals = token.value?.decimals || 18;
-
-    allowance.value = Number(formatUnits(result, decimals));
+    allowance.value = Number(formatUnits(result, tokenDecimals.value));
 };
 
 const connectWallet = () => {
@@ -167,14 +296,12 @@ const approve = async () => {
         return;
     }
 
-    const decimals = token.value?.decimals || 18;
-
     approving.value = true;
 
     const txHash = await TokenContract.approve(
         dataStore.data.token,
         BeamContract.address,
-        parseUnits(amount.value.toString(), decimals)
+        parseUnits(amount.value.toString(), tokenDecimals.value)
     );
 
     if (txHash) {
@@ -211,11 +338,8 @@ const makePayment = async () => {
     const payers: Hex[] = dataStore.data.payers || [];
 
     if (dataStore.data.type == TransactionType.OneTime) {
-        const values = amounts.map((amount) => {
-            const value = formatEther(amount);
-            const decimals = token.value?.decimals || 18;
-            return parseUnits(value, decimals);
-        });
+        // `amounts` are already base units for `token` (including native token with 18 decimals).
+        const values = amounts;
 
         const index = payers.length <= 1 ? 0 : payers.findIndex(p =>
             p.toLowerCase() == walletStore.address?.toLowerCase()
@@ -333,110 +457,144 @@ watch(dataStore, () => {
     token.value = getToken(dataStore.data?.token);
 }, { deep: true });
 
-watch(walletStore, () => {
-    getAmount();
-    getBalance();
-    getAllowance();
-}, { deep: true });
+watch(
+    () => dataStore.data?.subscriptionId,
+    () => {
+        void loadSubscriptionPlan();
+    }
+);
+
+watch(
+    [() => walletStore.address, () => (dataStore.data?.payers?.length ?? 0)],
+    () => {
+        ensureDefaultPayer();
+        getAmount();
+        getBalance();
+        getAllowance();
+    }
+);
 
 onMounted(() => {
+    ensureDefaultPayer();
     getAmount();
     getBalance();
     getAllowance();
     token.value = getToken(dataStore.data?.token);
+    void loadSubscriptionPlan();
 });
 </script>
 
 <template>
-  <div class="default-view">
-    <header class="flat-header sticky-top">
-      <AppFrame :topInset="false">
-        <h1 class="flat-header__title">Pay</h1>
-      </AppFrame>
-    </header>
+    <div class="default-view">
+        <header class="flat-header sticky-top">
+            <AppFrame :topInset="false">
+                <h1 class="flat-header__title">Pay</h1>
+            </AppFrame>
+        </header>
 
-    <AppFrame :topInset="false">
-      <CheckoutAppShell>
-        <ProgressBox v-if="!token || (!amount && !amountBlockedReason)" />
-        <div v-else-if="amountBlockedReason" class="flat-blocked">
-          <p>{{ amountBlockedReason }}</p>
-          <button
-            v-if="!walletStore.address && amountBlockedReason.startsWith('Connect your wallet')"
-            type="button"
-            class="flat-cta flat-blocked__cta"
-            @click="connectWallet"
-          >
-            Connect wallet
-          </button>
-        </div>
-        <div v-else-if="dataStore.data" class="flat">
-          <section v-if="dataStore.initiator" class="flat-section">
-            <p class="flat-kicker">From</p>
-            <a class="flat-from" :href="dataStore.initiator.url" target="_blank" rel="noopener noreferrer">
-              <img
-                class="flat-from__logo"
-                :src="dataStore.initiator.favicon || DEFAULT_PLACEHOLDER_IMAGE"
-                alt=""
-                width="40"
-                height="40"
-              />
-              <span class="flat-from__name">{{ dataStore.initiator.title || 'Merchant' }}</span>
-            </a>
-          </section>
+        <AppFrame :topInset="false">
+            <CheckoutAppShell>
+                <ProgressBox v-if="!token || (!amount && !amountBlockedReason)" />
+                <div v-else-if="amountBlockedReason" class="flat-blocked">
+                    <p>{{ amountBlockedReason }}</p>
+                    <button v-if="!walletStore.address && amountBlockedReason.startsWith('Connect your wallet')"
+                        type="button" class="flat-cta flat-blocked__cta" @click="connectWallet">
+                        Connect wallet
+                    </button>
+                </div>
+                <div v-else-if="dataStore.data" class="flat">
+                    <section v-if="dataStore.initiator" class="flat-section">
+                        <p class="flat-kicker">From</p>
+                        <a class="flat-from" :href="dataStore.initiator.url" target="_blank" rel="noopener noreferrer">
+                            <img class="flat-from__logo" :src="dataStore.initiator.favicon || DEFAULT_PLACEHOLDER_IMAGE"
+                                alt="" width="40" height="40" />
+                            <span class="flat-from__name">{{ dataStore.initiator.title || 'Merchant' }}</span>
+                        </a>
+                    </section>
 
-          <section class="flat-section flat-amount">
-            <p class="flat-kicker">{{ (dataStore.data.payers?.length ?? 0) > 1 ? 'Your share' : 'Amount' }}</p>
-            <p class="flat-amount__value">{{ amount }}</p>
-            <p class="flat-amount__sym">{{ token?.symbol }}</p>
-          </section>
+                    <section v-if="dataStore.data.subscriptionId" class="flat-section">
+                        <p class="flat-kicker">Subscription</p>
+                        <div v-if="subscriptionLoading" class="flat-sub">Loading…</div>
+                        <div v-else-if="subscriptionPlan" class="flat-sub">
+                            <StorageImage class="flat-sub__img"
+                                :src="subscriptionPlan.images?.[0] || DEFAULT_PLACEHOLDER_IMAGE" alt="" width="44"
+                                height="44" />
+                            <div class="flat-sub__meta">
+                                <span class="flat-sub__name">{{ subscriptionPlan.name }}</span>
+                                <span class="flat-sub__desc">{{ subscriptionPlan.description }}</span>
+                                <span v-if="cadenceLine" class="flat-sub__desc">{{ cadenceLine }}</span>
+                            </div>
+                        </div>
+                        <div v-else-if="subscriptionCatalog" class="flat-sub">
+                            <StorageImage class="flat-sub__img"
+                                :src="subscriptionCatalog.images?.[0] || DEFAULT_PLACEHOLDER_IMAGE" alt="" width="44"
+                                height="44" />
+                            <div class="flat-sub__meta">
+                                <span class="flat-sub__name">{{ subscriptionCatalog.name || 'Subscription' }}</span>
+                                <span class="flat-sub__desc">{{ subscriptionCatalog.description || '' }}</span>
+                                <span v-if="cadenceLine" class="flat-sub__desc">{{ cadenceLine }}</span>
+                            </div>
+                        </div>
+                    </section>
 
-          <section v-if="showPayerSplit" class="flat-section flat-split">
-            <div class="flat-split__head">
-              <p class="flat-kicker">Split</p>
-              <button v-if="walletStore.address" type="button" class="flat-text-btn" @click="splitPayments = true">
-                Edit
-              </button>
-            </div>
-            <PayerShareList :rows="payerSplitRows" :symbol="token?.symbol ?? ''" />
-          </section>
+                    <section class="flat-section flat-amount">
+                        <p class="flat-kicker">{{ (dataStore.data.payers?.length ?? 0) > 1 ? 'Your share' : 'Amount' }}
+                        </p>
+                        <p class="flat-amount__value">{{ amount }}</p>
+                        <p class="flat-amount__sym">{{ token?.symbol }}</p>
+                    </section>
 
-          <section class="flat-section">
-            <p class="flat-kicker">Asset</p>
-            <div v-if="token" class="flat-asset">
-              <img
-                class="flat-asset__icon"
-                :src="token.image || DEFAULT_PLACEHOLDER_IMAGE"
-                alt=""
-                width="36"
-                height="36"
-              />
-              <div class="flat-asset__meta">
-                <span class="flat-asset__sym">{{ token.symbol }}</span>
-                <span class="flat-asset__bal">Balance {{ Converter.toMoney(balance) }} {{ token.symbol }}</span>
-              </div>
-            </div>
-          </section>
+                    <section v-if="splitPaymentEnabled" class="flat-section flat-split">
+                        <div class="flat-split__head">
+                            <p class="flat-kicker">Split</p>
+                            <button v-if="walletStore.address" type="button" class="flat-text-btn"
+                                @click="splitPayments = true">
+                                Edit
+                            </button>
+                        </div>
+                        <PayerShareList :rows="payerSplitRows" :symbol="token?.symbol ?? ''"
+                            :decimals="tokenDecimals" />
+                    </section>
 
-          <footer class="flat-footer">
-            <button type="button" v-if="!walletStore.address" class="flat-cta" @click="connectWallet">
-              Connect wallet
-            </button>
-            <button type="button" disabled v-else-if="balance < amount" class="flat-cta flat-cta--muted">
-              Insufficient balance
-            </button>
-            <button type="button" v-else-if="allowance < amount" class="flat-cta" @click="approve">
-              {{ approving ? 'Approving…' : `Approve ${token?.symbol}` }}
-            </button>
-            <button type="button" v-else class="flat-cta" @click="makePayment">
-              {{ paying ? 'Paying…' : 'Pay now' }}
-            </button>
-          </footer>
-        </div>
+                    <section class="flat-section">
+                        <p class="flat-kicker">Asset</p>
+                        <div v-if="token" class="flat-asset">
+                            <img class="flat-asset__icon" :src="token.image || DEFAULT_PLACEHOLDER_IMAGE" alt=""
+                                width="36" height="36" />
+                            <div class="flat-asset__meta">
+                                <span class="flat-asset__sym">{{ token.symbol }}</span>
+                                <span class="flat-asset__bal">Balance {{ Converter.toMoney(balance) }} {{ token.symbol
+                                    }}</span>
+                            </div>
+                        </div>
+                    </section>
 
-        <SplitPayments v-if="splitPayments" @close="splitPayments = false" />
-      </CheckoutAppShell>
-    </AppFrame>
-  </div>
+                    <footer class="flat-footer">
+                        <button type="button" v-if="!walletStore.address" class="flat-cta" @click="connectWallet">
+                            Connect wallet
+                        </button>
+                        <button type="button" disabled v-else-if="balance < amount" class="flat-cta flat-cta--muted">
+                            Insufficient balance
+                        </button>
+                        <button type="button" v-else-if="allowance < amount" class="flat-cta" @click="approve">
+                            {{ approving ? 'Approving…' : `Approve ${token?.symbol}` }}
+                        </button>
+                        <button type="button" v-else class="flat-cta" @click="makePayment">
+                            {{
+                                paying
+                                    ? (dataStore.data?.subscriptionId ? 'Subscribing…' : 'Paying…')
+                                    : (dataStore.data?.subscriptionId ? 'Subscribe' : 'Pay now')
+                            }}
+                        </button>
+                    </footer>
+                </div>
+
+                <BottomSheet v-model="splitPayments" title="Split payment">
+                    <SplitPayments variant="sheet" @close="splitPayments = false" />
+                </BottomSheet>
+            </CheckoutAppShell>
+        </AppFrame>
+    </div>
 </template>
 
 <style scoped>
@@ -595,6 +753,49 @@ onMounted(() => {
 .flat-asset__bal {
     font-size: 14px;
     color: var(--tx-semi);
+}
+
+.flat-sub {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: var(--native-tap, 44px);
+    color: var(--tx-normal);
+}
+
+.flat-sub__img {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-10);
+    object-fit: cover;
+    border: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
+    flex-shrink: 0;
+    background: var(--bg);
+}
+
+.flat-sub__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.flat-sub__name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--tx-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.flat-sub__desc {
+    font-size: 13px;
+    color: var(--tx-semi);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .flat-footer {

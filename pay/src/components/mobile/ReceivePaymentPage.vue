@@ -68,7 +68,7 @@ async function copyAddress() {
 
     <AppFrame :topInset="false">
       <div class="page-body">
-        <p class="intro">Share your address or QR code to receive funds on Scroll Sepolia.</p>
+        <p class="intro">Share your address or QR code to receive funds on 0G Chain.</p>
 
         <div class="qr-card">
           <img v-if="qrSrc" :src="qrSrc" alt="QR code for your wallet address" class="qr" width="240" height="240" />

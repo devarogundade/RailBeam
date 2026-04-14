@@ -15,6 +15,7 @@ export type AgentCardRegistrationV1 = {
 export type ChainAgent = {
   parsedTokenURI: AgentCardRegistrationV1 | null;
   decryptedConfig: string | null;
+  agentWallet: string;
 };
 
 export type ChatWithAgentResponse = {

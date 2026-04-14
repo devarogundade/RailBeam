@@ -9,13 +9,15 @@ import { Transaction, Confirmation } from "../generated/schema";
 import { BigInt, Value } from "@graphprotocol/graph-ts";
 
 export function handleOneTimeTransactionCreated(
-  event: OneTimeTransactionCreatedEvent
+  event: OneTimeTransactionCreatedEvent,
 ): void {
   let transaction = new Transaction(event.params.transactionId);
 
   transaction.transactionId = event.params.transactionId;
   transaction.payer = event.params.payer;
-  transaction.payers = Value.fromAddressArray(event.params.payers).toBytesArray();
+  transaction.payers = Value.fromAddressArray(
+    event.params.payers,
+  ).toBytesArray();
   transaction.fulfilleds = [Value.fromAddress(event.params.payer).toBytes()];
   transaction.merchant = event.params.merchant;
   transaction.token = event.params.token;
@@ -48,7 +50,7 @@ export function handleOneTimeTransactionCreated(
   }
 
   let confirmation = new Confirmation(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
 
   confirmation.transactionId = event.params.transactionId;
@@ -71,17 +73,25 @@ export function handleOneTimeTransactionCreated(
 }
 
 export function handleOneTimeTransactionFulfilled(
-  event: OneTimeTransactionFulfilledEvent
+  event: OneTimeTransactionFulfilledEvent,
 ): void {
   let transaction = Transaction.load(event.params.transactionId);
   if (!transaction) return;
 
-  transaction.fulfilleds.push(Value.fromAddress(event.params.payer).toBytes());
+  let fulfilleds = transaction.fulfilleds;
+
+  if (fulfilleds == null) {
+    fulfilleds = [];
+  }
+
+  fulfilleds.push(Value.fromAddress(event.params.payer).toBytes());
+  transaction.fulfilleds = fulfilleds;
+
   transaction.status = event.params.status;
   transaction.save();
 
   let confirmation = new Confirmation(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
 
   confirmation.transactionId = event.params.transactionId;
@@ -104,7 +114,7 @@ export function handleOneTimeTransactionFulfilled(
 }
 
 export function handleRecurrentTransactionCancelled(
-  event: RecurrentTransactionCancelledEvent
+  event: RecurrentTransactionCancelledEvent,
 ): void {
   let transaction = Transaction.load(event.params.transactionId);
   if (!transaction) return;
@@ -114,7 +124,7 @@ export function handleRecurrentTransactionCancelled(
   transaction.save();
 
   let confirmation = new Confirmation(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
 
   confirmation.transactionId = event.params.transactionId;
@@ -132,7 +142,7 @@ export function handleRecurrentTransactionCancelled(
 }
 
 export function handleRecurrentTransactionCreated(
-  event: RecurrentTransactionCreatedEvent
+  event: RecurrentTransactionCreatedEvent,
 ): void {
   let transaction = new Transaction(event.params.transactionId);
 
@@ -163,7 +173,7 @@ export function handleRecurrentTransactionCreated(
   transaction.save();
 
   let confirmation = new Confirmation(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
 
   confirmation.transactionId = event.params.transactionId;
@@ -186,7 +196,7 @@ export function handleRecurrentTransactionCreated(
 }
 
 export function handleRecurrentTransactionFulfilled(
-  event: RecurrentTransactionFulfilledEvent
+  event: RecurrentTransactionFulfilledEvent,
 ): void {
   let transaction = Transaction.load(event.params.transactionId);
   if (!transaction) return;
@@ -197,7 +207,7 @@ export function handleRecurrentTransactionFulfilled(
   transaction.save();
 
   let confirmation = new Confirmation(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
 
   confirmation.transactionId = event.params.transactionId;
@@ -218,4 +228,3 @@ export function handleRecurrentTransactionFulfilled(
 
   confirmation.save();
 }
-

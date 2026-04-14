@@ -4,6 +4,7 @@ import QrcodeVue from 'qrcode.vue';
 import { onMounted, onUnmounted } from 'vue';
 import CopyIcon from './icons/CopyIcon.vue';
 import { notify } from '@/reactives/notify';
+import StorageImage from '@/components/StorageImage.vue';
 
 const emit = defineEmits(['close']);
 
@@ -62,7 +63,7 @@ onUnmounted(() => {
             </div>
 
             <div class="address">
-                <img src="/images/colors.png" alt="">
+                <StorageImage src="/images/colors.png" alt="" />
                 <div class="input">
                     <p>{{ props.address }}</p>
                     <div class="icon" @click="copyLink">
@@ -169,7 +170,7 @@ onUnmounted(() => {
     gap: 14px;
 }
 
-.address img {
+.address :deep(img) {
     width: 40px;
     height: 40px;
     border-radius: 8px;

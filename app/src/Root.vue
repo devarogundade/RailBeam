@@ -3,6 +3,7 @@ import NotifyPop from '@/components/NotifyPop.vue';
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { createWeb3Modal } from "@web3modal/wagmi/vue";
+import { reconnect } from "@wagmi/core";
 import { config, chains } from "@/scripts/config";
 
 const firebaseConfig = {
@@ -22,6 +23,9 @@ void isSupported().then((supported) => {
         getAnalytics(app);
     }
 });
+
+// Attempt to restore a previous wallet connection (wagmi v2).
+void reconnect(config);
 
 createWeb3Modal({
     wagmiConfig: config,

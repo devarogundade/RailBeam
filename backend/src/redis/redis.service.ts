@@ -20,6 +20,33 @@ export class RedisService {
     this.mem.delete(key);
   }
 
+  /** Plain string with TTL (e.g. auth nonces). */
+  async setStringEx(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    if (this.redis) {
+      await this.redis.set(key, value, 'EX', ttlSeconds);
+      return;
+    }
+    this.mem.set(key, { v: value, exp: Date.now() + ttlSeconds * 1000 });
+  }
+
+  async getString(key: string): Promise<string | null> {
+    if (this.redis) {
+      const raw = await this.redis.get(key);
+      return raw ?? null;
+    }
+    const rec = this.mem.get(key);
+    if (!rec) return null;
+    if (rec.exp && Date.now() > rec.exp) {
+      this.mem.delete(key);
+      return null;
+    }
+    return rec.v;
+  }
+
   async cacheJson(
     key: string,
     value: unknown,

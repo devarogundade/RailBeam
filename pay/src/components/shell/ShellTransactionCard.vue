@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { ShellDemoTx } from "@/data/demoShellTransactions";
+import type { ShellTxRow } from "@/scripts/shellActivity";
 
 defineProps<{
-  tx: ShellDemoTx;
+  tx: ShellTxRow;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +28,7 @@ function openDetail() {
       <p class="tx-sub">
         {{ tx.sub }}
         <span v-if="(tx.payers?.length ?? 0) > 1" class="tx-payers-pill">{{ tx.payers!.length }} payers</span>
+        <span v-if="tx.pendingYou" class="tx-pending-pill">Pending</span>
       </p>
     </div>
     <p class="tx-amt" :class="tx.tone">{{ tx.amount }}</p>
@@ -88,6 +89,18 @@ function openDetail() {
   padding: 2px 8px;
   border-radius: var(--radius-full);
   border: 1px solid var(--bg-lightest);
+  color: var(--tx-semi);
+  background: var(--bg);
+}
+
+.tx-pending-pill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   color: var(--tx-semi);
   background: var(--bg);
 }

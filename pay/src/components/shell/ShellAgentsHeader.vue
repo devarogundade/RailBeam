@@ -1,25 +1,13 @@
 <script setup lang="ts">
-import { useRouter } from "vue-router";
 import AppFrame from "@/components/layout/AppFrame.vue";
-
-const router = useRouter();
-
-function goNew() {
-  router.push({ name: "payment-agent-new" });
-}
 </script>
 
 <template>
   <header class="shell-head sticky-top">
     <AppFrame :topInset="false">
       <div class="shell-head__inner">
-        <div class="shell-head__row">
-          <div>
-            <h1 class="shell-head__title">Agents</h1>
-            <p class="shell-head__copy">Marketplace to discover and pay agents (ERC-8004 / x402).</p>
-          </div>
-          <button type="button" class="shell-head__cta" @click="goNew">New</button>
-        </div>
+        <h1 class="shell-head__title">Agents</h1>
+        <p class="shell-head__copy">Onchain agents indexed by Beam.</p>
       </div>
     </AppFrame>
   </header>
@@ -39,37 +27,19 @@ function goNew() {
   width: 100%;
 }
 
-.shell-head__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .shell-head__title {
-  margin: 0;
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 8px;
   color: var(--tx-normal);
 }
 
 .shell-head__copy {
-  margin: 6px 0 0;
-  font-size: 14px;
-  line-height: 1.45;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--tx-dimmed);
-}
-
-.shell-head__cta {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: var(--radius-10);
-  border: 1px solid var(--bg-lightest);
-  background: var(--primary);
-  color: var(--tx-normal);
-  font-weight: 700;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 </style>

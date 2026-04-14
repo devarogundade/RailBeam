@@ -33,7 +33,14 @@ export function handleWithdrawRequestApproved(
   );
   if (!transaction) return;
 
-  transaction.fulfilleds.push(Value.fromAddress(event.params.signer).toBytes());
+  // `fulfilleds` is non-nullable in the schema; update via local copy to avoid
+  // issues with AssemblyScript array mutation on entity fields.
+  let fulfilleds = transaction.fulfilleds;
+  if (fulfilleds == null) {
+    fulfilleds = [];
+  }
+  fulfilleds.push(Value.fromAddress(event.params.signer).toBytes());
+  transaction.fulfilleds = fulfilleds;
   transaction.save();
 
   let confirmation = new Confirmation(
@@ -70,13 +77,21 @@ export function handleWithdrawRequestCreated(
   transaction.transactionId = event.params.merchant.concatI32(
     event.params.requestId.toI32()
   );
+  // `Transaction` has a number of required (non-nullable) fields that are not
+  // part of the wallet withdraw lifecycle. Populate safe defaults so indexing
+  // doesn't revert on first withdraw event.
+  transaction.payer = event.params.merchant;
   transaction.merchant = event.params.merchant;
   transaction.token = event.params.token;
+  transaction.adjustedToken = event.params.token;
+  transaction.adjustedAmount = event.params.amount;
   transaction.amount = event.params.amount;
   transaction.recipient = event.params.recipient;
   transaction.signers = Value.fromAddressArray(event.params.signers).toBytesArray();
   transaction.executed = event.params.executed;
   transaction.type = 2;
+  transaction.metadata_schemaVersion = 0;
+  transaction.metadata_value = "";
 
   transaction.blockNumber = event.block.number;
   transaction.blockTimestamp = event.block.timestamp;

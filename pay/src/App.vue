@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useDataStore } from "./stores/data";
-import { formatUnits, parseEther, type Hex } from "viem";
+import { formatUnits, parseUnits, type Hex } from "viem";
 import BeamSDK from "beam-ts/src";
 import { Network, TransactionType } from "@/scripts/types";
 import { notify } from "./reactives/notify";
@@ -17,6 +17,7 @@ type PaymentIntentV1 = {
   amount?: string;
   description?: string;
   subscriptionId?: Hex;
+  splitPayment?: boolean;
 };
 
 function decodeIntentParam(encoded: string): PaymentIntentV1 {
@@ -37,14 +38,33 @@ const beamSdk = new BeamSDK({
 const dataStore = useDataStore();
 const uiStore = useUiStore();
 
+function mergedUrlSearchParamsFromLocation(loc: Location): URLSearchParams {
+  const out = new URLSearchParams(loc.search);
+  // Also support links that store query params inside the hash fragment.
+  // Examples:
+  // - "/#/?txn=...&initiator=..."
+  // - "/#/p/home?txn=...&initiator=..."
+  const hash = (loc.hash || "").replace(/^#/, "");
+  const idx = hash.indexOf("?");
+  if (idx >= 0) {
+    const qs = hash.slice(idx + 1);
+    const hp = new URLSearchParams(qs);
+    hp.forEach((value, key) => {
+      if (!out.has(key)) out.set(key, value);
+    });
+  }
+  return out;
+}
+
 function paymentUrlSignals(params: URLSearchParams): boolean {
   const initiator = params.get("initiator");
   const session = params.get("session");
   const transactionId = params.get("tx");
+  const checkoutTxnId = params.get("txn");
   const intentEncoded = params.get("intent");
   return !!(
     initiator &&
-    (intentEncoded || session || transactionId)
+    (intentEncoded || session || transactionId || checkoutTxnId)
   );
 }
 
@@ -83,14 +103,14 @@ const getSubscription = async () => {
           return;
         }
 
+        const tok = getToken(result.token);
+        const decimals = tok?.decimals ?? 18;
+
         dataStore.setData({
           merchant: result.merchant,
           payers: [],
-          amounts: [
-            parseEther(
-              formatUnits(result.amount, getToken(result.token)?.decimals || 18)
-            ),
-          ],
+          // Keep on-chain amount in base units for the selected token.
+          amounts: [parseUnits(formatUnits(result.amount, decimals), decimals)],
           type: TransactionType.Recurrent,
           description: dataStore.data?.description || result.description,
           metadata: dataStore.data?.metadata,
@@ -108,16 +128,18 @@ function applyIntent(intent: PaymentIntentV1): boolean {
   if (intent.kind === "onetime") {
     if (!intent.token || intent.amount == null || intent.amount === "")
       return false;
+    const tok = getToken(intent.token);
+    const decimals = tok?.decimals ?? 18;
     const meta: Metadata = { schemaVersion: SCHEMA_JSON, value: "{}" };
     dataStore.setData({
       merchant: intent.merchant,
       payers: [],
-      amounts: [parseEther(String(intent.amount))],
+      amounts: [parseUnits(String(intent.amount), decimals)],
       token: intent.token,
       type: TransactionType.OneTime,
       description: intent.description ?? "",
       metadata: meta,
-      splitPayment: false,
+      splitPayment: intent.splitPayment ?? false,
     });
     return true;
   }
@@ -132,13 +154,77 @@ function applyIntent(intent: PaymentIntentV1): boolean {
       description: intent.description ?? "",
       metadata: { schemaVersion: SCHEMA_JSON, value: "{}" },
       subscriptionId: intent.subscriptionId,
-      splitPayment: false,
+      splitPayment: intent.splitPayment ?? false,
     });
     getSubscription();
     return true;
   }
 
   return false;
+}
+
+type CheckoutTransactionView = {
+  id: string;
+  kind: "onetime" | "recurrent";
+  merchant: Hex;
+  token?: Hex;
+  amount?: string;
+  description?: string;
+  splitPayment?: boolean;
+  subscriptionId?: Hex;
+};
+
+function applyCheckoutTxn(tx: CheckoutTransactionView): boolean {
+  if (!tx?.id || !tx.kind || !tx.merchant) return false;
+  if (tx.kind === "onetime") {
+    if (!tx.token || tx.amount == null || tx.amount === "") return false;
+    const tok = getToken(tx.token);
+    const decimals = tok?.decimals ?? 18;
+    const meta: Metadata = { schemaVersion: SCHEMA_JSON, value: "{}" };
+    dataStore.setData({
+      merchant: tx.merchant,
+      payers: [],
+      amounts: [parseUnits(String(tx.amount), decimals)],
+      token: tx.token,
+      type: TransactionType.OneTime,
+      description: tx.description ?? "",
+      metadata: meta,
+      splitPayment: tx.splitPayment ?? false,
+    });
+    return true;
+  }
+
+  if (tx.kind === "recurrent") {
+    if (!tx.subscriptionId) return false;
+    dataStore.setData({
+      merchant: tx.merchant,
+      payers: [],
+      amounts: [],
+      type: TransactionType.Recurrent,
+      description: tx.description ?? "",
+      metadata: { schemaVersion: SCHEMA_JSON, value: "{}" },
+      subscriptionId: tx.subscriptionId,
+      splitPayment: tx.splitPayment ?? false,
+    });
+    getSubscription();
+    return true;
+  }
+
+  return false;
+}
+
+async function getCheckoutTxn(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_CLIENT_URL}/transaction/view/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as CheckoutTransactionView;
+    return applyCheckoutTxn(data);
+  } catch {
+    return false;
+  }
 }
 
 const getTransaction = async (transactionId: Hex) => {
@@ -176,10 +262,11 @@ const getTransaction = async (transactionId: Hex) => {
 };
 
 onMounted(async () => {
-  const params = new URLSearchParams(window.location.search);
+  const params = mergedUrlSearchParamsFromLocation(window.location);
   const session = params.get("session");
   const initiator = params.get("initiator");
   const transactionId = params.get("tx") as Hex | null;
+  const checkoutTxnId = params.get("txn");
   const intentEncoded = params.get("intent");
 
   if (!paymentUrlSignals(params)) {
@@ -192,6 +279,7 @@ onMounted(async () => {
   const checkoutOrigin = initiator as string;
 
   let intentOk = false;
+
   if (intentEncoded) {
     try {
       const intent = decodeIntentParam(intentEncoded);
@@ -207,6 +295,19 @@ onMounted(async () => {
       });
       return;
     }
+  } else if (checkoutTxnId) {
+    console.log({ checkoutTxnId });
+    const ok = await getCheckoutTxn(checkoutTxnId);
+    if (!ok) {
+      notify.push({
+        title: "Invalid payment link!",
+        description: "Could not load transaction details.",
+        category: "error",
+      });
+      return;
+    }
+  } else if (transactionId) {
+    getTransaction(transactionId);
   } else if (session && initiator) {
     window.addEventListener("message", (event) => {
       if (checkoutOrigin == event.origin && !dataStore.data) {
@@ -214,8 +315,6 @@ onMounted(async () => {
         getSubscription();
       }
     });
-  } else if (transactionId) {
-    getTransaction(transactionId);
   } else {
     notify.push({
       title: "Invalid payment link!",

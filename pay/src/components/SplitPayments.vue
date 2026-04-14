@@ -3,8 +3,7 @@ import PlusIcon from '@/components/icons/PlusIcon.vue';
 import TrashIcon from '@/components/icons/TrashIcon.vue';
 import { useDataStore } from '@/stores/data';
 import { useWalletStore } from '@/stores/wallet';
-import { useAgentsStore } from '@/stores/agents';
-import { formatEther, parseEther, type Hex } from 'viem';
+import { formatUnits, parseUnits, type Hex } from 'viem';
 import { computed, onMounted, ref, watch } from 'vue';
 import CloseIcon from './icons/CloseIcon.vue';
 import CheckIcon from './icons/CheckIcon.vue';
@@ -14,104 +13,231 @@ import { getToken } from 'beam-ts/src/utils/constants';
 import Converter from '@/scripts/converter';
 import { PAYMENT_MAX_OTHER_PAYERS, PAYMENT_MAX_PAYER_COUNT } from '@/constants/paymentLimits';
 import { notify } from '@/reactives/notify';
+import { resolveBeamAddress } from '@/utils/resolveBeamUser';
+
+const props = withDefaults(
+    defineProps<{
+        variant?: 'modal' | 'sheet';
+    }>(),
+    {
+        variant: 'modal',
+    }
+);
 
 const emit = defineEmits(['close']);
 
 interface Payer {
     name: string;
-    address: Hex | null;
-    amount: number;
+    address: string;
+    percent: number; // 0-100, 1 decimal
+    amount: number; // display-only (derived from percent)
     disabled: boolean;
 }
 
 const isValid = ref<boolean>(false);
+const resolving = ref<boolean>(false);
 const dataStore = useDataStore();
 const walletStore = useWalletStore();
-const agentsStore = useAgentsStore();
 const unsavedPayers = ref<Payer[]>([]);
 const totalAmount = ref<number>(0);
+const totalAmountUnits = ref<bigint>(0n);
 const token = ref<Token | undefined>(undefined);
-
-const starredAgents = computed(() => agentsStore.starredAgents);
-const agentPickerOpen = ref(false);
-const agentPickerRowIdx = ref<number | null>(null);
 
 const allocatedPercent = computed(() => {
     if (totalAmount.value <= 0) return 0;
-    const sum = unsavedPayers.value.reduce((a, p) => a + p.amount, 0);
-    return (sum / totalAmount.value) * 100;
+    const sum = unsavedPayers.value.reduce((a, p) => a + (Number.isFinite(p.percent) ? p.percent : 0), 0);
+    return sum;
 });
 
-function sharePercent(amt: number): string {
-    if (totalAmount.value <= 0 || amt < 0) return '0.0';
-    const pct = (amt / totalAmount.value) * 100;
-    return pct.toFixed(1);
+function clamp(n: number, lo: number, hi: number) {
+    if (!Number.isFinite(n)) return lo;
+    return Math.min(hi, Math.max(lo, n));
+}
+
+function snapToStep(n: number, step: number) {
+    if (!Number.isFinite(n) || step <= 0) return 0;
+    return Math.round(n / step) * step;
+}
+
+function toPermille(pct: number): number {
+    // percent with one decimal -> permille integer (0..1000)
+    return Math.round(clamp(pct, 0, 100) * 10);
+}
+
+function fromPermille(pm: number): number {
+    return clamp(pm / 10, 0, 100);
+}
+
+function recalcDerivedAmounts() {
+    const decimals = token.value?.decimals ?? 18;
+    const total = totalAmountUnits.value;
+    if (total <= 0n || unsavedPayers.value.length === 0) {
+        unsavedPayers.value.forEach((p) => (p.amount = 0));
+        return;
+    }
+
+    // Convert % to amounts using integer math, put rounding remainder onto "You" (index 0).
+    const pm = unsavedPayers.value.map((p) => toPermille(p.percent));
+    const denom = 1000n;
+    const hundred = 100n;
+    const totalPm = 1000;
+
+    let sumOthers = 0n;
+    for (let i = 1; i < unsavedPayers.value.length; i++) {
+        const amt = (total * BigInt(pm[i])) / denom;
+        sumOthers += amt;
+        unsavedPayers.value[i].amount = Number(formatUnits(amt, decimals));
+    }
+
+    const youAmt = total - sumOthers;
+    if (unsavedPayers.value[0]) {
+        unsavedPayers.value[0].amount = Number(formatUnits(youAmt, decimals));
+    }
+
+    // Keep "You" percent consistent with remainder.
+    const othersPm = pm.slice(1).reduce((a, b) => a + b, 0);
+    const youPm = clamp(totalPm - othersPm, 0, totalPm);
+    if (unsavedPayers.value[0]) {
+        unsavedPayers.value[0].percent = fromPermille(youPm);
+    }
 }
 
 const confirm = () => {
     if (!walletStore.address) return;
-    if (!dataStore.data) return;
+    const baseData = dataStore.data;
+    if (!baseData) return;
     if (!isValid.value) return;
+    if (resolving.value) return;
 
-    const amounts = unsavedPayers.value.map(payer => parseEther(payer.amount.toString()));
-    const payers = unsavedPayers.value.filter(payer => payer.address != null).map(payer => payer.address!);
-
-    if (payers.length > PAYMENT_MAX_PAYER_COUNT) {
-        notify.push({
-            title: 'Too many payers',
-            description: `You can add at most ${PAYMENT_MAX_OTHER_PAYERS} other payers (${PAYMENT_MAX_PAYER_COUNT} people total).`,
-            category: 'error',
-        });
-        return;
-    }
-
-    dataStore.setData({ ...dataStore.data, amounts: amounts, payers: payers });
-
-    notify.push({
-        title: "Changes saved!",
-        description: "Payment split among " + payers.length + " payers.",
-        category: "success"
+    resolving.value = true;
+    const decimals = token.value?.decimals ?? 18;
+    const total = totalAmountUnits.value;
+    const pm = unsavedPayers.value.map((p) => toPermille(p.percent));
+    const denom = 1000n;
+    let sumOthers = 0n;
+    const amounts = unsavedPayers.value.map((payer, idx) => {
+        if (idx === 0) return 0n; // fill later as remainder
+        const amt = (total * BigInt(pm[idx])) / denom;
+        sumOthers += amt;
+        return amt;
     });
+    amounts[0] = total - sumOthers;
+    Promise.resolve()
+        .then(async () => {
+            // Resolve each payer identifier (0x… or @username) to an address.
+            const resolved: Hex[] = [];
+            for (const p of unsavedPayers.value) {
+                const res = await resolveBeamAddress(p.address);
+                if (!res.ok) {
+                    notify.push({
+                        title: 'Payer',
+                        description: `${p.name}: ${res.error}`,
+                        category: 'error',
+                    });
+                    return;
+                }
+                resolved.push(res.address);
+            }
 
-    emit('close');
+            // Prevent splitting "between yourself" and avoid duplicates.
+            const you = walletStore.address?.toLowerCase();
+            if (!you) return;
+            for (let i = 1; i < resolved.length; i++) {
+                if (resolved[i].toLowerCase() === you) {
+                    notify.push({
+                        title: 'Payer',
+                        description: 'You can’t add your own address as an “Other” payer.',
+                        category: 'error',
+                    });
+                    return;
+                }
+            }
+            const seen = new Set<string>();
+            for (const a of resolved) {
+                const k = a.toLowerCase();
+                if (seen.has(k)) {
+                    notify.push({
+                        title: 'Payer',
+                        description: 'Each payer must be unique (no duplicates).',
+                        category: 'error',
+                    });
+                    return;
+                }
+                seen.add(k);
+            }
+
+            const payers = resolved;
+
+            if (payers.length > PAYMENT_MAX_PAYER_COUNT) {
+                notify.push({
+                    title: 'Too many payers',
+                    description: `You can add at most ${PAYMENT_MAX_OTHER_PAYERS} other payers (${PAYMENT_MAX_PAYER_COUNT} people total).`,
+                    category: 'error',
+                });
+                return;
+            }
+
+            dataStore.setData({ ...baseData, amounts: amounts, payers: payers });
+
+            notify.push({
+                title: "Changes saved!",
+                description: "Payment split among " + payers.length + " payers.",
+                category: "success"
+            });
+
+            emit('close');
+        })
+        .finally(() => {
+            resolving.value = false;
+        });
 };
 
 const addPayer = () => {
     if (unsavedPayers.value.length >= PAYMENT_MAX_PAYER_COUNT) return;
     unsavedPayers.value.push({
         name: `Other ${unsavedPayers.value.length}`,
-        address: null,
+        address: "",
+        percent: 0,
         amount: 0,
         disabled: false
     });
+    recalcDerivedAmounts();
 };
-
-function openAgentPicker(rowIdx: number) {
-    agentPickerRowIdx.value = rowIdx;
-    agentPickerOpen.value = true;
-}
-
-function applyAgentToRow(agentWallet: Hex) {
-    if (agentPickerRowIdx.value == null) return;
-    const idx = agentPickerRowIdx.value;
-    if (!unsavedPayers.value[idx]) return;
-    unsavedPayers.value[idx] = {
-        ...unsavedPayers.value[idx],
-        address: agentWallet,
-    };
-    agentPickerOpen.value = false;
-    agentPickerRowIdx.value = null;
-}
 
 const removePayer = (index: number) => {
     unsavedPayers.value.splice(index, 1);
+    recalcDerivedAmounts();
 };
 
 watch(unsavedPayers, () => {
-    isValid.value =
-        unsavedPayers.value.every(signer => signer.name.length >= 1 && signer.address?.length === 42 && signer.amount > 0)
-        && unsavedPayers.value.reduce((a, b) => a + b.amount, 0) == totalAmount.value;
+    const pctSum = unsavedPayers.value.reduce((a, b) => a + (Number.isFinite(b.percent) ? b.percent : 0), 0);
+    const allOk =
+        unsavedPayers.value.every((signer, idx) => signer.name.length >= 1 && signer.address.trim().length >= 2 && (idx === 0 ? signer.percent >= 0 : signer.percent > 0))
+        && Math.abs(pctSum - 100) < 0.0001;
+    isValid.value = allOk;
 }, { deep: true });
+
+function maxPercentForIndex(index: number): number {
+    if (index === 0) return 100;
+    const sumOtherOthers = unsavedPayers.value.reduce((acc, p, i) => {
+        if (i === 0) return acc;
+        if (i === index) return acc;
+        return acc + (Number.isFinite(p.percent) ? p.percent : 0);
+    }, 0);
+    const max = clamp(100 - sumOtherOthers, 0, 100);
+    // Keep slider snapping clean: max should be a multiple of 5.
+    return Math.floor(max / 5) * 5;
+}
+
+function onOtherPercentInput(index: number) {
+    if (index === 0) return;
+    const max = maxPercentForIndex(index);
+    const p = unsavedPayers.value[index];
+    const snapped = snapToStep(Number(p.percent), 5);
+    p.percent = clamp(snapped, 0, max);
+    // Keep "You" as the remainder.
+    recalcDerivedAmounts();
+}
 
 onMounted(() => {
     if (!dataStore.data) return;
@@ -141,9 +267,9 @@ onMounted(() => {
         return;
     }
 
-    totalAmount.value = Number(
-        formatEther(amounts.reduce((a, b) => a + b, BigInt(0)))
-    );
+    const decimals = token.value?.decimals ?? 18;
+    totalAmountUnits.value = amounts.reduce((a, b) => a + b, 0n);
+    totalAmount.value = Number(formatUnits(totalAmountUnits.value, decimals));
 
     let otherIdx = 0;
     unsavedPayers.value = amounts.map((amount, index) => {
@@ -155,25 +281,38 @@ onMounted(() => {
         if (!isYou) otherIdx += 1;
         return {
             address: addr,
-            amount: Number(formatEther(amount)),
+            percent: 0,
+            amount: Number(formatUnits(amount, decimals)),
             disabled: isYou,
             name: isYou ? 'You' : `Other ${otherIdx}`
         };
     });
 
-    isValid.value =
-        unsavedPayers.value.every(signer => signer.name.length >= 1 && signer.address?.length === 42 && signer.amount > 0)
-        && unsavedPayers.value.reduce((a, b) => a + b.amount, 0) == totalAmount.value;
+    // Initialize percents from existing amounts, keep "You" as remainder so we always sum to 100.
+    if (totalAmountUnits.value > 0n && unsavedPayers.value.length > 0) {
+        const denom = totalAmountUnits.value;
+        let othersPm = 0;
+        for (let i = 1; i < unsavedPayers.value.length; i++) {
+            const a = amounts[i] ?? 0n;
+            const pm = Number((a * 1000n) / denom); // trunc
+            unsavedPayers.value[i].percent = fromPermille(pm);
+            othersPm += pm;
+        }
+        const youPm = clamp(1000 - othersPm, 0, 1000);
+        unsavedPayers.value[0].percent = fromPermille(youPm);
+        recalcDerivedAmounts();
+    }
 });
 </script>
 
 <template>
-    <div class="overlay">
-        <div class="form">
+    <div class="root" :class="{ 'root--sheet': props.variant === 'sheet' }">
+        <div class="form" :class="{ 'form--sheet': props.variant === 'sheet' }">
             <div class="title">
                 <div class="title-text">
-                    <p>Split payment <span>{{ Converter.toMoney(totalAmount) }} {{ token?.symbol }}</span></p>
-                    <p class="title-hint">Up to {{ PAYMENT_MAX_PAYER_COUNT }} people total — you plus at most {{ PAYMENT_MAX_OTHER_PAYERS }} other payers. Amounts set each row’s % of the total.</p>
+                    <p>Split <span>{{ Converter.toMoney(totalAmount) }} {{ token?.symbol }}</span></p>
+                    <p class="title-hint">Up to {{ PAYMENT_MAX_PAYER_COUNT }} people total — you plus at most {{
+                        PAYMENT_MAX_OTHER_PAYERS }} other payers. Amounts set each row’s % of the total.</p>
                 </div>
 
                 <div class="close" @click="emit('close')">
@@ -187,8 +326,8 @@ onMounted(() => {
                         <div class="name">
                             <p>{{ signer.name }}</p>
 
-                            <button v-if="index === 0 && unsavedPayers.length < PAYMENT_MAX_PAYER_COUNT" @click="addPayer"
-                                class="add_signer_btn">
+                            <button v-if="index === 0 && unsavedPayers.length < PAYMENT_MAX_PAYER_COUNT"
+                                @click="addPayer" class="add_signer_btn">
                                 <PlusIcon />
                                 <p>Add other</p>
                             </button>
@@ -199,31 +338,33 @@ onMounted(() => {
                         </div>
                         <div class="amount-row">
                             <div class="input_field">
-                                <p>Amount</p>
-                                <input v-model.number="signer.amount" type="number" placeholder="0.00" min="0"
-                                    step="any" />
+                                <p>%</p>
+                                <input v-model.number="signer.percent" type="number" placeholder="0.0" min="0"
+                                    :max="maxPercentForIndex(index)" step="5" :disabled="index === 0"
+                                    @input="onOtherPercentInput(index)" />
                             </div>
-                            <div class="pct-readout" aria-label="Share of total">
-                                <span class="pct-val">{{ sharePercent(signer.amount) }}%</span>
-                                <span class="pct-lbl">of total</span>
+                            <div class="amt-readout" aria-label="Derived amount">
+                                <span class="amt-val">{{ Converter.toMoney(signer.amount) }}</span>
+                                <span class="amt-lbl">{{ token?.symbol ?? '—' }}</span>
+                            </div>
+                        </div>
+                        <div class="slider-row">
+                            <input class="pct-slider" type="range" min="0" :max="maxPercentForIndex(index)" step="5"
+                                v-model.number="signer.percent" :disabled="index === 0"
+                                @input="onOtherPercentInput(index)" aria-label="Percentage slider" />
+                            <div class="slider-meta">
+                                <span>{{ signer.percent.toFixed(1) }}%</span>
+                                <span v-if="index === 0" class="slider-hint">Remainder</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="address">
                         <div class="addr-head">
-                            <p>Address</p>
-                            <button
-                                v-if="index > 0 && starredAgents.length"
-                                type="button"
-                                class="pick-agent"
-                                @click="openAgentPicker(index)"
-                            >
-                                Pick agent
-                            </button>
+                            <p>Username or address</p>
                         </div>
                         <input v-model="signer.address" type="text" :disabled="signer.disabled"
-                            placeholder="Wallet Address" />
+                            placeholder="0x… or @username" />
                     </div>
                 </div>
             </div>
@@ -243,47 +384,19 @@ onMounted(() => {
                         <p>Cancel</p>
                     </button>
 
-                    <button @click="confirm" :disabled="!isValid">
+                    <button @click="confirm" :disabled="!isValid || resolving">
                         <CheckIcon />
-                        <p>Confirm</p>
+                        <p>{{ resolving ? 'Resolving…' : 'Confirm' }}</p>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div v-if="agentPickerOpen" class="picker" role="dialog" aria-modal="true" aria-label="Pick agent">
-        <div class="picker-card">
-            <div class="picker-head">
-                <p class="picker-title">Starred agents</p>
-                <button type="button" class="picker-close" @click="agentPickerOpen = false">Close</button>
-            </div>
-            <p v-if="!starredAgents.length" class="picker-muted">Star agents in the Agents tab to pick them here.</p>
-            <div v-else class="picker-list">
-                <button
-                    v-for="a in starredAgents"
-                    :key="a.id"
-                    type="button"
-                    class="picker-row"
-                    :disabled="!a.agentWallet"
-                    @click="a.agentWallet && applyAgentToRow(a.agentWallet)"
-                >
-                    <div class="picker-main">
-                        <p class="picker-name">{{ a.name }}</p>
-                        <p class="picker-sub">
-                            <span v-if="a.agentWallet">{{ a.agentWallet }}</span>
-                            <span v-else>Missing agent wallet</span>
-                        </p>
-                    </div>
-                    <span class="picker-cta">Use</span>
-                </button>
-            </div>
-        </div>
-    </div>
 </template>
 
 <style scoped>
-.overlay {
+.root {
     top: 0;
     left: 0;
     right: 0;
@@ -297,11 +410,26 @@ onMounted(() => {
     justify-content: center;
 }
 
+.root--sheet {
+    position: static;
+    inset: unset;
+    background: transparent;
+    backdrop-filter: none;
+    z-index: auto;
+    display: block;
+}
+
 .form {
     width: 450px;
     border-radius: var(--radius-16);
     background: var(--bg);
     overflow: hidden;
+}
+
+.form--sheet {
+    width: 100%;
+    border-radius: 0;
+    background: transparent;
 }
 
 .title {
@@ -373,14 +501,56 @@ onMounted(() => {
     background: var(--bg-light);
 }
 
-.pct-val {
+.amt-readout {
+    flex-shrink: 0;
+    width: 110px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bg-lightest);
+    border-radius: var(--radius-8);
+    background: var(--bg-light);
+}
+
+.amt-val {
     font-size: 14px;
     font-weight: 600;
     color: var(--tx-normal);
     font-variant-numeric: tabular-nums;
 }
 
-.pct-lbl {
+.amt-lbl {
+    font-size: 10px;
+    color: var(--tx-dimmed);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.slider-row {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.pct-slider {
+    width: 100%;
+    accent-color: var(--primary);
+}
+
+.slider-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 12px;
+    color: var(--tx-semi);
+    font-variant-numeric: tabular-nums;
+}
+
+.slider-hint {
     font-size: 10px;
     color: var(--tx-dimmed);
     text-transform: uppercase;
@@ -403,6 +573,28 @@ onMounted(() => {
     max-height: calc(100vh - 280px);
     padding: 30px;
     border-top: 1px solid var(--bg-lightest);
+}
+
+.root--sheet .scroll {
+    max-height: none;
+    padding: 18px 0;
+}
+
+.root--sheet .title {
+    padding: 8px 0 12px;
+}
+
+.root--sheet .split-pct-bar {
+    padding: 12px 0;
+}
+
+.root--sheet .actions {
+    padding: 18px 0 0;
+}
+
+.root--sheet .signer_card {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
 }
 
 .signer_card {
@@ -473,17 +665,6 @@ onMounted(() => {
 .address p {
     font-size: 14px;
     color: var(--tx-semi);
-}
-
-.pick-agent {
-    height: 28px;
-    padding: 0 10px;
-    border-radius: var(--radius-6);
-    background: rgba(245, 95, 20, 0.12);
-    border: 1px solid rgba(245, 95, 20, 0.35);
-    color: var(--primary-light);
-    font-size: 12px;
-    cursor: pointer;
 }
 
 .address input {
@@ -571,110 +752,5 @@ onMounted(() => {
     display: grid;
     gap: 10px;
     grid-template-columns: repeat(2, 1fr);
-}
-
-.picker {
-    position: fixed;
-    inset: 0;
-    z-index: 120;
-    background: rgba(51, 51, 51, 0.35);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 18px;
-}
-
-.picker-card {
-    width: min(520px, 100%);
-    border-radius: var(--radius-16);
-    background: var(--bg);
-    border: 1px solid var(--bg-lightest);
-    overflow: hidden;
-}
-
-.picker-head {
-    padding: 16px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    border-bottom: 1px solid var(--bg-lightest);
-    background: var(--bg-light);
-}
-
-.picker-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--tx-normal);
-}
-
-.picker-close {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: var(--radius-8);
-    border: 1px solid var(--bg-lightest);
-    background: transparent;
-    color: var(--tx-semi);
-    cursor: pointer;
-}
-
-.picker-muted {
-    margin: 0;
-    padding: 16px 18px;
-    font-size: 13px;
-    color: var(--tx-dimmed);
-}
-
-.picker-list {
-    padding: 10px 12px 14px;
-    display: grid;
-    gap: 10px;
-}
-
-.picker-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-    border-radius: var(--radius-12);
-    border: 1px solid var(--bg-lightest);
-    background: rgba(0, 0, 0, 0.12);
-    color: var(--tx-normal);
-    padding: 12px 12px;
-    cursor: pointer;
-    text-align: left;
-}
-
-.picker-row:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-
-.picker-main {
-    min-width: 0;
-    flex: 1;
-}
-
-.picker-name {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.picker-sub {
-    margin: 6px 0 0;
-    font-size: 12px;
-    color: var(--tx-dimmed);
-    word-break: break-all;
-}
-
-.picker-cta {
-    flex-shrink: 0;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--primary-light);
 }
 </style>

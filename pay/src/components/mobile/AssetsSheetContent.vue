@@ -9,8 +9,8 @@ const assets = computed((): AssetRow[] => {
   return getTokens.map((t) => ({
     sym: t.symbol,
     name: t.name,
-    bal: "0.42",
-    fiat: "$1,204.00",
+    bal: "—",
+    fiat: "—",
     image: t.image || DEFAULT_PLACEHOLDER_IMAGE,
   }));
 });
@@ -22,7 +22,7 @@ function onTokenImgError(e: Event) {
 </script>
 
 <template>
-  <p class="muted">Tokens available for payments (demo balances).</p>
+  <p class="muted">Tokens available for payments.</p>
   <ul class="asset-list">
     <li v-for="a in assets" :key="a.sym" class="asset">
       <img class="asset-ico" :src="a.image" width="42" height="42" alt="" @error="onTokenImgError" />

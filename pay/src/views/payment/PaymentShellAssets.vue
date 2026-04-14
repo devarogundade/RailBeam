@@ -9,22 +9,20 @@ const USDC_ICON =
 
 type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string };
 
-const staticExtras: AssetRow[] = [
-  { sym: "USDC", name: "USD Coin", bal: "350.00", fiat: "$350.00", image: USDC_ICON },
-  { sym: "BEAM", name: "Beam credits", bal: "—", fiat: "Demo", image: DEFAULT_PLACEHOLDER_IMAGE },
-];
-
 const assets = computed((): AssetRow[] => {
-  const chainSyms = new Set(getTokens.map((t) => t.symbol));
   const fromChain: AssetRow[] = getTokens.map((t) => ({
     sym: t.symbol,
     name: t.name,
-    bal: "0.42",
-    fiat: "$1,204.00",
+    bal: "—",
+    fiat: "—",
     image: t.image || DEFAULT_PLACEHOLDER_IMAGE,
   }));
-  const extras = staticExtras.filter((e) => !chainSyms.has(e.sym));
-  return [...fromChain, ...extras];
+  // Include a USDC icon if it exists in `getTokens` (no synthetic extras).
+  return fromChain.map((a) =>
+    a.sym === "USDC" && (!a.image || a.image === DEFAULT_PLACEHOLDER_IMAGE)
+      ? { ...a, image: USDC_ICON }
+      : a
+  );
 });
 </script>
 

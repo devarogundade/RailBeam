@@ -1,38 +1,25 @@
 <script setup lang="ts">
 import { useWalletStore } from '@/stores/wallet';
-import { computed, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { getTokens } from 'beam-ts';
 import type { Token } from "beam-ts";
-import type { Plan } from "@/types/app";
+import type { Plan } from "beam-ts";
 import type { Hex } from 'viem';
+import { formatUnits } from 'viem';
 import { notify } from '@/reactives/notify';
 import QrcodeVue from 'qrcode.vue';
 import Converter from '@/scripts/converter';
 import { getToken } from 'beam-ts';
 import CopyIcon from '@/components/icons/CopyIcon.vue';
 import { useBeamPlansQuery } from '@/query/beam';
+import StorageImage from '@/components/StorageImage.vue';
+import { Client } from '@/scripts/client';
+import type { CreateTransactionPayload } from '@/types/app';
 
 type PaymentKind = 'one-time' | 'recurrent';
 
-type IntentPayload =
-    | {
-        v: 1;
-        kind: 'onetime';
-        merchant: Hex;
-        token: Hex;
-        amount: string;
-        description?: string;
-    }
-    | {
-        v: 1;
-        kind: 'recurrent';
-        merchant: Hex;
-        subscriptionId: Hex;
-        description?: string;
-    };
-
 const PAYMENT_APP_URL =
-    import.meta.env.VITE_BEAM_TRANSACTION_URL ?? 'https://beam-payment.netlify.app';
+    import.meta.env.VITE_BEAM_TRANSACTION_URL!;
 
 const walletStore = useWalletStore();
 const paymentKind = ref<PaymentKind>('one-time');
@@ -42,11 +29,18 @@ const tokens = ref<Token[]>([]);
 const form = ref({
     amount: '' as string | number,
     description: '',
+    splitPayment: false,
 });
 
 const plans = ref<Plan[]>([]);
 const plansLoading = ref(false);
 const selectedPlan = ref<Plan | null>(null);
+const plansDropdownOpen = ref(false);
+
+const getPlanImage = (plan: Plan | null | undefined) => {
+    if (!plan) return undefined;
+    return plan.images?.[0];
+};
 
 const paymentLink = ref('');
 const generating = ref(false);
@@ -62,21 +56,10 @@ const syncTokens = () => {
     }
 };
 
-function encodeIntentBase64Url(payload: IntentPayload): string {
-    const json = JSON.stringify(payload);
-    const bytes = new TextEncoder().encode(json);
-    let binary = '';
-    bytes.forEach((b) => {
-        binary += String.fromCharCode(b);
-    });
-    const b64 = btoa(binary);
-    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function buildPaymentUrl(intent: IntentPayload): string {
+function buildPaymentUrl(transactionId: string): string {
     const session = crypto.randomUUID();
     const url = new URL(PAYMENT_APP_URL);
-    url.searchParams.set('intent', encodeIntentBase64Url(intent));
+    url.searchParams.set('txn', transactionId);
     url.searchParams.set('initiator', window.location.origin);
     url.searchParams.set('session', session);
     return url.toString();
@@ -110,7 +93,7 @@ watchEffect(() => {
     }
 });
 
-const generatePaymentLink = () => {
+const generatePaymentLink = async () => {
     if (!walletStore.merchant) {
         notify.push({
             title: 'Merchant not loaded',
@@ -131,15 +114,16 @@ const generatePaymentLink = () => {
                 });
                 return;
             }
-            const intent: IntentPayload = {
-                v: 1,
+            const payload: CreateTransactionPayload = {
                 kind: 'onetime',
                 merchant: walletStore.merchant.merchant,
                 token: token.value.address,
                 amount: String(form.value.amount).trim(),
                 description: form.value.description.trim() || undefined,
+                splitPayment: form.value.splitPayment || undefined,
             };
-            paymentLink.value = buildPaymentUrl(intent);
+            const created = await Client.createTransaction(payload);
+            paymentLink.value = buildPaymentUrl(created.id);
         } else {
             if (!canGenerateRecurrent.value || !selectedPlan.value) {
                 notify.push({
@@ -149,14 +133,14 @@ const generatePaymentLink = () => {
                 });
                 return;
             }
-            const intent: IntentPayload = {
-                v: 1,
+            const payload: CreateTransactionPayload = {
                 kind: 'recurrent',
                 merchant: walletStore.merchant.merchant,
                 subscriptionId: selectedPlan.value._id as Hex,
                 description: form.value.description.trim() || undefined,
             };
-            paymentLink.value = buildPaymentUrl(intent);
+            const created = await Client.createTransaction(payload);
+            paymentLink.value = buildPaymentUrl(created.id);
         }
 
         notify.push({
@@ -204,7 +188,8 @@ const sdkSnippet = computed(() => {
         const m = walletStore.merchant.merchant;
         const t = token.value.address;
         const a = String(form.value.amount).trim();
-        return `import { parseEther } from 'viem';
+        const splitPayment = form.value.splitPayment ? 'true' : 'false';
+        return `import { parseUnits } from 'viem';
 import { beamSdk } from '@/scripts/beamSdk';
 import { SCHEMA_JSON } from 'beam-ts';
 
@@ -214,11 +199,11 @@ const payer = '0x…' as \`0x\${string}\`;
 const result = await beamSdk.oneTimeTransaction.create({
   payers: [payer],
   merchant: '${m}',
-  amounts: [parseEther('${a}')],
+  amounts: [parseUnits('${a}', ${token.value.decimals})],
   token: '${t}',
   description: ${descLiteral},
   metadata: { schemaVersion: SCHEMA_JSON, value: '{}' },
-  splitPayment: false,
+  splitPayment: ${splitPayment},
 });`;
     }
     if (!selectedPlan.value) return '';
@@ -260,7 +245,7 @@ watch(paymentKind, () => {
     paymentLink.value = '';
 });
 
-watch([() => form.value.amount, () => form.value.description, token, selectedPlan], () => {
+watch([() => form.value.amount, () => form.value.description, () => form.value.splitPayment, token, selectedPlan], () => {
     paymentLink.value = '';
 });
 
@@ -271,8 +256,20 @@ watch(
     }
 );
 
+const onDocClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest?.('[data-plans-dropdown]')) return;
+    plansDropdownOpen.value = false;
+};
+
 onMounted(() => {
     syncTokens();
+    document.addEventListener('click', onDocClick);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', onDocClick);
 });
 </script>
 
@@ -297,76 +294,125 @@ onMounted(() => {
 
             <div class="layout">
                 <div class="form">
-                <template v-if="paymentKind === 'one-time'">
-                    <div class="asset">
-                        <div class="field_label">
-                            <p>Asset</p>
-                        </div>
-                        <div v-if="tokens.length === 0" class="empty_tokens">
-                            <p>No tokens available for this merchant.</p>
-                        </div>
-                        <div v-else class="tokens">
-                            <div v-for="t in tokens" :key="t.address"
-                                :class="t.address === token?.address ? 'token token_selected' : 'token'"
-                                @click="token = t">
-                                <div class="token_info">
-                                    <img :src="t.image" alt="">
-                                    <p>{{ t.symbol }}</p>
-                                </div>
-                                <div class="radio">
-                                    <div>
-                                        <span></span>
+                    <template v-if="paymentKind === 'one-time'">
+                        <div class="asset">
+                            <div class="field_label">
+                                <p>Asset</p>
+                            </div>
+                            <div v-if="tokens.length === 0" class="empty_tokens">
+                                <p>No tokens available for this merchant.</p>
+                            </div>
+                            <div v-else class="tokens">
+                                <div v-for="t in tokens" :key="t.address"
+                                    :class="t.address === token?.address ? 'token token_selected' : 'token'"
+                                    @click="token = t">
+                                    <div class="token_info">
+                                        <StorageImage :src="t.image" alt="" />
+                                        <p>{{ t.symbol }}</p>
+                                    </div>
+                                    <div class="radio">
+                                        <div>
+                                            <span></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+
+                        <div class="inputs">
+                            <div class="field_label">
+                                <p>Amount</p>
+                            </div>
+                            <div class="input_grid">
+                                <p>{{ token?.symbol ?? '—' }}</p>
+                                <input type="number" v-model="form.amount" min="0" step="any" placeholder="0"
+                                    :disabled="!token">
+                            </div>
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <div class="recurrent_fields">
+                            <div class="field_label recurrent_label">
+                                <p>Subscription plan</p>
+                            </div>
+                            <div v-if="!walletStore.address" class="empty_tokens">
+                                <p>Connect your wallet to load plans.</p>
+                            </div>
+                            <div v-else-if="plansLoading" class="empty_tokens">
+                                <p>Loading plans…</p>
+                            </div>
+                            <div v-else-if="plans.length === 0" class="empty_tokens">
+                                <p>No plans yet. Create one under Subscriptions.</p>
+                            </div>
+                            <div v-else class="plans_dropdown" data-plans-dropdown>
+                                <button type="button" class="plans_trigger"
+                                    :aria-expanded="plansDropdownOpen ? 'true' : 'false'"
+                                    @click="plansDropdownOpen = !plansDropdownOpen">
+                                    <template v-if="selectedPlan">
+                                        <div class="plans_trigger_left">
+                                            <StorageImage class="plans_token_img" :src="getPlanImage(selectedPlan)"
+                                                alt="" />
+                                            <div class="plans_trigger_text">
+                                                <span class="plans_trigger_name">{{ selectedPlan.name }}</span>
+                                                <span class="plans_trigger_amt">{{
+                                                    Converter.toMoney(
+                                                        formatUnits(selectedPlan.amount,
+                                                            getToken(selectedPlan.token)?.decimals ?? 18)
+                                                    )
+                                                    }} {{ getToken(selectedPlan.token)?.symbol }}</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <span class="plans_placeholder">Choose a plan…</span>
+                                    </template>
+                                    <span class="plans_chev" aria-hidden="true"></span>
+                                </button>
+
+                                <div v-if="plansDropdownOpen" class="plans_menu" role="listbox"
+                                    aria-label="Subscription plans">
+                                    <button v-for="plan in plans" :key="plan._id" type="button" class="plans_option"
+                                        :class="{ plans_option_selected: selectedPlan?._id === plan._id }" role="option"
+                                        :aria-selected="selectedPlan?._id === plan._id ? 'true' : 'false'"
+                                        @click="selectedPlan = plan; plansDropdownOpen = false">
+                                        <StorageImage class="plans_token_img" :src="getPlanImage(plan)" alt="" />
+                                        <div class="plans_option_text">
+                                            <span class="plans_option_name">{{ plan.name }}</span>
+                                            <span class="plans_option_amt">{{
+                                                Converter.toMoney(
+                                                    formatUnits(plan.amount, getToken(plan.token)?.decimals ?? 18)
+                                                )
+                                                }} {{ getToken(plan.token)?.symbol }}</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
 
                     <div class="inputs">
                         <div class="field_label">
-                            <p>Amount</p>
+                            <p>Description <span class="optional">optional</span></p>
                         </div>
-                        <div class="input_grid">
-                            <p>{{ token?.symbol ?? '—' }}</p>
-                            <input type="number" v-model="form.amount" min="0" step="any" placeholder="0"
-                                :disabled="!token">
-                        </div>
+                        <textarea v-model="form.description" rows="3"
+                            placeholder="Shown to the customer at checkout"></textarea>
                     </div>
-                </template>
 
-                <template v-else>
-                    <div class="recurrent_fields">
-                        <div class="field_label recurrent_label">
-                            <p>Subscription plan</p>
+                    <div v-if="paymentKind === 'one-time'" class="inputs">
+                        <div class="field_label">
+                            <p>Split payment <span class="optional">optional</span></p>
                         </div>
-                        <div v-if="!walletStore.address" class="empty_tokens">
-                            <p>Connect your wallet to load plans.</p>
-                        </div>
-                        <div v-else-if="plansLoading" class="empty_tokens">
-                            <p>Loading plans…</p>
-                        </div>
-                        <div v-else-if="plans.length === 0" class="empty_tokens">
-                            <p>No plans yet. Create one under Subscriptions.</p>
-                        </div>
-                        <div v-else class="plan_list" role="listbox" aria-label="Subscription plans">
-                            <button v-for="plan in plans" :key="plan._id" type="button"
-                                :class="selectedPlan?._id === plan._id ? 'plan_row plan_row_selected' : 'plan_row'"
-                                role="option" :aria-selected="selectedPlan?._id === plan._id"
-                                @click="selectedPlan = plan">
-                                <span class="plan_name">{{ plan.name }}</span>
-                                <span class="plan_amt">{{ Converter.toMoney(plan.amount) }} {{
-                                    getToken(plan.token)?.symbol }}</span>
-                            </button>
-                        </div>
+                        <label class="split_toggle_row" :class="{ split_toggle_row_on: form.splitPayment }">
+                            <input v-model="form.splitPayment" class="sr_only" type="checkbox" />
+                            <span class="split_toggle_radio" aria-hidden="true">
+                                <span class="split_toggle_radio__ring">
+                                    <span class="split_toggle_radio__dot" />
+                                </span>
+                            </span>
+                            <span>Enable split payment</span>
+                        </label>
                     </div>
-                </template>
-
-                <div class="inputs">
-                    <div class="field_label">
-                        <p>Description <span class="optional">optional</span></p>
-                    </div>
-                    <textarea v-model="form.description" rows="3" placeholder="Shown to the customer at checkout"></textarea>
-                </div>
 
                     <div class="actions">
                         <button type="button" class="btn_primary" :disabled="generating || (paymentKind === 'one-time'
@@ -719,7 +765,7 @@ onMounted(() => {
     gap: 12px;
 }
 
-.token_info img {
+.token_info :deep(img) {
     width: 20px;
     height: 20px;
     border-radius: 10px;
@@ -769,6 +815,68 @@ onMounted(() => {
 
 .inputs+.inputs {
     margin-top: 24px;
+}
+
+.sr_only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.split_toggle_row {
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid var(--bg-lightest);
+    background: var(--bg);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--tx-normal);
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.split_toggle_radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    border: 1px solid var(--bg-lightest);
+    background: var(--bg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.split_toggle_radio__ring {
+    width: 10px;
+    height: 10px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.split_toggle_radio__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 10px;
+}
+
+.split_toggle_row_on .split_toggle_radio {
+    border-color: var(--primary-light);
+}
+
+.split_toggle_row_on .split_toggle_radio__dot {
+    background: var(--primary);
 }
 
 .input_grid {
@@ -829,44 +937,131 @@ onMounted(() => {
     color: var(--tx-dimmed);
 }
 
-.plan_list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 280px;
-    padding-right: 6px;
-    overflow-y: auto;
+.plans_dropdown {
+    position: relative;
 }
 
-.plan_row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+.plans_trigger {
     width: 100%;
     min-height: 48px;
-    padding: 14px 16px;
-    text-align: left;
+    padding: 12px 14px;
     border-radius: 8px;
     border: 1px solid var(--bg-lightest);
     background: var(--bg);
     cursor: pointer;
     color: var(--tx-normal);
-    font-size: 14px;
-    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: left;
 }
 
-.plan_row_selected {
-    border-color: var(--primary-light);
+.plans_trigger_left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.plans_token_img {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    flex-shrink: 0;
+}
+
+.plans_trigger_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.plans_trigger_name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plans_trigger_amt {
+    font-size: 13px;
+    color: var(--tx-semi);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plans_placeholder {
+    color: var(--tx-dimmed);
+    font-size: 14px;
+}
+
+.plans_chev {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid var(--tx-dimmed);
+    border-bottom: 2px solid var(--tx-dimmed);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+.plans_menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 10;
+    border-radius: 10px;
+    border: 1px solid var(--bg-lightest);
+    background: var(--bg);
+    overflow: hidden;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.plans_option {
+    width: 100%;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--tx-normal);
+}
+
+.plans_option:hover {
+    background: var(--bg-light);
+}
+
+.plans_option_selected {
     background: var(--bg-lighter);
 }
 
-.plan_name {
-    font-weight: 500;
+.plans_option_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
 
-.plan_amt {
+.plans_option_name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plans_option_amt {
+    font-size: 13px;
     color: var(--tx-semi);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 </style>

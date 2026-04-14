@@ -6,6 +6,7 @@ import {
 import type {
   TransactionCallback,
   Transaction,
+  GetPayerTransactions,
   GetTransactions,
   GetTransaction,
   SubscriptionPlan,
@@ -39,6 +40,8 @@ export interface IRecurrentTransaction {
   getTransactions(params: GetTransactions): Promise<Transaction[]>;
 
   getTransactionsFromHash(params: GetTransactionHash): Promise<Transaction[]>;
+
+  getPayerTransactions(params: GetPayerTransactions): Promise<Transaction[]>;
 
   getRecurrentTransactions(params: GetTransactions): Promise<Transaction[]>;
 }

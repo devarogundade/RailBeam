@@ -54,8 +54,30 @@ export type GetTransactions = {
   status?: TransactionStatus;
 };
 
+/** List transactions where `payer` is the primary payer (no merchant filter). */
+export type GetPayerTransactions = {
+  payer: Hex;
+  page: number;
+  limit: number;
+  status?: TransactionStatus;
+  type?: TransactionType;
+};
+
 export type GetMerchant = {
   merchant: Hex;
+};
+
+export type GetUser = {
+  user: Hex;
+};
+
+export type GetUsers = {
+  page: number;
+  limit: number;
+};
+
+export type GetUserByUsername = {
+  username: string;
 };
 
 export type GetAgent = {
@@ -201,6 +223,16 @@ export type AgentMetadata = {
   key: string;
   value: Hex;
   updatedBy: Hex;
+  blockNumber: number;
+  blockTimestamp: number;
+  transactionHash: Hex;
+};
+
+export type User = {
+  id: Hex;
+  user: Hex;
+  username: string;
+  metadataURI: string;
   blockNumber: number;
   blockTimestamp: number;
   transactionHash: Hex;

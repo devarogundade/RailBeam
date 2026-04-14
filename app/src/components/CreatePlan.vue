@@ -12,6 +12,7 @@ import { getTokens } from 'beam-ts';
 import { parseUnits } from 'viem';
 import { notify } from '@/reactives/notify';
 import type { Token } from "beam-ts";
+import StorageImage from '@/components/StorageImage.vue';
 
 const emit = defineEmits(['close', 'refresh']);
 const walletStore = useWalletStore();
@@ -176,13 +177,14 @@ onUnmounted(() => {
 
                     <div class="file">
                         <div class="upload">
-                            <img :src="selectedImageURLs[selectedImage] ? selectedImageURLs[selectedImage] : `/images/placeholder.png`"
-                                alt="">
+                            <StorageImage
+                                :src="selectedImageURLs[selectedImage] ? selectedImageURLs[selectedImage] : `/images/placeholder.png`"
+                                alt="" />
 
                             <div class="tabs">
                                 <div v-for="imageURL, index in selectedImageURLs" @click="selectedImage = index"
                                     :class="selectedImage == index ? 'tab tab_active' : 'tab'" :key="index">
-                                    <img :src="imageURL ? imageURL : `/images/placeholder.png`" alt="">
+                                    <StorageImage :src="imageURL ? imageURL : `/images/placeholder.png`" alt="" />
                                 </div>
                             </div>
                         </div>
@@ -233,7 +235,7 @@ onUnmounted(() => {
                                 :class="t.address == token?.address ? 'token token_selected' : 'token'"
                                 @click="token = t">
                                 <div class="token_info">
-                                    <img :src="t.image" alt="">
+                                    <StorageImage :src="t.image" alt="" />
                                     <p>{{ t.symbol }}</p>
                                 </div>
                                 <div class="radio">
@@ -347,7 +349,7 @@ onUnmounted(() => {
 }
 
 
-.upload>img {
+.upload>:deep(img) {
     width: 190px;
     height: 190px;
     border-radius: 12px;
@@ -365,7 +367,7 @@ onUnmounted(() => {
     cursor: pointer;
 }
 
-.tab img {
+.tab :deep(img) {
     width: 40px;
     height: 40px;
     border-radius: 8px;
@@ -373,7 +375,7 @@ onUnmounted(() => {
     border: 1px solid var(--bg-lightest);
 }
 
-.tab_active img {
+.tab_active :deep(img) {
     border: 1px solid var(--tx-semi);
 }
 
@@ -551,7 +553,7 @@ onUnmounted(() => {
     gap: 12px;
 }
 
-.token_info img {
+.token_info :deep(img) {
     width: 20px;
     height: 20px;
     border-radius: 10px;

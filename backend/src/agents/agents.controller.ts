@@ -11,6 +11,7 @@ export class AgentsController {
     @Body()
     body: {
       message?: string;
+      userAddress?: string;
       network?: string;
       providerAddress?: string;
     },
@@ -35,6 +36,7 @@ export class AgentsController {
       agentId,
       message,
       network: body.network,
+      userAddress: body.userAddress,
       providerAddress: body.providerAddress,
     });
   }

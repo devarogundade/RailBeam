@@ -57,8 +57,8 @@ function addFunds() {
   }
   const sym = selectedToken.value?.symbol ?? "—";
   notify.push({
-    title: "Demo top-up",
-    description: `Added ${amount.value} ${sym} (${usdEquivalentDisplay.value}) from wallet (demo).`,
+    title: "Top-up",
+    description: `Top-ups aren’t enabled in this shell yet (requested ${amount.value} ${sym} ${usdEquivalentDisplay.value}).`,
     category: "success",
   });
   router.push({ name: "payment-home" });

@@ -40,5 +40,5 @@ export type RegisterHook = {
 
 export type MetadataEntry = {
   metadataKey: string;
-  metadataValue: string;
+  metadataValue: Hex;
 };

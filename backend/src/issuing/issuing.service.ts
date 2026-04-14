@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { UsersService } from '../users/users.service';
+import type { UserDocument } from '../users/schemas/user.schema';
 
 export type VirtualCardSummary = {
   walletAddress: string;
@@ -21,6 +22,17 @@ type IssuingCardLike = {
   brand?: string | null;
   exp_month?: number | null;
   exp_year?: number | null;
+};
+
+/** Stripe webhook payload after constructEvent (stripe-node v22). */
+type StripeIssuingCardWebhookEvent = {
+  type: string;
+  data: {
+    object: IssuingCardLike & {
+      metadata?: { wallet_address?: string };
+      cardholder?: string | { id?: string };
+    };
+  };
 };
 
 @Injectable()
@@ -45,7 +57,6 @@ export class IssuingService {
 
   private billingDefaults() {
     return {
-      name: this.config.get<string>('ISSUING_CARDHOLDER_NAME', 'Beam User'),
       line1: this.config.get<string>('ISSUING_BILLING_LINE1', '123 Market St'),
       city: this.config.get<string>('ISSUING_BILLING_CITY', 'San Francisco'),
       country: this.config.get<string>('ISSUING_BILLING_COUNTRY', 'US'),
@@ -53,14 +64,22 @@ export class IssuingService {
     };
   }
 
-  private async ensureCardholder(wallet: string): Promise<string> {
+  private async ensureCardholder(
+    wallet: string,
+    opts?: { name: string; email?: string; phone?: string },
+  ): Promise<string> {
     const user = await this.users.findByWallet(wallet);
     if (user?.stripeCardholderId) return user.stripeCardholderId;
     const b = this.billingDefaults();
+    const name = opts?.name?.trim()!;
+    const email = opts?.email?.trim();
+    const phone_number = opts?.phone?.trim();
     const cardholder = await this.stripe.issuing.cardholders.create({
       type: 'individual',
-      name: b.name,
-      metadata: { wallet_address: wallet },
+      name,
+      email,
+      phone_number,
+      metadata: { wallet },
       billing: {
         address: {
           line1: b.line1,
@@ -76,7 +95,10 @@ export class IssuingService {
     return cardholder.id;
   }
 
-  async ensureVirtualCard(wallet: string): Promise<VirtualCardSummary> {
+  async ensureVirtualCard(
+    wallet: string,
+    opts?: { name: string; email?: string; phone?: string },
+  ): Promise<VirtualCardSummary> {
     if (!this.config.get<string>('STRIPE_SECRET_KEY')) {
       throw new BadRequestException('Stripe is not configured');
     }
@@ -102,7 +124,7 @@ export class IssuingService {
       return summary;
     }
 
-    const cardholderId = await this.ensureCardholder(wallet);
+    const cardholderId = await this.ensureCardholder(wallet, opts);
     const card = (await this.stripe.issuing.cards.create({
       cardholder: cardholderId,
       currency: 'usd',
@@ -122,6 +144,112 @@ export class IssuingService {
       summary as unknown as Record<string, unknown>,
     );
     return summary;
+  }
+
+  /**
+   * Current card for the wallet, or null if none. When refresh is true, loads from Stripe.
+   */
+  async getVirtualCardSummary(
+    wallet: string,
+    refresh = true,
+  ): Promise<VirtualCardSummary | null> {
+    if (!this.config.get<string>('STRIPE_SECRET_KEY')) {
+      throw new BadRequestException('Stripe is not configured');
+    }
+    if (!refresh) {
+      const cached = await this.users.getCachedIssuingSummary(wallet);
+      if (cached && typeof cached.stripeCardId === 'string') {
+        return cached as unknown as VirtualCardSummary;
+      }
+    }
+    const existing = await this.users.findByWallet(wallet);
+    if (!existing?.stripeCardId) return null;
+    const card = (await this.stripe.issuing.cards.retrieve(
+      existing.stripeCardId,
+    )) as IssuingCardLike;
+    const summary = this.toSummary(
+      wallet,
+      existing.stripeCardholderId ?? '',
+      card,
+    );
+    await this.users.setStripeIds(wallet, {
+      lastIssuedCardStatus: card.status ?? undefined,
+    });
+    await this.users.setCachedIssuingSummary(
+      wallet,
+      summary as unknown as Record<string, unknown>,
+    );
+    return summary;
+  }
+
+  /**
+   * Stripe Issuing webhooks (configure endpoint + signing secret in Dashboard).
+   */
+  async handleStripeWebhook(
+    rawBody: Buffer,
+    signature: string | undefined,
+  ): Promise<{ received: boolean }> {
+    const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    if (!secret) {
+      throw new BadRequestException('STRIPE_WEBHOOK_SECRET is not set');
+    }
+    if (!signature) {
+      throw new BadRequestException('Missing stripe-signature header');
+    }
+    let event: StripeIssuingCardWebhookEvent;
+    try {
+      event = this.stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        secret,
+      ) as StripeIssuingCardWebhookEvent;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'invalid payload';
+      this.logger.warn(`Webhook signature failed: ${msg}`);
+      throw new BadRequestException('Invalid webhook signature');
+    }
+
+    await this.applyIssuingWebhookEvent(event);
+    return { received: true };
+  }
+
+  private async applyIssuingWebhookEvent(
+    event: StripeIssuingCardWebhookEvent,
+  ): Promise<void> {
+    if (
+      event.type !== 'issuing_card.updated' &&
+      event.type !== 'issuing_card.created'
+    ) {
+      return;
+    }
+    const card = event.data.object;
+    const walletFromMeta = card.metadata?.wallet_address?.toLowerCase();
+    let user: UserDocument | null = null;
+    if (walletFromMeta) {
+      user = await this.users.findByWallet(walletFromMeta);
+    }
+    if (!user) {
+      user = await this.users.findByStripeCardId(card.id);
+    }
+    if (!user) {
+      this.logger.debug(`No user for issuing card webhook ${card.id}`);
+      return;
+    }
+    const wallet = user.walletAddress;
+    const cardholderId =
+      user.stripeCardholderId ??
+      (typeof card.cardholder === 'string'
+        ? card.cardholder
+        : card.cardholder?.id) ??
+      '';
+    const summary = this.toSummary(wallet, cardholderId, card);
+    await this.users.setStripeIds(wallet, {
+      lastIssuedCardStatus: card.status ?? undefined,
+    });
+    await this.users.setCachedIssuingSummary(
+      wallet,
+      summary as unknown as Record<string, unknown>,
+    );
   }
 
   private toSummary(

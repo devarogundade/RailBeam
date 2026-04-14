@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { inject } from "vue";
+import { computed, inject } from "vue";
 import { useRouter } from "vue-router";
 import { useWalletStore } from "@/stores/wallet";
-import WalletIcon from "@/components/icons/WalletIcon.vue";
 import PlusIcon from "@/components/icons/PlusIcon.vue";
 import ShellTransactionCard from "@/components/shell/ShellTransactionCard.vue";
-import { DEMO_SHELL_SUBSCRIPTIONS } from "@/data/demoShellSubscriptions";
-import { DEMO_SHELL_TRANSACTIONS } from "@/data/demoShellTransactions";
+import {
+  usePayerShellSubscriptions,
+  usePayerShellTransactions,
+} from "@/composables/useBeamShellQueries";
 import { Swiper, SwiperSlide } from "swiper/vue";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
@@ -20,10 +21,45 @@ const assetsApi = inject<AssetsApi>("paymentShellAssets");
 const router = useRouter();
 const walletStore = useWalletStore();
 
-const demoTx = DEMO_SHELL_TRANSACTIONS.slice(0, 3);
-const subs = DEMO_SHELL_SUBSCRIPTIONS;
+const txQuery = usePayerShellTransactions(50);
+const subQuery = usePayerShellSubscriptions();
+const recentTx = computed(() => (txQuery.data.value ?? []).slice(0, 3));
+const subs = computed(() => subQuery.data.value ?? []);
+const txLoading = computed(() => txQuery.isFetching.value);
+const txError = computed(() => (txQuery.error.value as unknown) ?? null);
+
 
 const swiperMods = [Pagination];
+
+function parseSignedAmountNumber(v: string): number {
+  // `ShellTxRow.amount` is formatted like "+0.42 0G" or "-1.0 USDC".
+  const m = v.trim().match(/^([+-]?\d+(?:\.\d+)?)/);
+  const n = m ? Number(m[1]) : NaN;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseSymbol(v: string): string | null {
+  const parts = v.trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  return parts[parts.length - 1] || null;
+}
+
+const primarySymbol = computed(() => {
+  const rows = txQuery.data.value ?? [];
+  for (const r of rows) {
+    const sym = parseSymbol(r.amount);
+    if (sym) return sym;
+  }
+  return "TOKEN";
+});
+
+const netBalance = computed(() => {
+  const rows = txQuery.data.value ?? [];
+  const net = rows.reduce((acc, r) => acc + parseSignedAmountNumber(r.amount), 0);
+  const rounded = Math.round(net * 10_000) / 10_000;
+  return `${rounded} ${primarySymbol.value}`;
+});
+
 </script>
 
 <template>
@@ -43,7 +79,7 @@ const swiperMods = [Pagination];
                 {{ walletStore.address ? "Connected" : "Connect wallet" }}
               </p>
             </div>
-            <p class="bal-amt">{{ walletStore.address ? "$1,204.00" : "$0.00" }}</p>
+            <p class="bal-amt">{{ walletStore.address ? netBalance : `0 ${primarySymbol}` }}</p>
             <p class="bal-sub">
               {{ walletStore.address ? "Tap to view assets" : "Connect to see your assets" }}
             </p>
@@ -58,12 +94,12 @@ const swiperMods = [Pagination];
             <p v-if="card?.cardFrozen?.value" class="frozen-badge">Frozen</p>
             <div class="v-card-top">
               <span class="network">VISA</span>
-              <span class="dots">···· {{ walletStore.address?.slice(-4) ?? "4242" }}</span>
-              <span class="exp">Exp 12/28</span>
+              <span class="dots">···· {{ walletStore.address?.slice(-4) ?? "—" }}</span>
+              <span class="exp">Exp —</span>
             </div>
             <div class="v-card-mid">
               <p class="bal-label">Card</p>
-              <p class="bal-val">$1,732.10</p>
+              <p class="bal-val">—</p>
             </div>
             <button type="button" class="fab-plus" aria-label="Add funds"
               @click.stop="router.push({ name: 'payment-fund' })">
@@ -72,21 +108,6 @@ const swiperMods = [Pagination];
           </div>
         </SwiperSlide>
       </Swiper>
-    </section>
-    <section class="highlights">
-      <h2>This month</h2>
-      <div class="hl-grid">
-        <div class="hl">
-          <WalletIcon class="hl-ico" />
-          <p class="hl-label">Income</p>
-          <p class="hl-amt">$12,800</p>
-        </div>
-        <div class="hl">
-          <WalletIcon class="hl-ico" />
-          <p class="hl-label">Expenses</p>
-          <p class="hl-amt">$10,200</p>
-        </div>
-      </div>
     </section>
     <section class="quick">
       <h2>Quick actions</h2>
@@ -104,17 +125,26 @@ const swiperMods = [Pagination];
         <h2>Transactions</h2><button type="button" class="linkish"
           @click="router.push({ name: 'payment-activity' })">View all</button>
       </div>
-      <ul class="tx-list">
-        <ShellTransactionCard v-for="t in demoTx" :key="t.id" :tx="t"
+      <p v-if="walletStore.address && txError" class="list-empty">
+        Couldn’t load transactions. Try again in a moment.
+      </p>
+      <p v-else-if="walletStore.address && txLoading && !recentTx.length" class="list-empty">
+        Loading transactions…
+      </p>
+      <p v-if="walletStore.address && !recentTx.length" class="list-empty">No recent transactions.</p>
+      <ul v-else-if="recentTx.length" class="tx-list">
+        <ShellTransactionCard v-for="t in recentTx" :key="t.id" :tx="t"
           @open="router.push({ name: 'payment-tx', params: { id: t.id } })" />
       </ul>
+      <p v-else class="list-empty">Connect a wallet to load activity.</p>
     </section>
     <section class="list-sec">
       <div class="list-head">
         <h2>Subscriptions</h2><button type="button" class="linkish"
           @click="router.push({ name: 'payment-activity' })">Manage</button>
       </div>
-      <ul class="sub-list">
+      <p v-if="walletStore.address && !subs.length" class="list-empty">No subscriptions for this wallet.</p>
+      <ul v-else-if="subs.length" class="sub-list">
         <li v-for="s in subs" :key="s.id" class="sub" role="button" tabindex="0"
           @click="router.push({ name: 'payment-subscription', params: { id: s.id } })"
           @keydown.enter.prevent="router.push({ name: 'payment-subscription', params: { id: s.id } })">
@@ -126,6 +156,7 @@ const swiperMods = [Pagination];
           <p class="sub-amt">{{ s.amount }}</p>
         </li>
       </ul>
+      <p v-else class="list-empty">Connect a wallet to load subscriptions.</p>
     </section>
   </div>
 </template>
@@ -168,7 +199,7 @@ const swiperMods = [Pagination];
   min-height: 168px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: none;
   cursor: pointer;
   text-align: left;
 }
@@ -251,7 +282,7 @@ const swiperMods = [Pagination];
   min-height: 168px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: none;
   cursor: pointer;
   text-align: left;
 }
@@ -554,5 +585,11 @@ const swiperMods = [Pagination];
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.list-empty {
+  font-size: 13px;
+  color: var(--tx-dimmed);
+  padding: 8px 0 4px;
 }
 </style>

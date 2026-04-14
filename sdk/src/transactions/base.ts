@@ -1,5 +1,6 @@
 import { BeamClient } from "../client";
 import type {
+  GetPayerTransactions,
   GetTransaction,
   GetTransactionHash,
   GetTransactions,
@@ -28,7 +29,7 @@ export abstract class BaseTransaction {
   }
 
   protected buildUrl(
-    params: Record<string, Hex | string | number | boolean | undefined>
+    params: Record<string, Hex | string | number | boolean | undefined>,
   ): string {
     const url = new URL(this.transactionURL);
 
@@ -47,7 +48,7 @@ export abstract class BaseTransaction {
   protected async launchTabAndAwaitResult(
     url: string,
     data: any,
-    callback: (data: any) => void
+    callback: (data: any) => void,
   ) {
     if (this.currentTab) {
       throw new Error("Error: an active payment tab detected.");
@@ -127,6 +128,16 @@ export abstract class BaseTransaction {
     return this.graph.getTransactionsFromHash(params.transactionHash);
   }
 
+  getPayerTransactions(params: GetPayerTransactions): Promise<Transaction[]> {
+    return this.graph.getTransactionsByPayer(
+      params.payer,
+      params.page,
+      params.limit,
+      params.status,
+      params.type,
+    );
+  }
+
   getTransactions(params: GetTransactions): Promise<Transaction[]> {
     return this.graph.getTransactions(
       params.merchant,
@@ -137,7 +148,7 @@ export abstract class BaseTransaction {
       params.amountMax,
       params.timestampMin,
       params.timestampMax,
-      params.status
+      params.status,
     );
   }
 }

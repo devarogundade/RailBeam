@@ -41,3 +41,9 @@ export {
   handleValidationRequest,
   handleValidationResponse,
 } from "./validationRegistry";
+
+export {
+  handleUserRegistered,
+  handleUsernameUpdated,
+  handleMetadataURIUpdated,
+} from "./userRegistry";

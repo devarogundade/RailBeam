@@ -6,7 +6,7 @@ import EraserIcon from '@/components/icons/EraserIcon.vue';
 import PendingIcon from '@/components/icons/PendingIcon.vue';
 import ProgressBox from '@/components/ProgressBox.vue';
 import { notify } from '@/reactives/notify';
-import { BeamContract } from '@/scripts/contract';
+import { OneTimeTransactionContract, RecurrentTransactionContract } from '@/scripts/contract';
 import Converter from '@/scripts/converter';
 import Storage from '@/scripts/storage';
 import { Network, TransactionType } from '@/scripts/types';
@@ -49,18 +49,14 @@ const connectWallet = () => {
 };
 
 const receiptToken = computed(() =>
-    transaction.value ? getToken(transaction.value.token) : undefined
+    transaction.value ? getToken(transaction.value.adjustedToken) : undefined
 );
 
 const receiptAmountNumeric = computed(() => {
     const t = transaction.value;
     const tok = receiptToken.value;
     if (!t || !tok) return 0;
-    if (t.type === TransactionType.OneTime) {
-        const raw = t.amounts.reduce((a, b) => a + b, BigInt(0));
-        return Number(formatUnits(raw, tok.decimals ?? 18));
-    }
-    return Number(formatUnits(t.amount, tok.decimals ?? 18));
+    return Number(formatUnits(t.adjustedAmount, tok.decimals ?? 18));
 });
 
 const receiptAmountLabel = computed(() => Converter.toMoney(receiptAmountNumeric.value));
@@ -125,13 +121,13 @@ const mint = async () => {
 
         let transactionHash: Hex | null = null;
         if (transaction.value.type == TransactionType.OneTime) {
-            transactionHash = await BeamContract.mintOneTimeTransactionReceipt({
+            transactionHash = await OneTimeTransactionContract.mintReceipt({
                 to: walletStore.address,
                 transactionId: transaction.value.transactionId,
                 URI: JSON.stringify(metadata)
             });
         } else if (transaction.value.type == TransactionType.Recurrent) {
-            transactionHash = await BeamContract.mintRecurrentTransactionReceipt({
+            transactionHash = await RecurrentTransactionContract.mintReceipt({
                 to: walletStore.address,
                 transactionId: transaction.value.transactionId,
                 URI: JSON.stringify(metadata)
