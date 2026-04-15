@@ -1,5 +1,5 @@
 {
-  "name": "beam-ts",
+  "name": "@railbeam/beam-ts",
   "version": "2.2.6",
   "description": "TS library for beam payment.",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/devarogundade/beam.git"
+    "url": "https://github.com/devarogundade/railbeam.git"
   },
   "keywords": [
     "sdk",

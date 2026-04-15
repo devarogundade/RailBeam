@@ -8,7 +8,7 @@ import Storage from '@/scripts/storage';
 import { beamSdk } from '@/scripts/beamSdk';
 import { getEthersSigner } from '@/scripts/ethersSigner';
 import { MerchantContract } from '@/scripts/contract';
-import { SCHEMA_JSON } from 'beam-ts';
+import { SCHEMA_JSON } from '@railbeam/beam-ts';
 import { notify } from '@/reactives/notify';
 import Converter from '@/scripts/converter';
 import StorageImage from '@/components/StorageImage.vue';

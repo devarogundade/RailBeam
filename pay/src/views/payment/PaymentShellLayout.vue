@@ -29,7 +29,7 @@ import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import StorageImage from "@/components/StorageImage.vue";
 import OgStorage from "@/scripts/ogStorage";
 import { getEthersSigner } from "@/scripts/ethersSigner";
-import type { User } from "beam-ts";
+import type { User } from "@railbeam/beam-ts";
 import { UserRegistryContract } from "@/scripts/contract";
 import { getClientApi, type VirtualCardSummary } from "@/scripts/clientApi";
 import { useAuthStore } from "@/stores/auth";
@@ -739,12 +739,8 @@ async function initiateCreateVirtualCard() {
             <span class="sheet-k">Name on card</span>
             <span class="sheet-v-row">
               <span class="sheet-v sheet-v--caps">{{ sheetCardName }}</span>
-              <button
-                type="button"
-                class="sheet-copy"
-                :disabled="!canCopyValue(sheetCardName)"
-                @click="copyCardDetail('Name on card', sheetCardName)"
-              >
+              <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetCardName)"
+                @click="copyCardDetail('Name on card', sheetCardName)">
                 Copy
               </button>
             </span>
@@ -753,12 +749,8 @@ async function initiateCreateVirtualCard() {
             <span class="sheet-k">Number</span>
             <span class="sheet-v-row">
               <span class="sheet-v sheet-v--mono">{{ sheetCardPan }}</span>
-              <button
-                type="button"
-                class="sheet-copy"
-                :disabled="!sheetCardPanCopy"
-                @click="copyCardDetail('Card number', sheetCardPanCopy)"
-              >
+              <button type="button" class="sheet-copy" :disabled="!sheetCardPanCopy"
+                @click="copyCardDetail('Card number', sheetCardPanCopy)">
                 Copy
               </button>
             </span>
@@ -768,12 +760,8 @@ async function initiateCreateVirtualCard() {
               <span class="sheet-k">Expires</span>
               <span class="sheet-v-row">
                 <span class="sheet-v sheet-v--mono">{{ sheetCardExp }}</span>
-                <button
-                  type="button"
-                  class="sheet-copy"
-                  :disabled="!canCopyValue(sheetCardExp)"
-                  @click="copyCardDetail('Expiry', sheetCardExp)"
-                >
+                <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetCardExp)"
+                  @click="copyCardDetail('Expiry', sheetCardExp)">
                   Copy
                 </button>
               </span>
@@ -783,23 +771,14 @@ async function initiateCreateVirtualCard() {
               <div class="sheet-cvv-row">
                 <span class="sheet-v sheet-v--mono sheet-cvv-value">{{
                   cvvVisible ? sheetCardCvvReveal : "•••"
-                  }}</span>
+                }}</span>
                 <span class="sheet-cvv-actions">
-                  <button
-                    type="button"
-                    class="sheet-copy"
-                    :disabled="!cvvVisible || !canCopyValue(sheetCardCvvReveal)"
-                    @click="copyCardDetail('CVV', sheetCardCvvReveal)"
-                  >
+                  <button type="button" class="sheet-copy" :disabled="!cvvVisible || !canCopyValue(sheetCardCvvReveal)"
+                    @click="copyCardDetail('CVV', sheetCardCvvReveal)">
                     Copy
                   </button>
-                  <button
-                    type="button"
-                    class="sheet-cvv-toggle"
-                    :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
-                    :aria-pressed="cvvVisible"
-                    @click="cvvVisible = !cvvVisible"
-                  >
+                  <button type="button" class="sheet-cvv-toggle" :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
+                    :aria-pressed="cvvVisible" @click="cvvVisible = !cvvVisible">
                     <EyeOffIcon v-if="cvvVisible" class="sheet-cvv-ico" />
                     <EyeIcon v-else class="sheet-cvv-ico" />
                   </button>
@@ -817,12 +796,8 @@ async function initiateCreateVirtualCard() {
             <span class="sheet-k">Billing address</span>
             <span class="sheet-v-row">
               <span class="sheet-v">{{ sheetBillingLine1 }}</span>
-              <button
-                type="button"
-                class="sheet-copy"
-                :disabled="!canCopyValue(sheetBillingLine1)"
-                @click="copyCardDetail('Billing address', sheetBillingLine1)"
-              >
+              <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetBillingLine1)"
+                @click="copyCardDetail('Billing address', sheetBillingLine1)">
                 Copy
               </button>
             </span>
@@ -831,12 +806,8 @@ async function initiateCreateVirtualCard() {
             <span class="sheet-k">City & region</span>
             <span class="sheet-v-row">
               <span class="sheet-v">{{ sheetBillingLine2 }}</span>
-              <button
-                type="button"
-                class="sheet-copy"
-                :disabled="!canCopyValue(sheetBillingLine2)"
-                @click="copyCardDetail('City & region', sheetBillingLine2)"
-              >
+              <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetBillingLine2)"
+                @click="copyCardDetail('City & region', sheetBillingLine2)">
                 Copy
               </button>
             </span>
@@ -846,12 +817,8 @@ async function initiateCreateVirtualCard() {
               <span class="sheet-k">Postal code</span>
               <span class="sheet-v-row">
                 <span class="sheet-v sheet-v--mono">{{ sheetBillingPostal }}</span>
-                <button
-                  type="button"
-                  class="sheet-copy"
-                  :disabled="!canCopyValue(sheetBillingPostal)"
-                  @click="copyCardDetail('Postal code', sheetBillingPostal)"
-                >
+                <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetBillingPostal)"
+                  @click="copyCardDetail('Postal code', sheetBillingPostal)">
                   Copy
                 </button>
               </span>
@@ -860,12 +827,8 @@ async function initiateCreateVirtualCard() {
               <span class="sheet-k">Country</span>
               <span class="sheet-v-row">
                 <span class="sheet-v">{{ sheetBillingCountry }}</span>
-                <button
-                  type="button"
-                  class="sheet-copy"
-                  :disabled="!canCopyValue(sheetBillingCountry)"
-                  @click="copyCardDetail('Country', sheetBillingCountry)"
-                >
+                <button type="button" class="sheet-copy" :disabled="!canCopyValue(sheetBillingCountry)"
+                  @click="copyCardDetail('Country', sheetBillingCountry)">
                   Copy
                 </button>
               </span>

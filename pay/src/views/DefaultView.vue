@@ -21,7 +21,7 @@ import BottomSheet from '@/components/mobile/BottomSheet.vue';
 import { DEFAULT_PLACEHOLDER_IMAGE } from '@/constants/ui';
 import { useWeb3Modal } from '@web3modal/wagmi/vue';
 import AppFrame from "@/components/layout/AppFrame.vue";
-import { mapSubscriptionPlanToPlan, type Plan } from "beam-ts";
+import { mapSubscriptionPlanToPlan, type Plan } from "@railbeam/beam-ts";
 import StorageImage from "@/components/StorageImage.vue";
 
 const web3Modal = useWeb3Modal();
@@ -564,7 +564,7 @@ onMounted(() => {
                             <div class="flat-asset__meta">
                                 <span class="flat-asset__sym">{{ token.symbol }}</span>
                                 <span class="flat-asset__bal">Balance {{ Converter.toMoney(balance) }} {{ token.symbol
-                                    }}</span>
+                                }}</span>
                             </div>
                         </div>
                     </section>

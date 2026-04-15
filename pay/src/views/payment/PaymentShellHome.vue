@@ -146,7 +146,7 @@ const cardExp = computed(() => {
               }}
             </p>
             <p class="bal-sub">
-              {{ walletStore.address ? "Tap to view assets" : "Connect to see your assets" }}
+              {{ walletStore.address ? "Tap to view all assets" : "Connect to see your assets" }}
             </p>
           </div>
         </SwiperSlide>

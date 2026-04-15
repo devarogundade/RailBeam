@@ -6,7 +6,7 @@ import type { Hex } from 'viem';
 import { onMounted, ref, watch } from 'vue';
 import { Connection } from '@/types/app';
 import { beamSdk } from '@/scripts/beamSdk';
-import { getTokens } from 'beam-ts';
+import { getTokens } from '@railbeam/beam-ts';
 import { notify } from '@/reactives/notify';
 import StorageImage from '@/components/StorageImage.vue';
 

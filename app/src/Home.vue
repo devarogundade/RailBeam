@@ -2,7 +2,7 @@
 import OnboardingHeader from './components/OnboardingHeader.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWalletStore } from './stores/wallet';
-import type { Merchant } from 'beam-ts';
+import type { Merchant } from '@railbeam/beam-ts';
 import { computed, ref, watchEffect } from 'vue';
 import { useBeamMerchantQuery } from '@/query/beam';
 

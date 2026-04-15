@@ -1,5 +1,5 @@
 import { type Hex } from "viem";
-import type { Metadata } from "beam-ts";
+import type { Metadata } from "@railbeam/beam-ts";
 
 export type CreateMerchant = {
   metadata: Metadata;

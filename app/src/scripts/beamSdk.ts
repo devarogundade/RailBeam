@@ -1,5 +1,5 @@
-import BeamSDK from "beam-ts";
-import { Network } from "beam-ts";
+import BeamSDK from "@railbeam/beam-ts";
+import { Network } from "@railbeam/beam-ts";
 
 const opts: ConstructorParameters<typeof BeamSDK>[0] = {
   network: Network.Testnet,

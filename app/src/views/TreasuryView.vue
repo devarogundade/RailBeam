@@ -10,8 +10,8 @@ import SwapIcon from '@/components/icons/SwapIcon.vue';
 import UsersIcon from '@/components/icons/UsersIcon.vue';
 import { useWalletStore } from '@/stores/wallet';
 import { computed, onMounted, ref } from 'vue';
-import type { Token, Transaction } from "beam-ts";
-import { getToken, getTokens } from "beam-ts";
+import type { Token, Transaction } from "@railbeam/beam-ts";
+import { getToken, getTokens } from "@railbeam/beam-ts";
 import { beamSdk } from "@/scripts/beamSdk";
 import CompletedIcon from '@/components/icons/CompletedIcon.vue';
 import { formatUnits } from 'viem';
@@ -22,7 +22,7 @@ import ArrowUpIcon from '@/components/icons/ArrowUpIcon.vue';
 import { TokenContract } from '@/scripts/erc20';
 import AllAssets from '@/components/AllAssets.vue';
 import ProgressBox from '@/components/ProgressBox.vue';
-import { TransactionType } from "beam-ts";
+import { TransactionType } from "@railbeam/beam-ts";
 import ReceiveToken from '@/components/ReceiveToken.vue';
 import UserIcon from '@/components/icons/UserIcon.vue';
 import { useBeamOneTimeTransactionsQuery } from '@/query/beam';
@@ -83,11 +83,7 @@ onMounted(() => {
         <div class="assets_head">
           <p>Total Value Locked</p>
 
-          <button
-            class="withdraw_requests_btn"
-            @click="withdrawRequestsOpen = true"
-            :disabled="!walletStore.merchant"
-          >
+          <button class="withdraw_requests_btn" @click="withdrawRequestsOpen = true" :disabled="!walletStore.merchant">
             <p>Withdraw Requests</p>
             <ChevronRightIcon />
           </button>
@@ -180,13 +176,8 @@ onMounted(() => {
         </button>
       </div>
 
-      <div
-        v-if="activeTransaction"
-        class="txn_expanded_overlay"
-        role="dialog"
-        aria-modal="true"
-        @click.self="activeIndex = -1"
-      >
+      <div v-if="activeTransaction" class="txn_expanded_overlay" role="dialog" aria-modal="true"
+        @click.self="activeIndex = -1">
         <div class="txn_expanded_panel">
           <div class="txn_expanded_header">
             <button class="txn_expanded_close" @click="activeIndex = -1">
@@ -221,18 +212,14 @@ onMounted(() => {
             </div>
 
             <div class="txn_expanded_status">
-              <div
-                class="status"
-                v-if="activeTransaction.type == TransactionType.OneTime && activeTransaction.payers.length < activeTransaction.fulfilleds.length"
-              >
+              <div class="status"
+                v-if="activeTransaction.type == TransactionType.OneTime && activeTransaction.payers.length < activeTransaction.fulfilleds.length">
                 <PendingIcon />
                 <p>Pending</p>
               </div>
 
-              <div
-                class="status"
-                v-if="activeTransaction.type == TransactionType.OneTime && activeTransaction.payers.length == activeTransaction.fulfilleds.length"
-              >
+              <div class="status"
+                v-if="activeTransaction.type == TransactionType.OneTime && activeTransaction.payers.length == activeTransaction.fulfilleds.length">
                 <CompletedIcon />
                 <p>Completed</p>
               </div>
@@ -266,12 +253,12 @@ onMounted(() => {
                     ≈ ${{
                       Converter.toMoney(
                         (getToken(activeTransaction.adjustedToken)?.price || 0) *
-                          Number(
-                            formatUnits(
-                              activeTransaction.adjustedAmount,
-                              getToken(activeTransaction.adjustedToken)?.decimals || 18,
-                            ),
+                        Number(
+                          formatUnits(
+                            activeTransaction.adjustedAmount,
+                            getToken(activeTransaction.adjustedToken)?.decimals || 18,
                           ),
+                        ),
                       )
                     }}
                   </p>
@@ -295,10 +282,8 @@ onMounted(() => {
                 <p>Confirmations</p>
               </div>
 
-              <div
-                class="confirmation_signers"
-                :style="`grid-template-columns: repeat(${Math.max(activeTransaction.confirmations.length, 1)}, 1fr);`"
-              >
+              <div class="confirmation_signers"
+                :style="`grid-template-columns: repeat(${Math.max(activeTransaction.confirmations.length, 1)}, 1fr);`">
                 <div class="confirmation_signer" v-for="(conf, cIdx) in activeTransaction.confirmations" :key="cIdx">
                   <div class="signer_wrapper">
                     <div class="signer_info">
@@ -345,7 +330,7 @@ onMounted(() => {
                   <div class="txn_cell_info">
                     <p v-if="transaction.type == TransactionType.OneTime">{{
                       transaction.description?.length > 0 ? transaction.description : 'One Time'
-                    }}</p>
+                      }}</p>
                     <p v-if="transaction.type == TransactionType.Recurrent">{{
                       transaction.description?.length > 0 ?
                         transaction.description : 'Recurrent'
@@ -439,7 +424,7 @@ onMounted(() => {
                     }}
                     <span>{{ getToken(transaction.adjustedToken)?.symbol }}</span>
                   </p>
-                  <p v-if="transaction.type == TransactionType.OneTime">≈ ${{Converter.toMoney(
+                  <p v-if="transaction.type == TransactionType.OneTime">≈ ${{ Converter.toMoney(
                     (getToken(transaction.adjustedToken)?.price || 0) * Number(
                       formatUnits(
                         transaction.adjustedAmount,
@@ -447,7 +432,7 @@ onMounted(() => {
                       ),
                     )
 
-                  )}}
+                  ) }}
                   </p>
 
                   <p v-if="transaction.type == TransactionType.Recurrent">
@@ -495,22 +480,11 @@ onMounted(() => {
 
     <ReceiveToken v-if="walletStore.merchant && receiveToken" :address="walletStore.merchant.wallet"
       @close="receiveToken = false" />
-    <RequestWithdraw
-      v-if="walletStore.merchant && requestWithdraw"
-      :wallet="walletStore.merchant.wallet"
-      :tokens="tokens"
-      :balances="balances"
-      :defaultRecipient="walletStore.address"
-      @close="requestWithdraw = false"
-    />
-    <WithdrawRequestsPanel
-      v-if="walletStore.merchant && withdrawRequestsOpen"
-      :wallet="walletStore.merchant.wallet"
-      :tokens="tokens"
-      :requests="withdrawRequests"
-      :minSigners="walletStore.merchant.minSigners"
-      @close="withdrawRequestsOpen = false"
-    />
+    <RequestWithdraw v-if="walletStore.merchant && requestWithdraw" :wallet="walletStore.merchant.wallet"
+      :tokens="tokens" :balances="balances" :defaultRecipient="walletStore.address" @close="requestWithdraw = false" />
+    <WithdrawRequestsPanel v-if="walletStore.merchant && withdrawRequestsOpen" :wallet="walletStore.merchant.wallet"
+      :tokens="tokens" :requests="withdrawRequests" :minSigners="walletStore.merchant.minSigners"
+      @close="withdrawRequestsOpen = false" />
     <AllAssets v-if="allAssets" :balances="balances" :tokens="tokens" @close="allAssets = false" />
   </div>
 </template>
@@ -1146,7 +1120,7 @@ tr {
   background: var(--bg-light);
 }
 
-.txn_expanded_summary_card > p {
+.txn_expanded_summary_card>p {
   color: var(--tx-semi);
   font-size: 14px;
 }

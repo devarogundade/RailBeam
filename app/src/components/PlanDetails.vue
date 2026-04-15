@@ -11,7 +11,7 @@ import EraserIcon from './icons/EraserIcon.vue';
 import TrashIcon from './icons/TrashIcon.vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 import Converter from '@/scripts/converter';
-import { getToken } from 'beam-ts';
+import { getToken } from '@railbeam/beam-ts';
 import { notify } from '@/reactives/notify';
 import StorageImage from '@/components/StorageImage.vue';
 

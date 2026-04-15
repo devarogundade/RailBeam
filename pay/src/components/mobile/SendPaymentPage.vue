@@ -7,14 +7,23 @@ import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import { notify } from "@/reactives/notify";
 import { getTokens } from "beam-ts/src/utils/constants";
 import type { Hex } from "viem";
+import { erc20Abi, parseEther, parseUnits, zeroAddress } from "viem";
 import AppFrame from "@/components/layout/AppFrame.vue";
+import { useWalletStore } from "@/stores/wallet";
+import { useWeb3Modal } from "@web3modal/wagmi/vue";
+import { sendTransaction, waitForTransactionReceipt, writeContract } from "@wagmi/core";
+import { config } from "@/scripts/config";
+import { resolveBeamAddress } from "@/utils/resolveBeamUser";
 
 const router = useRouter();
+const walletStore = useWalletStore();
+const web3Modal = useWeb3Modal();
 
 const recipient = ref("");
 const assetAddress = ref<Hex | "">((getTokens[0]?.address as Hex | undefined) ?? "");
 const amount = ref("");
 const assetMenuOpen = ref(false);
+const submitting = ref(false);
 
 const selectedToken = computed(
   () => getTokens.find((t) => t.address === assetAddress.value) ?? getTokens[0]
@@ -49,41 +58,27 @@ function back() {
   router.push({ name: "payment-home" });
 }
 
-const ADDR_RE = /^0x[a-fA-F0-9]{40}$/i;
+function cleanAmountInput(v: string): string {
+  // Keep user input friendly but remove spaces/commas that break parsing.
+  return String(v ?? "").trim().replace(/,/g, "");
+}
 
-function submit() {
-  const raw = recipient.value.trim();
-  if (!raw) {
-    notify.push({
-      title: "Recipient",
-      description: "Enter a Beam @username or a 0x wallet address.",
-      category: "error",
-    });
+function prettyRecipient(address: Hex, kind?: "address" | "username", username?: string) {
+  if (kind === "username" && username) return `@${username}`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+async function submit() {
+  if (!walletStore.address) {
+    web3Modal.open();
     return;
   }
+  if (submitting.value) return;
 
-  const addrOk = ADDR_RE.test(raw);
-  if (/^0x/i.test(raw) && !addrOk) {
-    notify.push({
-      title: "Address",
-      description: "That doesn’t look like a valid 0x address — 40 hex characters after 0x.",
-      category: "error",
-    });
-    return;
-  }
+  const token = selectedToken.value;
+  const rawAmount = cleanAmountInput(amount.value);
 
-  const handle = raw.replace(/^@/, "");
-  const hasUser = !addrOk && handle.length > 0;
-  if (!addrOk && !hasUser) {
-    notify.push({
-      title: "Recipient",
-      description: "Enter a valid @username or 0x address.",
-      category: "error",
-    });
-    return;
-  }
-
-  if (!assetAddress.value) {
+  if (!assetAddress.value || !token) {
     notify.push({
       title: "Asset",
       description: "Choose which asset to send.",
@@ -91,8 +86,7 @@ function submit() {
     });
     return;
   }
-
-  if (!amount.value || Number(amount.value) <= 0) {
+  if (!rawAmount || !Number.isFinite(Number(rawAmount)) || Number(rawAmount) <= 0) {
     notify.push({
       title: "Amount",
       description: "Enter an amount greater than zero.",
@@ -101,18 +95,71 @@ function submit() {
     return;
   }
 
-  const sym = selectedToken.value?.symbol ?? "—";
-  const u = hasUser ? `@${handle}` : null;
-  const desc = addrOk
-    ? `Prepared ${amount.value} ${sym} to ${raw.slice(0, 6)}…${raw.slice(-4)}`
-    : `Prepared ${amount.value} ${sym} to ${u}`;
+  const resolved = await resolveBeamAddress(recipient.value);
+  if (!resolved.ok) {
+    notify.push({
+      title: "Recipient",
+      description: resolved.error,
+      category: "error",
+    });
+    return;
+  }
 
-  notify.push({
-    title: "Send",
-    description: `Sending isn’t enabled in this shell yet. ${desc}.`,
-    category: "success",
-  });
-  router.push({ name: "payment-home" });
+  const to = resolved.address;
+  const self = walletStore.address.toLowerCase() === to.toLowerCase();
+  if (self) {
+    notify.push({
+      title: "Recipient",
+      description: "You’re sending to your own wallet. Continue if that’s intended.",
+      category: "error",
+    });
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    let hash: Hex;
+    if ((token.address as Hex) === zeroAddress) {
+      // Native 0G (chain native) transfer.
+      hash = await sendTransaction(config, {
+        to,
+        value: parseEther(rawAmount),
+      });
+    } else {
+      // ERC-20 transfer.
+      const value = parseUnits(rawAmount, token.decimals ?? 18);
+      hash = await writeContract(config, {
+        abi: erc20Abi,
+        address: token.address as Hex,
+        functionName: "transfer",
+        args: [to, value],
+      });
+    }
+
+    await waitForTransactionReceipt(config, { hash, confirmations: 1 });
+
+    notify.push({
+      title: "Sent",
+      description: `Sent ${rawAmount} ${token.symbol} to ${prettyRecipient(to, resolved.kind, resolved.username)}.`,
+      category: "success",
+      linkTitle: "View Trx",
+      linkUrl: `${import.meta.env.VITE_EXPLORER_URL}/tx/${hash}`,
+    });
+
+    recipient.value = "";
+    amount.value = "";
+    assetMenuOpen.value = false;
+    router.push({ name: "payment-home" });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    notify.push({
+      title: "Send failed",
+      description: msg || "Try again.",
+      category: "error",
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 
@@ -204,7 +251,9 @@ function submit() {
           <p v-if="selectedToken" class="field-hint">In {{ selectedToken.symbol }}</p>
         </div>
 
-        <button type="button" class="primary" @click="submit">Continue</button>
+        <button type="button" class="primary" :disabled="submitting" @click="submit">
+          {{ !walletStore.address ? "Connect wallet" : submitting ? "Sending…" : "Send" }}
+        </button>
       </div>
     </AppFrame>
   </div>

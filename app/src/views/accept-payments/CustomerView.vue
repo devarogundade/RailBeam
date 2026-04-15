@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { useWalletStore } from '@/stores/wallet';
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
-import { getTokens } from 'beam-ts';
-import type { Token } from "beam-ts";
-import type { Plan } from "beam-ts";
+import { getTokens } from '@railbeam/beam-ts';
+import type { Token } from "@railbeam/beam-ts";
+import type { Plan } from "@railbeam/beam-ts";
 import type { Hex } from 'viem';
 import { formatUnits } from 'viem';
 import { notify } from '@/reactives/notify';
 import QrcodeVue from 'qrcode.vue';
 import Converter from '@/scripts/converter';
-import { getToken } from 'beam-ts';
+import { getToken } from '@railbeam/beam-ts';
 import CopyIcon from '@/components/icons/CopyIcon.vue';
 import { useBeamPlansQuery } from '@/query/beam';
 import StorageImage from '@/components/StorageImage.vue';
@@ -191,7 +191,7 @@ const sdkSnippet = computed(() => {
         const splitPayment = form.value.splitPayment ? 'true' : 'false';
         return `import { parseUnits } from 'viem';
 import { beamSdk } from '@/scripts/beamSdk';
-import { SCHEMA_JSON } from 'beam-ts';
+import { SCHEMA_JSON } from '@railbeam/beam-ts';
 
 // Replace with the customer's wallet address (or multiple for split pay).
 const payer = '0x…' as \`0x\${string}\`;
@@ -210,7 +210,7 @@ const result = await beamSdk.oneTimeTransaction.create({
     const m = walletStore.merchant.merchant;
     const sid = selectedPlan.value._id;
     return `import { beamSdk } from '@/scripts/beamSdk';
-import { SCHEMA_JSON } from 'beam-ts';
+import { SCHEMA_JSON } from '@railbeam/beam-ts';
 
 const result = await beamSdk.recurrentTransaction.create({
   merchant: '${m}',
@@ -360,7 +360,7 @@ onBeforeUnmount(() => {
                                                         formatUnits(selectedPlan.amount,
                                                             getToken(selectedPlan.token)?.decimals ?? 18)
                                                     )
-                                                    }} {{ getToken(selectedPlan.token)?.symbol }}</span>
+                                                }} {{ getToken(selectedPlan.token)?.symbol }}</span>
                                             </div>
                                         </div>
                                     </template>
@@ -383,7 +383,7 @@ onBeforeUnmount(() => {
                                                 Converter.toMoney(
                                                     formatUnits(plan.amount, getToken(plan.token)?.decimals ?? 18)
                                                 )
-                                                }} {{ getToken(plan.token)?.symbol }}</span>
+                                            }} {{ getToken(plan.token)?.symbol }}</span>
                                         </div>
                                     </button>
                                 </div>

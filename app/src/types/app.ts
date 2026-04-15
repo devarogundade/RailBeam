@@ -10,9 +10,9 @@ export type {
   X402ResourceView,
   CreateX402LinkPayload,
   CreateX402FileMetaPayload,
-} from "beam-ts";
+} from "@railbeam/beam-ts";
 
-export { Connection } from "beam-ts";
+export { Connection } from "@railbeam/beam-ts";
 
 export type TransactionKind = "onetime" | "recurrent";
 

@@ -11,7 +11,7 @@ import Converter from '@/scripts/converter';
 import Storage from '@/scripts/storage';
 import { Network, TransactionType } from '@/scripts/types';
 import { useWalletStore } from '@/stores/wallet';
-import BeamSDK from 'beam-ts';
+import BeamSDK from '@railbeam/beam-ts';
 import { Transaction } from 'beam-ts/src/types';
 import { getToken } from 'beam-ts/src/utils/constants';
 import html2canvas from "html2canvas";
@@ -195,96 +195,89 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="receipt-view">
-    <header class="receipt-flat__top sticky-top">
-      <AppFrame :topInset="false">
-        <div class="receipt-flat__top-inner">
-          <span class="bar-spacer" aria-hidden="true" />
-          <h1 class="receipt-flat__title">Receipt</h1>
-          <button type="button" class="icon-btn" aria-label="Close" @click="closeReceipt">
-            <CloseIcon />
-          </button>
-        </div>
-      </AppFrame>
-    </header>
+    <div class="receipt-view">
+        <header class="receipt-flat__top sticky-top">
+            <AppFrame :topInset="false">
+                <div class="receipt-flat__top-inner">
+                    <span class="bar-spacer" aria-hidden="true" />
+                    <h1 class="receipt-flat__title">Receipt</h1>
+                    <button type="button" class="icon-btn" aria-label="Close" @click="closeReceipt">
+                        <CloseIcon />
+                    </button>
+                </div>
+            </AppFrame>
+        </header>
 
-    <AppFrame :topInset="false">
-      <CheckoutAppShell>
-        <ProgressBox v-if="progress" />
-        <div v-else-if="transaction" class="receipt-flat">
-          <div ref="captureDiv" class="receipt-flat__capture">
-            <section class="receipt-flat__hero">
-              <p class="receipt-flat__kicker">Amount</p>
-              <p class="receipt-flat__amount">{{ receiptAmountLabel }}</p>
-              <p class="receipt-flat__sym">{{ receiptToken?.symbol }}</p>
-            </section>
+        <AppFrame :topInset="false">
+            <CheckoutAppShell>
+                <ProgressBox v-if="progress" />
+                <div v-else-if="transaction" class="receipt-flat">
+                    <div ref="captureDiv" class="receipt-flat__capture">
+                        <section class="receipt-flat__hero">
+                            <p class="receipt-flat__kicker">Amount</p>
+                            <p class="receipt-flat__amount">{{ receiptAmountLabel }}</p>
+                            <p class="receipt-flat__sym">{{ receiptToken?.symbol }}</p>
+                        </section>
 
-            <section class="receipt-flat__section receipt-flat__meta">
-              <p class="receipt-flat__desc">
-                {{ transaction.description || 'No description' }}
-              </p>
-              <p class="receipt-flat__signers">
-                <span class="receipt-flat__signers-label">Signers</span>
-                {{ transaction.confirmations.length }}
-              </p>
-            </section>
+                        <section class="receipt-flat__section receipt-flat__meta">
+                            <p class="receipt-flat__desc">
+                                {{ transaction.description || 'No description' }}
+                            </p>
+                            <p class="receipt-flat__signers">
+                                <span class="receipt-flat__signers-label">Signers</span>
+                                {{ transaction.confirmations.length }}
+                            </p>
+                        </section>
 
-            <section class="receipt-flat__section">
-              <p class="receipt-flat__kicker">Details</p>
-              <div class="receipt-flat__row">
-                <span class="receipt-flat__row-label">Asset</span>
-                <span v-if="receiptToken" class="receipt-flat__row-value receipt-flat__row-value--token">
-                  <img :src="receiptToken.image" alt="" width="22" height="22" />
-                  {{ receiptAmountLabel }} {{ receiptToken.symbol }}
-                </span>
-              </div>
-              <div class="receipt-flat__row">
-                <span class="receipt-flat__row-label">Status</span>
-                <span class="receipt-flat__row-value receipt-flat__status">
-                  <CompletedIcon v-if="receiptStatus.completed" />
-                  <PendingIcon v-else />
-                  {{ receiptStatus.label }}
-                </span>
-              </div>
-              <div class="receipt-flat__row receipt-flat__row--last">
-                <span class="receipt-flat__row-label">Date</span>
-                <span class="receipt-flat__row-value">
-                  {{ formattedReceiptTime.date }}
-                  <span class="receipt-flat__time">{{ formattedReceiptTime.time }}</span>
-                </span>
-              </div>
-            </section>
-          </div>
+                        <section class="receipt-flat__section">
+                            <p class="receipt-flat__kicker">Details</p>
+                            <div class="receipt-flat__row">
+                                <span class="receipt-flat__row-label">Asset</span>
+                                <span v-if="receiptToken"
+                                    class="receipt-flat__row-value receipt-flat__row-value--token">
+                                    <img :src="receiptToken.image" alt="" width="22" height="22" />
+                                    {{ receiptAmountLabel }} {{ receiptToken.symbol }}
+                                </span>
+                            </div>
+                            <div class="receipt-flat__row">
+                                <span class="receipt-flat__row-label">Status</span>
+                                <span class="receipt-flat__row-value receipt-flat__status">
+                                    <CompletedIcon v-if="receiptStatus.completed" />
+                                    <PendingIcon v-else />
+                                    {{ receiptStatus.label }}
+                                </span>
+                            </div>
+                            <div class="receipt-flat__row receipt-flat__row--last">
+                                <span class="receipt-flat__row-label">Date</span>
+                                <span class="receipt-flat__row-value">
+                                    {{ formattedReceiptTime.date }}
+                                    <span class="receipt-flat__time">{{ formattedReceiptTime.time }}</span>
+                                </span>
+                            </div>
+                        </section>
+                    </div>
 
-          <footer class="receipt-flat__footer">
-            <button type="button" class="receipt-flat__btn receipt-flat__btn--secondary" @click="closeReceipt">
-              <EraserIcon />
-              Done
-            </button>
-            <button
-              v-if="!walletStore.address"
-              type="button"
-              class="receipt-flat__btn receipt-flat__btn--primary"
-              @click="connectWallet"
-            >
-              <CheckIcon />
-              Connect wallet
-            </button>
-            <button
-              v-else
-              type="button"
-              class="receipt-flat__btn receipt-flat__btn--primary"
-              :disabled="minting"
-              @click="mint"
-            >
-              <CheckIcon />
-              {{ minting ? 'Minting…' : 'Mint NFT' }}
-            </button>
-          </footer>
-        </div>
-      </CheckoutAppShell>
-    </AppFrame>
-  </div>
+                    <footer class="receipt-flat__footer">
+                        <button type="button" class="receipt-flat__btn receipt-flat__btn--secondary"
+                            @click="closeReceipt">
+                            <EraserIcon />
+                            Done
+                        </button>
+                        <button v-if="!walletStore.address" type="button"
+                            class="receipt-flat__btn receipt-flat__btn--primary" @click="connectWallet">
+                            <CheckIcon />
+                            Connect wallet
+                        </button>
+                        <button v-else type="button" class="receipt-flat__btn receipt-flat__btn--primary"
+                            :disabled="minting" @click="mint">
+                            <CheckIcon />
+                            {{ minting ? 'Minting…' : 'Mint NFT' }}
+                        </button>
+                    </footer>
+                </div>
+            </CheckoutAppShell>
+        </AppFrame>
+    </div>
 </template>
 
 <style scoped>

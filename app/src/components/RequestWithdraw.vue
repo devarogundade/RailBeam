@@ -2,7 +2,7 @@
 import CloseIcon from './icons/CloseIcon.vue';
 import StorageImage from '@/components/StorageImage.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import type { Token } from 'beam-ts';
+import type { Token } from '@railbeam/beam-ts';
 import { Connection } from '@/types/app';
 import { useWalletStore } from '@/stores/wallet';
 import { MultiSigContract } from '@/scripts/contract';

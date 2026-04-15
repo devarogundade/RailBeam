@@ -8,10 +8,10 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 import Storage from '@/scripts/storage';
 import { getEthersSigner } from '@/scripts/ethersSigner';
 import { MerchantContract } from '@/scripts/contract';
-import { getTokens } from 'beam-ts';
+import { getTokens } from '@railbeam/beam-ts';
 import { parseUnits } from 'viem';
 import { notify } from '@/reactives/notify';
-import type { Token } from "beam-ts";
+import type { Token } from "@railbeam/beam-ts";
 import StorageImage from '@/components/StorageImage.vue';
 
 const emit = defineEmits(['close', 'refresh']);

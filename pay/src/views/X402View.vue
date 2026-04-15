@@ -73,7 +73,7 @@ async function unlock() {
   paying.value = true;
   try {
     if (resource.value?.kind === "file") {
-      const client = await createApiClient();
+      const client = await createApiClient(true);
       const res = await client.get(`/resource/pay/${id}`, { responseType: "blob" });
 
       const cd = (res.headers?.["content-disposition"] ?? res.headers?.["Content-Disposition"]) as

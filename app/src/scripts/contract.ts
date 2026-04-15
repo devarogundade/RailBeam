@@ -18,7 +18,7 @@ import type {
   UpdateSubscription,
   MetadataEntry,
 } from "./params";
-import { ContractAddresses } from "beam-ts";
+import { ContractAddresses } from "@railbeam/beam-ts";
 
 export const HookManagerContract = {
   address: ContractAddresses.Testnet.HookManager,

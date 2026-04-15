@@ -1,7 +1,7 @@
 import { Connection, type ClientMerchant } from "@/types/app";
 import { defineStore } from "pinia";
-import type { Merchant } from "beam-ts";
-import { getTokens } from "beam-ts";
+import type { Merchant } from "@railbeam/beam-ts";
+import { getTokens } from "@railbeam/beam-ts";
 import { zeroAddress } from "viem";
 
 export const useWalletStore = defineStore("wallet", {

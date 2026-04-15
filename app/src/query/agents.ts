@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/vue-query";
 import { beamSdk } from "@/scripts/beamSdk";
-import type { Agent } from "beam-ts";
+import type { Agent } from "@railbeam/beam-ts";
 import type { Hex } from "viem";
 import { computed, unref, type Ref } from "vue";
 
 type MaybeRef<T> = T | Ref<T>;
 
 export const agentQueryKeys = {
-  myAgents: (owner: Hex | null | undefined) => ["beamAgents", owner ?? null] as const,
+  myAgents: (owner: Hex | null | undefined) =>
+    ["beamAgents", owner ?? null] as const,
 };
 
 export function useBeamAgentsQuery(owner: MaybeRef<Hex | null | undefined>) {
@@ -20,4 +21,3 @@ export function useBeamAgentsQuery(owner: MaybeRef<Hex | null | undefined>) {
     },
   });
 }
-

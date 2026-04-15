@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CloseIcon from '@/components/icons/CloseIcon.vue';
 import StorageImage from '@/components/StorageImage.vue';
-import type { Transaction, Token } from 'beam-ts';
-import { TransactionType } from 'beam-ts';
+import type { Transaction, Token } from '@railbeam/beam-ts';
+import { TransactionType } from '@railbeam/beam-ts';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { Hex } from 'viem';
 import { formatUnits } from 'viem';
@@ -133,18 +133,12 @@ onUnmounted(() => {
             </div>
 
             <div class="actions">
-              <button
-                class="secondary"
-                :disabled="!canAct || r.executed || !r.id || actingId === r.t.id"
-                @click="approve(r)"
-              >
+              <button class="secondary" :disabled="!canAct || r.executed || !r.id || actingId === r.t.id"
+                @click="approve(r)">
                 <p>{{ actingId === r.t.id ? 'Signing...' : 'Sign' }}</p>
               </button>
-              <button
-                class="primary"
-                :disabled="!canAct || !r.canExecute || !r.id || actingId === r.t.id"
-                @click="execute(r)"
-              >
+              <button class="primary" :disabled="!canAct || !r.canExecute || !r.id || actingId === r.t.id"
+                @click="execute(r)">
                 <p>{{ actingId === r.t.id ? 'Executing...' : 'Execute' }}</p>
               </button>
             </div>
@@ -317,4 +311,3 @@ button:disabled {
   cursor: not-allowed;
 }
 </style>
-

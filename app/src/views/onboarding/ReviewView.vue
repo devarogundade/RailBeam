@@ -10,7 +10,7 @@ import { getEthersSigner } from '@/scripts/ethersSigner';
 import { useWalletStore } from '@/stores/wallet';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { getTokens } from 'beam-ts';
+import { getTokens } from '@railbeam/beam-ts';
 import { notify } from '@/reactives/notify';
 import StorageImage from '@/components/StorageImage.vue';
 
@@ -147,7 +147,7 @@ onMounted(() => {
                             <div>
                                 <UsersIcon />
                                 <p>{{ walletStore.merchant.minSigners }} <span>of {{ walletStore.merchant.signers.length
-                                        }}</span></p>
+                                }}</span></p>
                             </div>
                         </div>
                     </div>

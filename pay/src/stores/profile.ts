@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { User } from "beam-ts";
+import type { User } from "@railbeam/beam-ts";
 import { getBeamSdk } from "@/scripts/beamSdk";
 import { getClientApi } from "@/scripts/clientApi";
 import type { VirtualCardSummary } from "@/scripts/clientApi";

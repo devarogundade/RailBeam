@@ -5,26 +5,26 @@ import { useWalletStore } from "@/stores/wallet";
 import { useRouter } from "vue-router";
 import { computed } from "vue";
 import { useBeamAgentsQuery } from "@/query/agents";
-import type { Agent as BeamAgent } from "beam-ts";
+import type { Agent as BeamAgent } from "@railbeam/beam-ts";
 import StorageImage from "@/components/StorageImage.vue";
 
 type AgentCardRegistrationV1 = {
-  type?: string;
-  name?: string;
-  description?: string;
-  image?: string;
-  services?: Array<{ name?: string; endpoint?: string; version?: string }>;
-  x402Support?: boolean;
-  active?: boolean;
+    type?: string;
+    name?: string;
+    description?: string;
+    image?: string;
+    services?: Array<{ name?: string; endpoint?: string; version?: string; }>;
+    x402Support?: boolean;
+    active?: boolean;
 };
 
 function safeJsonParse<T>(raw: string | null | undefined): T | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw) as T;
+    } catch {
+        return null;
+    }
 }
 
 const walletStore = useWalletStore();
@@ -35,34 +35,34 @@ const merchantWallet = computed(() => walletStore.address);
 const agentsQuery = useBeamAgentsQuery(merchantWallet);
 
 type UiAgent = {
-  id: string;
-  agentId: string;
-  name: string;
-  description: string;
-  image?: string;
-  x402?: boolean;
-  active?: boolean;
+    id: string;
+    agentId: string;
+    name: string;
+    description: string;
+    image?: string;
+    x402?: boolean;
+    active?: boolean;
 };
 
 function toUiAgent(a: BeamAgent): UiAgent {
-  const card = safeJsonParse<AgentCardRegistrationV1>(a.uri ?? null);
-  const services = card && Array.isArray(card.services) ? card.services : [];
-  const x402 = Boolean(card?.x402Support) || services.some((s) => String(s?.name).toLowerCase() === "a2a");
-  return {
-    id: a.id,
-    agentId: a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId),
-    name: (card?.name ?? "").trim() || `Agent #${a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId)}`,
-    description: (card?.description ?? "").trim() || "No description",
-    image: card?.image,
-    x402,
-    active: card?.active,
-  };
+    const card = safeJsonParse<AgentCardRegistrationV1>(a.uri ?? null);
+    const services = card && Array.isArray(card.services) ? card.services : [];
+    const x402 = Boolean(card?.x402Support) || services.some((s) => String(s?.name).toLowerCase() === "a2a");
+    return {
+        id: a.id,
+        agentId: a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId),
+        name: (card?.name ?? "").trim() || `Agent #${a.agentId?.toString?.() ? a.agentId.toString() : String(a.agentId)}`,
+        description: (card?.description ?? "").trim() || "No description",
+        image: card?.image,
+        x402,
+        active: card?.active,
+    };
 }
 
 const myAgents = computed(() => (agentsQuery.data.value ?? []).map(toUiAgent));
 
 function openCreate() {
-  router.push({ name: "agents-new" });
+    router.push({ name: "agents-new" });
 }
 </script>
 
@@ -99,7 +99,7 @@ function openCreate() {
 
             <div v-else class="list">
                 <div v-for="a in myAgents" :key="a.id" class="row">
-          <StorageImage class="avatar" :src="a.image || '/images/colors.png'" alt="" />
+                    <StorageImage class="avatar" :src="a.image || '/images/colors.png'" alt="" />
                     <div class="main">
                         <div class="row_top">
                             <p class="name">{{ a.name }}</p>
@@ -107,11 +107,11 @@ function openCreate() {
                                 <span v-if="a.active !== undefined" class="badge" :class="a.active ? 'on' : 'off'">
                                     {{ a.active ? "Active" : "Inactive" }}
                                 </span>
-                <span v-if="a.x402" class="badge x402">x402</span>
+                                <span v-if="a.x402" class="badge x402">x402</span>
                             </div>
                         </div>
                         <p class="desc">{{ a.description }}</p>
-            <p class="meta">Agent ID: {{ a.agentId }}</p>
+                        <p class="meta">Agent ID: {{ a.agentId }}</p>
                     </div>
 
                     <div class="actions">
@@ -166,7 +166,7 @@ function openCreate() {
 
 .row {
     display: grid;
-  grid-template-columns: 44px 1fr auto;
+    grid-template-columns: 44px 1fr auto;
     gap: 18px;
     padding: 18px 18px;
     border-radius: 12px;
@@ -175,11 +175,11 @@ function openCreate() {
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid var(--bg-lightest);
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--bg-lightest);
 }
 
 .row_top {
@@ -252,16 +252,16 @@ function openCreate() {
 }
 
 .badge.x402 {
-  border-color: rgba(245, 95, 20, 0.35);
-  background: rgba(245, 95, 20, 0.08);
-  color: rgba(255, 210, 190, 0.95);
+    border-color: rgba(245, 95, 20, 0.35);
+    background: rgba(245, 95, 20, 0.08);
+    color: rgba(255, 210, 190, 0.95);
 }
 
 .meta {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--tx-dimmed);
-  word-break: break-word;
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: var(--tx-dimmed);
+    word-break: break-word;
 }
 
 .primary,

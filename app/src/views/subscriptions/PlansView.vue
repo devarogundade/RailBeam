@@ -4,10 +4,10 @@ import StorageImage from '@/components/StorageImage.vue';
 import { useWalletStore } from '@/stores/wallet';
 import { computed, ref, watchEffect } from 'vue';
 import ProgressBox from '@/components/ProgressBox.vue';
-import type { Plan } from 'beam-ts';
+import type { Plan } from '@railbeam/beam-ts';
 import Converter from '@/scripts/converter';
 import CreatePlan from '@/components/CreatePlan.vue';
-import { getToken } from 'beam-ts';
+import { getToken } from '@railbeam/beam-ts';
 import { useBeamPlansQuery } from '@/query/beam';
 import { useQueryClient } from '@tanstack/vue-query';
 import { formatUnits } from 'viem';
@@ -41,11 +41,7 @@ const getPlans = async () => {
     <ProgressBox v-if="progress" />
     <div class="plans">
         <div class="plan" v-for="plan, index in plans" :key="index" @click="selectedPlan = plan">
-            <StorageImage
-                v-if="plan.images?.[0]"
-                :src="plan.images[0]"
-                :alt="plan.name"
-            />
+            <StorageImage v-if="plan.images?.[0]" :src="plan.images[0]" :alt="plan.name" />
             <StorageImage v-else :alt="plan.name" />
 
             <div class="plan_info">

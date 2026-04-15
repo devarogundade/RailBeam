@@ -1,9 +1,9 @@
 import type { Hex } from "viem";
 import { beamSdk } from "@/scripts/beamSdk";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import type { Merchant, Transaction } from "beam-ts";
-import type { Plan } from "beam-ts";
-import { mapSubscriptionPlanToPlan } from "beam-ts";
+import type { Merchant, Transaction } from "@railbeam/beam-ts";
+import type { Plan } from "@railbeam/beam-ts";
+import { mapSubscriptionPlanToPlan } from "@railbeam/beam-ts";
 import { computed, unref, type Ref } from "vue";
 
 type MaybeRef<T> = T | Ref<T>;
