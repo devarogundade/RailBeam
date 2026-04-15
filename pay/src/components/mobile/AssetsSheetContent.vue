@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { getTokens } from "beam-ts/src/utils/constants";
+import { getTokens } from '@railbeam/beam-ts';
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import { useWalletStore } from "@/stores/wallet";
 import { TokenContract } from "@/scripts/erc20";
 import { formatUnits, type Hex } from "viem";
 import Converter from "@/scripts/converter";
 
-type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string };
+type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string; };
 
 const walletStore = useWalletStore();
 const balances = ref<Record<string, number>>({});
@@ -143,4 +143,3 @@ function onTokenImgError(e: Event) {
   flex-shrink: 0;
 }
 </style>
-

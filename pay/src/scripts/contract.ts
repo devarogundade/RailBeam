@@ -1,7 +1,7 @@
 import { config } from "./config";
 import { waitForTransactionReceipt, writeContract } from "@wagmi/core";
 import { beamAbi } from "../abis/beam";
-import { ContractAddresses } from "beam-ts/src/utils/constants";
+import { ContractAddresses } from '@railbeam/beam-ts';
 import type {
   CancelRecurrentTransaction,
   CreateOneTimeTransaction,
@@ -9,7 +9,7 @@ import type {
   FulfillOneTimeTransaction,
   FulfillRecurrentTransaction,
   MintReceipt,
-} from "beam-ts/src/params";
+} from '@railbeam/beam-ts';
 import type { Hex } from "viem";
 import { oneTimeTransactionAbi } from "@/abis/onetime-transaction";
 import { recurrentTransactionAbi } from "@/abis/recurrent-transaction";

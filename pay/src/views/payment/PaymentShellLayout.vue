@@ -23,7 +23,7 @@ import { USER_AVATAR_OTHER, USER_AVATAR_SELF } from "@/constants/ui";
 import { notify } from "@/reactives/notify";
 import AppFrame from "@/components/layout/AppFrame.vue";
 import ChevronDownIcon from "@/components/icons/ChevronDownIcon.vue";
-import { getTokens } from "beam-ts/src/utils/constants";
+import { getTokens } from '@railbeam/beam-ts';
 import type { Hex } from "viem";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import StorageImage from "@/components/StorageImage.vue";

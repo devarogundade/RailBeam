@@ -7,12 +7,12 @@ import { notify } from "@/reactives/notify";
 import AppFrame from "@/components/layout/AppFrame.vue";
 import { mapSubscriptionToShellRow } from "@/scripts/shellActivity";
 import { useWalletStore } from "@/stores/wallet";
-import { TransactionType } from "beam-ts/src/enums";
-import type { Transaction } from "beam-ts/src/types";
+import { TransactionType } from '@railbeam/beam-ts';
+import type { Transaction } from '@railbeam/beam-ts';
 import type { Hex } from "viem";
 import { getBeamSdk } from "@/scripts/beamSdk";
 import { BeamContract } from "@/scripts/contract";
-import { SCHEMA_JSON } from "beam-ts/src/utils/constants";
+import { SCHEMA_JSON } from '@railbeam/beam-ts';
 import { zeroAddress } from "viem";
 import StorageImage from "@/components/StorageImage.vue";
 
@@ -312,13 +312,7 @@ async function renewSubscription() {
 
         <template v-else-if="sub && plan">
           <div class="hero">
-            <StorageImage
-              class="hero-av"
-              :src="planImage || sub.img"
-              alt=""
-              width="56"
-              height="56"
-            />
+            <StorageImage class="hero-av" :src="planImage || sub.img" alt="" width="56" height="56" />
             <div class="hero-text">
               <p class="hero-title">{{ sub.name }}</p>
               <p class="hero-amt">
@@ -342,12 +336,8 @@ async function renewSubscription() {
           </p>
 
           <div class="sub-actions">
-            <button
-              type="button"
-              class="cancel-sub"
-              :disabled="cancelledLocal || cancelling"
-              @click="cancelSubscription"
-            >
+            <button type="button" class="cancel-sub" :disabled="cancelledLocal || cancelling"
+              @click="cancelSubscription">
               {{
                 cancelledLocal
                   ? "Cancelled"
@@ -357,12 +347,7 @@ async function renewSubscription() {
               }}
             </button>
 
-            <button
-              type="button"
-              class="renew-sub"
-              :disabled="renewing"
-              @click="renewSubscription"
-            >
+            <button type="button" class="renew-sub" :disabled="renewing" @click="renewSubscription">
               {{ renewing ? "Renewing…" : "Renew subscription" }}
             </button>
           </div>
@@ -417,6 +402,7 @@ async function renewSubscription() {
   gap: 12px;
   width: 100%;
 }
+
 .icon-btn {
   width: var(--native-tap, 44px);
   height: var(--native-tap, 44px);
@@ -428,19 +414,23 @@ async function renewSubscription() {
   box-shadow: var(--native-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.35));
   cursor: pointer;
 }
+
 .icon-btn:active {
   transform: scale(0.96);
   opacity: 0.9;
 }
+
 .bar-title {
   flex: 1;
   text-align: center;
   font-size: 17px;
   font-weight: 600;
 }
+
 .bar-spacer {
   width: 44px;
 }
+
 .hero {
   display: flex;
   align-items: flex-start;
@@ -448,6 +438,7 @@ async function renewSubscription() {
   margin-bottom: 16px;
   padding: 4px 0;
 }
+
 .hero-av {
   width: 56px;
   height: 56px;
@@ -456,15 +447,18 @@ async function renewSubscription() {
   border: 1px solid var(--bg-lightest);
   flex-shrink: 0;
 }
+
 .hero-text {
   min-width: 0;
 }
+
 .hero-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+
 .hero-amt {
   margin: 6px 0 0;
   font-size: 20px;
@@ -472,23 +466,27 @@ async function renewSubscription() {
   font-variant-numeric: tabular-nums;
   color: var(--tx-normal);
 }
+
 .hero-amt .per {
   font-size: 15px;
   font-weight: 600;
   color: var(--tx-dimmed);
 }
+
 .hero-merchant {
   margin: 8px 0 0;
   font-size: 13px;
   color: var(--tx-semi);
   line-height: 1.35;
 }
+
 .lead {
   margin: 0 0 20px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--tx-semi);
 }
+
 .rows {
   list-style: none;
   border-radius: var(--radius-14);
@@ -497,6 +495,7 @@ async function renewSubscription() {
   background: var(--bg-light);
   box-shadow: var(--native-shadow-md, 0 8px 28px rgba(0, 0, 0, 0.42));
 }
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -505,28 +504,34 @@ async function renewSubscription() {
   border-bottom: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
   font-size: 14px;
 }
+
 .row:last-child {
   border-bottom: none;
 }
+
 .k {
   color: var(--tx-dimmed);
 }
+
 .v {
   color: var(--tx-normal);
   text-align: right;
   word-break: break-word;
 }
+
 .note {
   margin-top: 18px;
   font-size: 13px;
   color: var(--tx-dimmed);
   line-height: 1.45;
 }
+
 .sub-actions {
   margin-top: 20px;
   display: grid;
   gap: 10px;
 }
+
 .cancel-sub {
   width: 100%;
   min-height: 48px;
@@ -539,12 +544,14 @@ async function renewSubscription() {
   font-weight: 600;
   cursor: pointer;
 }
+
 .cancel-sub:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   border-color: var(--bg-lightest);
   color: var(--tx-dimmed);
 }
+
 .cancel-sub:not(:disabled):active {
   opacity: 0.88;
 }
@@ -561,20 +568,24 @@ async function renewSubscription() {
   font-weight: 600;
   cursor: pointer;
 }
+
 .renew-sub:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
 .renew-sub:not(:disabled):active {
   transform: scale(0.99);
   opacity: 0.9;
 }
+
 .mint-footer {
   margin-top: 20px;
   padding-top: 16px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--bg-lightest);
 }
+
 .mint-primary {
   width: 100%;
   min-height: var(--native-tap, 44px);
@@ -588,15 +599,18 @@ async function renewSubscription() {
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(245, 95, 20, 0.35);
 }
+
 .mint-primary:active {
   transform: scale(0.98);
   opacity: 0.94;
 }
+
 .warn {
   font-size: 14px;
   color: var(--tx-semi);
   line-height: 1.5;
 }
+
 .link-back {
   margin-top: 16px;
   padding: 0;

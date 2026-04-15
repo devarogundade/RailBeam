@@ -1,4 +1,4 @@
-import type { Agent } from "beam-ts/src/types";
+import type { Agent } from '@railbeam/beam-ts';
 
 export type AgentCard = {
   name: string;

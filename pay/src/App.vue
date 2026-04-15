@@ -2,11 +2,11 @@
 import { onMounted } from "vue";
 import { useDataStore } from "./stores/data";
 import { formatUnits, parseUnits, type Hex } from "viem";
-import BeamSDK from "beam-ts/src";
+import BeamSDK from '@railbeam/beam-ts';
 import { Network, TransactionType } from "@/scripts/types";
 import { notify } from "./reactives/notify";
-import { getToken, SCHEMA_JSON } from "beam-ts/src/utils/constants";
-import type { Metadata } from "beam-ts/src/types";
+import { getToken, SCHEMA_JSON } from '@railbeam/beam-ts';
+import type { Metadata } from '@railbeam/beam-ts';
 import { useUiStore } from "@/stores/ui";
 
 type PaymentIntentV1 = {

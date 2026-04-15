@@ -21,7 +21,7 @@ import { BeamContract } from "@/scripts/contract";
 import { TokenContract } from "@/scripts/erc20";
 import { useWeb3Modal } from "@web3modal/wagmi/vue";
 import { zeroAddress, type Hex, parseUnits, formatUnits } from "viem";
-import { getToken, SCHEMA_JSON } from "beam-ts/src/utils/constants";
+import { getToken, SCHEMA_JSON } from '@railbeam/beam-ts';
 
 type ChatBubble = {
   id: string;
@@ -1173,12 +1173,14 @@ watch(
 }
 
 @keyframes typing-bounce {
+
   0%,
   80%,
   100% {
     transform: translateY(0);
     opacity: 0.55;
   }
+
   40% {
     transform: translateY(-4px);
     opacity: 0.95;

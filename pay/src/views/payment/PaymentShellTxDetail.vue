@@ -9,9 +9,9 @@ import { useWalletStore } from "@/stores/wallet";
 import { buildPayerShareRows } from "@/utils/payerShares";
 import AppFrame from "@/components/layout/AppFrame.vue";
 import { mapTransactionToShellRow } from "@/scripts/shellActivity";
-import { TransactionStatus, TransactionType } from "beam-ts/src/enums";
+import { TransactionStatus, TransactionType } from '@railbeam/beam-ts';
 import type { Hex } from "viem";
-import { getToken } from "beam-ts/src/utils/constants";
+import { getToken } from '@railbeam/beam-ts';
 import { zeroAddress } from "viem";
 import { useWeb3Modal } from "@web3modal/wagmi/vue";
 import { TokenContract } from "@/scripts/erc20";
@@ -90,7 +90,7 @@ const metaRows = computed(() => {
     ];
   }
   const n = t.payers?.length ?? 0;
-  const rows: { k: string; v: string }[] = [
+  const rows: { k: string; v: string; }[] = [
     { k: "Transaction", v: `${t.transactionId.slice(0, 10)}…${t.transactionId.slice(-6)}` },
     { k: "Status", v: statusLabel(t.status) },
     { k: "Date", v: tx.value?.detailDate ?? "—" },
@@ -342,22 +342,11 @@ function mintReceipt() {
           <p v-else class="note">Single-payer transaction — no split breakdown.</p>
 
           <footer class="mint-footer">
-            <button
-              v-if="viewerCanPay"
-              type="button"
-              class="mint-primary"
-              :disabled="approving || paying"
-              @click="payMyShare"
-            >
+            <button v-if="viewerCanPay" type="button" class="mint-primary" :disabled="approving || paying"
+              @click="payMyShare">
               {{ approving ? "Approving…" : paying ? "Paying…" : "Pay" }}
             </button>
-            <button
-              v-else
-              type="button"
-              class="mint-primary"
-              :disabled="minting"
-              @click="mintReceipt"
-            >
+            <button v-else type="button" class="mint-primary" :disabled="minting" @click="mintReceipt">
               {{ minting ? "Minting…" : "Mint Receipt" }}
             </button>
           </footer>
@@ -408,6 +397,7 @@ function mintReceipt() {
   gap: 12px;
   width: 100%;
 }
+
 .tx-hero {
   display: flex;
   align-items: center;
@@ -415,6 +405,7 @@ function mintReceipt() {
   margin-bottom: 20px;
   padding: 4px 0;
 }
+
 .hero-av {
   width: 56px;
   height: 56px;
@@ -423,32 +414,39 @@ function mintReceipt() {
   border: 1px solid var(--bg-lightest);
   flex-shrink: 0;
 }
+
 .hero-text {
   min-width: 0;
 }
+
 .hero-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
 }
+
 .hero-amt {
   margin: 6px 0 0;
   font-size: 20px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
 .hero-amt.green {
   color: var(--accent-green);
 }
+
 .hero-amt.red {
   color: var(--accent-red);
 }
+
 .mint-footer {
   margin-top: 28px;
   padding-top: 16px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--bg-lightest);
 }
+
 .mint-primary {
   width: 100%;
   min-height: var(--native-tap, 44px);
@@ -462,10 +460,12 @@ function mintReceipt() {
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(245, 95, 20, 0.35);
 }
+
 .mint-primary:active {
   transform: scale(0.98);
   opacity: 0.94;
 }
+
 .icon-btn {
   width: var(--native-tap, 44px);
   height: var(--native-tap, 44px);
@@ -477,19 +477,23 @@ function mintReceipt() {
   box-shadow: var(--native-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.35));
   cursor: pointer;
 }
+
 .icon-btn:active {
   transform: scale(0.96);
   opacity: 0.9;
 }
+
 .bar-title {
   flex: 1;
   text-align: center;
   font-size: 17px;
   font-weight: 600;
 }
+
 .bar-spacer {
   width: 44px;
 }
+
 .rows {
   list-style: none;
   border-radius: var(--radius-14);
@@ -498,6 +502,7 @@ function mintReceipt() {
   background: var(--bg-light);
   box-shadow: var(--native-shadow-md, 0 8px 28px rgba(0, 0, 0, 0.42));
 }
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -506,31 +511,38 @@ function mintReceipt() {
   border-bottom: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
   font-size: 14px;
 }
+
 .row:last-child {
   border-bottom: none;
 }
+
 .k {
   color: var(--tx-dimmed);
 }
+
 .v {
   color: var(--tx-normal);
   text-align: right;
   word-break: break-all;
 }
+
 .payer-block {
   margin-top: 20px;
 }
+
 .block-title {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 6px;
 }
+
 .block-copy {
   font-size: 13px;
   color: var(--tx-dimmed);
   margin-bottom: 12px;
   line-height: 1.45;
 }
+
 .payer-card {
   border-radius: var(--radius-14);
   border: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
@@ -538,16 +550,19 @@ function mintReceipt() {
   padding: 8px 16px 4px;
   box-shadow: var(--native-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.35));
 }
+
 .note {
   margin-top: 16px;
   font-size: 13px;
   color: var(--tx-dimmed);
 }
+
 .warn {
   font-size: 14px;
   color: var(--tx-semi);
   line-height: 1.5;
 }
+
 .link-back {
   margin-top: 16px;
   padding: 0;

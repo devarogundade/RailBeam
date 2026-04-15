@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { getTokens } from "beam-ts/src/utils/constants";
+import { getTokens } from '@railbeam/beam-ts';
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 
 /** Trust Wallet CDN — works without local copies for common ERC-20s */
 const USDC_ICON =
   "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png";
 
-type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string };
+type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string; };
 
 const assets = computed((): AssetRow[] => {
   const fromChain: AssetRow[] = getTokens.map((t) => ({
@@ -46,12 +46,14 @@ const assets = computed((): AssetRow[] => {
   padding: 12px 0 max(28px, env(safe-area-inset-bottom, 0px));
   color: var(--tx-normal);
 }
+
 .asset-list {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .asset {
   display: flex;
   align-items: center;
@@ -68,20 +70,24 @@ const assets = computed((): AssetRow[] => {
   transform: scale(0.995);
   opacity: 0.96;
 }
+
 .asset-ico {
   border-radius: var(--radius-12);
   object-fit: cover;
   border: 1px solid var(--bg-lightest);
 }
+
 .asset-name {
   font-size: 14px;
   font-weight: 500;
 }
+
 .asset-bal {
   font-size: 12px;
   color: var(--tx-dimmed);
   margin-top: 2px;
 }
+
 .asset-fiat {
   margin-left: auto;
   font-size: 14px;

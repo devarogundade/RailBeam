@@ -24,9 +24,6 @@ export default defineConfig({
     dedupe: ["axios", "ethers", "viem"],
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "beam-ts/src": path.resolve(
-        fileURLToPath(new URL("../sdk/dist", import.meta.url)),
-      ),
       fs: nodeFs,
       "node:fs/promises": nodeFsPromises,
       path: "path-browserify",

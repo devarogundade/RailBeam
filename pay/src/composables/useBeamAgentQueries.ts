@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 import type { Hex } from "viem";
-import type { Agent, AgentMetadata } from "beam-ts/src/types";
+import type { Agent, AgentMetadata } from "@railbeam/beam-ts";
 import { getBeamSdk } from "@/scripts/beamSdk";
 
 export function useBeamAgents(params?: {
@@ -14,7 +14,13 @@ export function useBeamAgents(params?: {
   const owner = computed(() => toValue(params?.owner));
 
   return useQuery({
-    queryKey: computed(() => ["beam", "agents", page.value, limit.value, owner.value]),
+    queryKey: computed(() => [
+      "beam",
+      "agents",
+      page.value,
+      limit.value,
+      owner.value,
+    ]),
     queryFn: async (): Promise<Agent[]> => {
       const sdk = getBeamSdk();
       return sdk.agents.getAgents({
@@ -26,7 +32,9 @@ export function useBeamAgents(params?: {
   });
 }
 
-export function useBeamAgentByAgentId(agentId: MaybeRefOrGetter<number | string>) {
+export function useBeamAgentByAgentId(
+  agentId: MaybeRefOrGetter<number | string>,
+) {
   const idNum = computed(() => {
     const raw = toValue(agentId);
     const n = typeof raw === "number" ? raw : Number(raw);
@@ -61,7 +69,14 @@ export function useBeamAgentMetadata(params: {
   const limit = computed(() => toValue(params.limit));
 
   return useQuery({
-    queryKey: computed(() => ["beam", "agent-metadata", agentIdNum.value, key.value, page.value, limit.value]),
+    queryKey: computed(() => [
+      "beam",
+      "agent-metadata",
+      agentIdNum.value,
+      key.value,
+      page.value,
+      limit.value,
+    ]),
     queryFn: async (): Promise<AgentMetadata[]> => {
       const n = agentIdNum.value;
       if (n == null) return [];
@@ -76,4 +91,3 @@ export function useBeamAgentMetadata(params: {
     enabled: computed(() => agentIdNum.value != null),
   });
 }
-

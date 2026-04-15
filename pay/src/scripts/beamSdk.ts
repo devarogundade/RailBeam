@@ -1,5 +1,5 @@
-import BeamSDK from "beam-ts/src";
-import { Network } from "beam-ts/src/enums";
+import BeamSDK from '@railbeam/beam-ts';
+import { Network } from '@railbeam/beam-ts';
 
 let instance: BeamSDK | null = null;
 

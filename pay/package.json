@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.1",
+    "@railbeam/beam-ts": "^3.0.1",
     "@tanstack/vue-query": "^5.87.1",
     "@wagmi/connectors": "^5.7.9",
     "@wagmi/core": "^2.16.5",
@@ -20,7 +21,6 @@
     "@x402/core": "^2.10.0",
     "@x402/evm": "^2.10.0",
     "axios": "^1.8.3",
-    "@railbeam/beam-ts": "2.2.6",
     "buffer": "^6.0.3",
     "ethers": "6.13.1",
     "firebase": "^11.4.0",

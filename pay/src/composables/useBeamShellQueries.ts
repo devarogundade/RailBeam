@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, unref, type MaybeRefOrGetter, toValue } from "vue";
 import type { Hex } from "viem";
-import { TransactionType } from "beam-ts/src/enums";
-import type { Transaction } from "beam-ts/src/types";
+import { TransactionType } from '@railbeam/beam-ts';
+import type { Transaction } from '@railbeam/beam-ts';
 import { getBeamSdk } from "@/scripts/beamSdk";
 import {
   buildShellSubscriptions,

@@ -5,7 +5,7 @@ import ChevronLeftIcon from "@/components/icons/ChevronLeftIcon.vue";
 import ChevronDownIcon from "@/components/icons/ChevronDownIcon.vue";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import { notify } from "@/reactives/notify";
-import { getTokens } from "beam-ts/src/utils/constants";
+import { getTokens } from '@railbeam/beam-ts';
 import type { Hex } from "viem";
 import { erc20Abi, parseEther, parseUnits, zeroAddress } from "viem";
 import AppFrame from "@/components/layout/AppFrame.vue";
@@ -183,38 +183,17 @@ async function submit() {
 
         <div class="field">
           <label for="send-recipient">Username or wallet address</label>
-          <input
-            id="send-recipient"
-            v-model="recipient"
-            type="text"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-            placeholder="@merchant or 0x…"
-          />
+          <input id="send-recipient" v-model="recipient" type="text" spellcheck="false" autocapitalize="off"
+            autocomplete="off" placeholder="@merchant or 0x…" />
         </div>
 
         <div class="field asset-field">
           <span id="send-asset-label" class="field-label">Asset</span>
           <div class="asset-dd">
-            <button
-              id="send-asset-trigger"
-              type="button"
-              class="asset-trigger"
-              :aria-expanded="assetMenuOpen"
-              aria-haspopup="listbox"
-              aria-labelledby="send-asset-label send-asset-trigger"
-              @click="toggleAssetMenu"
-            >
-              <img
-                v-if="selectedToken"
-                class="asset-trigger-ico"
-                :src="selectedToken.image"
-                alt=""
-                width="28"
-                height="28"
-                @error="onTokenImgError"
-              />
+            <button id="send-asset-trigger" type="button" class="asset-trigger" :aria-expanded="assetMenuOpen"
+              aria-haspopup="listbox" aria-labelledby="send-asset-label send-asset-trigger" @click="toggleAssetMenu">
+              <img v-if="selectedToken" class="asset-trigger-ico" :src="selectedToken.image" alt="" width="28"
+                height="28" @error="onTokenImgError" />
               <span class="asset-trigger-sym">{{ selectedToken?.symbol ?? "—" }}</span>
               <ChevronDownIcon class="asset-trigger-chev" :class="{ 'asset-trigger-chev--open': assetMenuOpen }" />
             </button>
@@ -222,23 +201,10 @@ async function submit() {
             <div v-if="assetMenuOpen" class="asset-backdrop" aria-hidden="true" @click="assetMenuOpen = false" />
 
             <ul v-if="assetMenuOpen" class="asset-menu" role="listbox" aria-labelledby="send-asset-label">
-              <li
-                v-for="t in getTokens"
-                :key="t.address"
-                role="option"
-                :aria-selected="t.address === assetAddress"
-                class="asset-menu-item"
-                :class="{ 'asset-menu-item--active': t.address === assetAddress }"
-                @click="pickAsset(t.address)"
-              >
-                <img
-                  class="asset-menu-ico"
-                  :src="t.image"
-                  alt=""
-                  width="28"
-                  height="28"
-                  @error="onTokenImgError"
-                />
+              <li v-for="t in getTokens" :key="t.address" role="option" :aria-selected="t.address === assetAddress"
+                class="asset-menu-item" :class="{ 'asset-menu-item--active': t.address === assetAddress }"
+                @click="pickAsset(t.address)">
+                <img class="asset-menu-ico" :src="t.image" alt="" width="28" height="28" @error="onTokenImgError" />
                 <span class="asset-menu-sym">{{ t.symbol }}</span>
               </li>
             </ul>
@@ -342,7 +308,7 @@ async function submit() {
   margin-bottom: 8px;
 }
 
-.field > input {
+.field>input {
   width: 100%;
   height: 48px;
   border-radius: var(--radius-8);

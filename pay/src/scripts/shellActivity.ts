@@ -1,9 +1,9 @@
 import type { Hex } from "viem";
 import { formatUnits, zeroAddress } from "viem";
 import { zeroGGalileoTestnet } from "viem/chains";
-import type { SubscriptionPlan, Transaction } from "beam-ts/src/types";
-import { TransactionStatus, TransactionType } from "beam-ts/src/enums";
-import { getToken } from "beam-ts/src/utils/constants";
+import type { SubscriptionPlan, Transaction } from '@railbeam/beam-ts';
+import { TransactionStatus, TransactionType } from '@railbeam/beam-ts';
+import { getToken } from '@railbeam/beam-ts';
 import {
   DEFAULT_PLACEHOLDER_IMAGE,
   USER_AVATAR_OTHER,

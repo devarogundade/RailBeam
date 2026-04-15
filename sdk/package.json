@@ -1,6 +1,6 @@
 {
   "name": "@railbeam/beam-ts",
-  "version": "2.2.6",
+  "version": "3.0.1",
   "description": "TS library for beam payment.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

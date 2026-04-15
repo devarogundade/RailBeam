@@ -5,7 +5,7 @@ import ChevronLeftIcon from "@/components/icons/ChevronLeftIcon.vue";
 import { notify } from "@/reactives/notify";
 import AppFrame from "@/components/layout/AppFrame.vue";
 import ChevronDownIcon from "@/components/icons/ChevronDownIcon.vue";
-import { getTokens } from "beam-ts/src/utils/constants";
+import { getTokens } from '@railbeam/beam-ts';
 import type { Hex } from "viem";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import Converter from "@/scripts/converter";
@@ -111,24 +111,10 @@ onUnmounted(() => {
         <div class="field asset-field">
           <span id="fund-asset-label" class="field-label">Asset</span>
           <div class="asset-dd">
-            <button
-              id="fund-asset-trigger"
-              type="button"
-              class="asset-trigger"
-              :aria-expanded="assetMenuOpen"
-              aria-haspopup="listbox"
-              aria-labelledby="fund-asset-label fund-asset-trigger"
-              @click="toggleAssetMenu"
-            >
-              <img
-                v-if="selectedToken"
-                class="asset-trigger-ico"
-                :src="selectedToken.image"
-                alt=""
-                width="28"
-                height="28"
-                @error="onTokenImgError"
-              />
+            <button id="fund-asset-trigger" type="button" class="asset-trigger" :aria-expanded="assetMenuOpen"
+              aria-haspopup="listbox" aria-labelledby="fund-asset-label fund-asset-trigger" @click="toggleAssetMenu">
+              <img v-if="selectedToken" class="asset-trigger-ico" :src="selectedToken.image" alt="" width="28"
+                height="28" @error="onTokenImgError" />
               <span class="asset-trigger-sym">{{ selectedToken?.symbol ?? "—" }}</span>
               <ChevronDownIcon class="asset-trigger-chev" :class="{ 'asset-trigger-chev--open': assetMenuOpen }" />
             </button>
@@ -136,23 +122,10 @@ onUnmounted(() => {
             <div v-if="assetMenuOpen" class="asset-backdrop" aria-hidden="true" @click="assetMenuOpen = false" />
 
             <ul v-if="assetMenuOpen" class="asset-menu" role="listbox" aria-labelledby="fund-asset-label">
-              <li
-                v-for="t in getTokens"
-                :key="t.address"
-                role="option"
-                :aria-selected="t.address === assetAddress"
-                class="asset-menu-item"
-                :class="{ 'asset-menu-item--active': t.address === assetAddress }"
-                @click="pickAsset(t.address)"
-              >
-                <img
-                  class="asset-menu-ico"
-                  :src="t.image"
-                  alt=""
-                  width="28"
-                  height="28"
-                  @error="onTokenImgError"
-                />
+              <li v-for="t in getTokens" :key="t.address" role="option" :aria-selected="t.address === assetAddress"
+                class="asset-menu-item" :class="{ 'asset-menu-item--active': t.address === assetAddress }"
+                @click="pickAsset(t.address)">
+                <img class="asset-menu-ico" :src="t.image" alt="" width="28" height="28" @error="onTokenImgError" />
                 <span class="asset-menu-sym">{{ t.symbol }}</span>
               </li>
             </ul>
@@ -256,7 +229,7 @@ onUnmounted(() => {
   margin-bottom: 8px;
 }
 
-.field > input {
+.field>input {
   width: 100%;
   height: 48px;
   border-radius: var(--radius-8);
