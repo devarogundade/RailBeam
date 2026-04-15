@@ -13,7 +13,6 @@ import {
   type AgentChatPreviousMessage,
   type AgentChatResponse,
   type CreateTransactionPayload,
-  createApiClient,
 } from "@/scripts/clientApi";
 import { useWalletStore } from "@/stores/wallet";
 import { appendChatBubble, loadChatBubbles, updateChatBubbleCtaState } from "@/scripts/chatHistoryDb";

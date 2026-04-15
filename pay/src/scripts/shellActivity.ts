@@ -1,9 +1,9 @@
 import type { Hex } from "viem";
 import { formatUnits, zeroAddress } from "viem";
 import { zeroGMainnet } from "viem/chains";
-import type { SubscriptionPlan, Transaction } from '@railbeam/beam-ts';
-import { TransactionStatus, TransactionType } from '@railbeam/beam-ts';
-import { getToken } from '@railbeam/beam-ts';
+import type { SubscriptionPlan, Transaction } from "@railbeam/beam-ts";
+import { TransactionStatus, TransactionType } from "@railbeam/beam-ts";
+import { getToken } from "@railbeam/beam-ts";
 import {
   DEFAULT_PLACEHOLDER_IMAGE,
   USER_AVATAR_OTHER,
@@ -109,11 +109,7 @@ export function mapTransactionToShellRow(
   const tsSec = Number(tx.blockTimestamp);
   const date = new Date(tsSec * 1000);
   const w = wallet?.toLowerCase() ?? "";
-  const received =
-    !!w &&
-    (tx.confirmations ?? []).some(
-      (c) => !w.includes(tx.payer) && c.recipient.toLowerCase() === w,
-    );
+  const received = false;
   const tone: "green" | "red" = received ? "green" : "red";
   const title = received
     ? "Received"
