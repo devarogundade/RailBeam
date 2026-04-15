@@ -176,8 +176,14 @@ onMounted(() => {
         </button>
       </div>
 
-      <div v-if="activeTransaction" class="txn_expanded_overlay" role="dialog" aria-modal="true"
-        @click.self="activeIndex = -1">
+      <dialog
+        v-if="activeTransaction"
+        class="txn_dialog"
+        open
+        aria-label="Transaction details"
+        @click.self="activeIndex = -1"
+        @cancel.prevent="activeIndex = -1"
+      >
         <div class="txn_expanded_panel">
           <div class="txn_expanded_header">
             <button class="txn_expanded_close" @click="activeIndex = -1">
@@ -303,7 +309,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
 
       <div class="table_wrap" role="region" aria-label="Transactions table">
         <table>
@@ -1039,13 +1045,22 @@ tr {
   font-size: 14px;
 }
 
-.txn_expanded_overlay {
-  position: absolute;
+.txn_dialog {
+  position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
-  z-index: 10;
-  border-radius: 12px;
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
   padding: 12px;
+  border: none;
+  background: transparent;
+  z-index: 200;
+}
+
+.txn_dialog::backdrop {
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
 }
 
 .txn_expanded_panel {

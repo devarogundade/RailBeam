@@ -240,6 +240,56 @@ onMounted(() => {
     overflow: hidden;
 }
 
+@media (max-width: 960px) {
+    .toolbar {
+        height: auto;
+        padding: 12px 0;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .titles {
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .title {
+        padding: 0 16px;
+    }
+
+    .wrapper {
+        padding: 28px 0;
+    }
+
+    .form {
+        width: 100%;
+        max-width: 550px;
+    }
+}
+
+@media (max-width: 600px) {
+    .wrapper {
+        padding: 20px 0;
+    }
+
+    .file {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .upload {
+        width: 100%;
+        max-width: 214px;
+        margin: 0 auto;
+    }
+
+    .upload_text {
+        padding: 0;
+    }
+}
+
 .upload_text {
     position: relative;
 }

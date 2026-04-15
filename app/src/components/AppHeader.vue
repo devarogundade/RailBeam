@@ -115,6 +115,10 @@ watch(route, (newValue) => {
 header {
     top: 0;
     position: sticky;
+    left: 0;
+    right: 0;
+    width: 100%;
+    align-self: stretch;
     z-index: 99;
     background: var(--bg);
     height: calc(90px + env(safe-area-inset-top));

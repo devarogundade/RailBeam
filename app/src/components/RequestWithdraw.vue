@@ -162,6 +162,7 @@ onUnmounted(() => {
 .box {
   height: fit-content;
   width: 550px;
+  max-width: calc(100% - (var(--page-gutter) * 2));
   border-radius: 16px;
   background: var(--bg);
   overflow: hidden;
@@ -232,6 +233,20 @@ select {
   grid-template-columns: 1fr 140px;
   gap: 12px;
   align-items: center;
+}
+
+@media (max-width: 600px) {
+  .title {
+    padding: 20px 20px 12px 20px;
+  }
+
+  .form {
+    padding: 18px 20px 20px 20px;
+  }
+
+  .select_row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .token_preview {

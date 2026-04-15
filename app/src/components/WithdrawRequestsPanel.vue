@@ -166,11 +166,14 @@ onUnmounted(() => {
   top: 0;
   right: 0;
   height: 100vh;
+  height: 100dvh;
   width: 480px;
+  max-width: 92vw;
   background: var(--bg);
   border-left: 1px solid var(--bg-lightest);
   display: flex;
   flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .head {
@@ -207,6 +210,35 @@ onUnmounted(() => {
   padding: 18px 22px 22px 22px;
   overflow: auto;
   flex: 1;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .head {
+    padding: 18px 16px 12px 16px;
+  }
+
+  .content {
+    padding: 14px 16px 16px 16px;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .actions button {
+    flex: 1;
+  }
 }
 
 .hint {

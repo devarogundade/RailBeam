@@ -129,13 +129,14 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding-right: 20px;
+    padding: 0 var(--page-gutter);
 }
 
 
 .plan {
     width: 400px;
     height: fit-content;
+    max-width: 100%;
     border-radius: 16px;
     background: var(--bg);
     overflow: hidden;
@@ -160,6 +161,7 @@ onUnmounted(() => {
 .scroll {
     overflow-y: scroll;
     height: calc(100vh - 260px);
+    height: calc(100dvh - 260px);
 }
 
 .images {
@@ -167,9 +169,32 @@ onUnmounted(() => {
 }
 
 .plan img {
-    width: 352px;
-    height: 352px;
+    width: 100%;
+    height: auto;
+    max-height: 352px;
     object-fit: contain;
+}
+
+@media (max-width: 600px) {
+    .plan {
+        width: 100%;
+    }
+
+    .images {
+        padding: 16px;
+    }
+
+    .title,
+    .info,
+    .description .body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .description .head,
+    .link .head {
+        padding: 0 16px;
+    }
 }
 
 .close {

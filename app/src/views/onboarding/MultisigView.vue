@@ -212,6 +212,38 @@ watch(signers, () => {
     width: 550px;
 }
 
+@media (max-width: 960px) {
+    .toolbar {
+        height: auto;
+        padding: 12px 0;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .titles {
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .title {
+        padding: 0 16px;
+    }
+
+    .form {
+        width: 100%;
+        max-width: 550px;
+    }
+
+    .signer_card .name {
+        height: auto;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+}
+
 .signer_card {
     padding: 40px 0;
     border-bottom: 1px solid var(--bg-lightest);

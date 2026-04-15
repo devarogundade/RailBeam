@@ -94,6 +94,7 @@ onUnmounted(() => {
 .box {
     height: fit-content;
     width: 550px;
+    max-width: calc(100% - (var(--page-gutter) * 2));
     border-radius: 16px;
     background: var(--bg);
     overflow: hidden;
@@ -190,6 +191,22 @@ onUnmounted(() => {
     padding: 0 10px;
     font-size: 14px;
     color: var(--tx-semi);
+    word-break: break-all;
+}
+
+@media (max-width: 600px) {
+    .qr {
+        padding: 18px;
+    }
+
+    .address {
+        padding: 18px;
+    }
+
+    .code_wrapper {
+        padding: 16px;
+        border-radius: 22px;
+    }
 }
 
 .input .icon {

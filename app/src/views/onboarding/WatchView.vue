@@ -174,4 +174,39 @@ input {
     outline: none;
     border-radius: 8px;
 }
+
+@media (max-width: 960px) {
+    .toolbar {
+        height: auto;
+        padding: 12px 0;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .wrapper {
+        padding: 40px 0;
+    }
+
+    .form {
+        width: 100%;
+        max-width: 550px;
+    }
+}
+
+@media (max-width: 600px) {
+    .wrapper {
+        padding: 28px 0;
+    }
+
+    .title {
+        padding: 0 16px;
+    }
+
+    .input {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
 </style>

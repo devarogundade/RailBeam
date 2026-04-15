@@ -315,6 +315,7 @@ onUnmounted(() => {
 .form {
     height: fit-content;
     width: 500px;
+    max-width: calc(100% - (var(--page-gutter) * 2));
     border-radius: 16px;
     background: var(--bg);
     overflow: hidden;
@@ -346,6 +347,13 @@ onUnmounted(() => {
 .scroll {
     overflow-y: scroll;
     max-height: calc(100vh - 240px);
+    max-height: calc(100dvh - 240px);
+}
+
+@media (max-width: 600px) {
+    .title {
+        padding: 18px 16px;
+    }
 }
 
 

@@ -3,11 +3,21 @@
 
 :root {
   --page-gutter: 50px;
+  --fs-h1: 30px;
+  --fs-h2: 24px;
+  --fs-title: 20px;
+  --fs-body: 16px;
+  --fs-body-sm: 14px;
 }
 
 @media (max-width: 960px) {
   :root {
     --page-gutter: 16px;
+    --fs-h1: 26px;
+    --fs-h2: 22px;
+    --fs-title: 18px;
+    --fs-body: 15px;
+    --fs-body-sm: 13px;
   }
 }
 
@@ -21,6 +31,7 @@ body,
 body {
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+  font-size: var(--fs-body);
 }
 
 img {
@@ -53,7 +64,7 @@ section {
 
 .app_width {
   width: 1920px;
-  max-width: calc(100% - 100px);
+  max-width: calc(100% - (var(--page-gutter) * 2));
 }
 
 body {
@@ -63,7 +74,7 @@ body {
 /* Mobile-friendly gutters */
 @media (max-width: 960px) {
   .app_width {
-    max-width: calc(100% - 32px);
+    max-width: calc(100% - (var(--page-gutter) * 2));
   }
 }
 

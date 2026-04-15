@@ -71,12 +71,13 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding-right: 20px;
+    padding: 0 var(--page-gutter);
 }
 
 .form {
     height: fit-content;
     width: 400px;
+    max-width: 100%;
     border-radius: 16px;
     background: var(--bg);
     overflow: hidden;
@@ -122,6 +123,7 @@ onUnmounted(() => {
 .scroll {
     overflow-y: auto;
     height: calc(100vh - 140px);
+    height: calc(100dvh - 140px);
 }
 
 .assets {}
@@ -133,6 +135,16 @@ onUnmounted(() => {
     justify-content: space-between;
     padding: 0 30px;
     border-bottom: 1px solid var(--bg-lightest);
+}
+
+@media (max-width: 600px) {
+    .form {
+        width: 100%;
+    }
+
+    .asset {
+        padding: 0 16px;
+    }
 }
 
 .asset:last-child {

@@ -53,10 +53,13 @@ const removeIndex = (index: number) => {
     bottom: 0;
     transform: translate(-50%, 0);
     z-index: 1000;
+    width: calc(100% - (var(--page-gutter) * 2));
+    max-width: 580px;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .snackbar {
-    width: 580px;
+    width: 100%;
     background: var(--bg-lightest);
     box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.8);
     border-radius: 4px;
@@ -120,6 +123,17 @@ const removeIndex = (index: number) => {
     font-size: 14px;
     margin-top: 14px;
     color: var(--tx-semi);
+}
+
+@media (max-width: 420px) {
+    .snackbar {
+        gap: 12px;
+        padding: 16px 12px;
+    }
+
+    .texts p {
+        margin-top: 8px;
+    }
 }
 
 .link {
