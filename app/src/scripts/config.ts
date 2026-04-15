@@ -1,6 +1,6 @@
 import { injected, walletConnect } from "@wagmi/connectors";
 import { defaultWagmiConfig } from "@web3modal/wagmi";
-import { zeroGMainnet } from "viem/chains";
+import { zeroG } from "viem/chains";
 
 const metadata = {
   name: "Beam",
@@ -9,7 +9,7 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-export const chains = [zeroGMainnet];
+export const chains = [zeroG];
 
 export const config = defaultWagmiConfig({
   // @ts-ignore
