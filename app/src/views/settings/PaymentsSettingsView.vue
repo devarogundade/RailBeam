@@ -152,7 +152,7 @@ watch(walletStore, () => {
 
 <style scoped>
 .container {
-    padding: 0 50px;
+    padding: 0 var(--page-gutter);
     padding-bottom: 40px;
 }
 

@@ -305,172 +305,174 @@ onMounted(() => {
         </div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <td>Type</td>
-            <td>Time</td>
-            <td>Status</td>
-            <td>Signers</td>
-            <td>Amount</td>
-            <td></td>
-          </tr>
-        </thead>
+      <div class="table_wrap" role="region" aria-label="Transactions table">
+        <table>
+          <thead>
+            <tr>
+              <td>Type</td>
+              <td>Time</td>
+              <td>Status</td>
+              <td>Signers</td>
+              <td>Amount</td>
+              <td></td>
+            </tr>
+          </thead>
 
-        <tbody>
-          <template v-for="(transaction, index) in transactions" :key="index">
-            <tr @click="index == activeIndex ? activeIndex = - 1 : activeIndex = index"
-              :class="index == activeIndex ? 'active_transaction' : ''">
-              <td>
-                <div class="txn_cell">
-                  <PaymentsIcon v-if="transaction.type == TransactionType.OneTime" />
-                  <PaymentsIcon v-if="transaction.type == TransactionType.Recurrent" />
-                  <SendIcon v-if="transaction.type == TransactionType.Send" />
+          <tbody>
+            <template v-for="(transaction, index) in transactions" :key="index">
+              <tr @click="index == activeIndex ? activeIndex = - 1 : activeIndex = index"
+                :class="index == activeIndex ? 'active_transaction' : ''">
+                <td>
+                  <div class="txn_cell">
+                    <PaymentsIcon v-if="transaction.type == TransactionType.OneTime" />
+                    <PaymentsIcon v-if="transaction.type == TransactionType.Recurrent" />
+                    <SendIcon v-if="transaction.type == TransactionType.Send" />
 
-                  <div class="txn_cell_info">
-                    <p v-if="transaction.type == TransactionType.OneTime">{{
-                      transaction.description?.length > 0 ? transaction.description : 'One Time'
+                    <div class="txn_cell_info">
+                      <p v-if="transaction.type == TransactionType.OneTime">{{
+                        transaction.description?.length > 0 ? transaction.description : 'One Time'
+                        }}</p>
+                      <p v-if="transaction.type == TransactionType.Recurrent">{{
+                        transaction.description?.length > 0 ?
+                          transaction.description : 'Recurrent'
                       }}</p>
-                    <p v-if="transaction.type == TransactionType.Recurrent">{{
-                      transaction.description?.length > 0 ?
-                        transaction.description : 'Recurrent'
-                    }}</p>
-                    <p v-if="transaction.type == TransactionType.Send">{{
-                      transaction.description?.length > 0 ?
-                        transaction.description : 'Send'
-                    }}</p>
+                      <p v-if="transaction.type == TransactionType.Send">{{
+                        transaction.description?.length > 0 ?
+                          transaction.description : 'Send'
+                      }}</p>
 
-                    <div v-if="transaction.type == TransactionType.OneTime">
-                      <p>{{ transaction.payers.length }} {{ transaction.payers.length < 2 ? 'Signer' : 'Signers' }}</p>
+                      <div v-if="transaction.type == TransactionType.OneTime">
+                        <p>{{ transaction.payers.length }} {{ transaction.payers.length < 2 ? 'Signer' : 'Signers' }}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </td>
+                </td>
 
-              <td>
-                <div class="time">
-                  <p>
-                    {{
-                      Intl.DateTimeFormat('en-US', {
-                        day: '2-digit',
-                        month: 'short',
-                      }).format(transaction.blockTimestamp * 1000)
-                    }}
-                  </p>
-                  <p>
-                    {{
-                      Intl.DateTimeFormat('en-US', {
-                        second: '2-digit',
-                        minute: '2-digit',
-                        hour: '2-digit'
-                      }).format(transaction.blockTimestamp * 1000)
-                    }}
-                  </p>
-                </div>
-              </td>
+                <td>
+                  <div class="time">
+                    <p>
+                      {{
+                        Intl.DateTimeFormat('en-US', {
+                          day: '2-digit',
+                          month: 'short',
+                        }).format(transaction.blockTimestamp * 1000)
+                      }}
+                    </p>
+                    <p>
+                      {{
+                        Intl.DateTimeFormat('en-US', {
+                          second: '2-digit',
+                          minute: '2-digit',
+                          hour: '2-digit'
+                        }).format(transaction.blockTimestamp * 1000)
+                      }}
+                    </p>
+                  </div>
+                </td>
 
-              <td>
-                <div class="status"
-                  v-if="transaction.type == TransactionType.OneTime && transaction.payers.length < transaction.fulfilleds.length">
-                  <PendingIcon />
-                  <p>Pending</p>
-                </div>
+                <td>
+                  <div class="status"
+                    v-if="transaction.type == TransactionType.OneTime && transaction.payers.length < transaction.fulfilleds.length">
+                    <PendingIcon />
+                    <p>Pending</p>
+                  </div>
 
-                <div class="status"
-                  v-if="transaction.type == TransactionType.OneTime && transaction.payers.length == transaction.fulfilleds.length">
-                  <CompletedIcon />
-                  <p>Completed</p>
-                </div>
+                  <div class="status"
+                    v-if="transaction.type == TransactionType.OneTime && transaction.payers.length == transaction.fulfilleds.length">
+                    <CompletedIcon />
+                    <p>Completed</p>
+                  </div>
 
-                <div class="status" v-if="transaction.type == TransactionType.Recurrent">
-                  <CompletedIcon />
-                  <p>Completed</p>
-                </div>
-              </td>
+                  <div class="status" v-if="transaction.type == TransactionType.Recurrent">
+                    <CompletedIcon />
+                    <p>Completed</p>
+                  </div>
+                </td>
 
-              <td>
-                <div class="signers">
-                  <div class="users">
-                    <UsersIcon />
+                <td>
+                  <div class="signers">
+                    <div class="users">
+                      <UsersIcon />
+                      <p v-if="transaction.type == TransactionType.OneTime">
+                        {{ transaction.fulfilleds.length }} <span>of {{ transaction.payers.length }}</span>
+                      </p>
+
+                      <p v-if="transaction.type == TransactionType.Recurrent">1 <span>of 1</span> </p>
+                    </div>
+
+                    <div class=" progress">
+                      <div v-if="transaction.type == TransactionType.OneTime" class="bar"
+                        :style="`width: ${(transaction.fulfilleds.length / transaction.payers.length) * 100}%`"></div>
+
+                      <div v-if="transaction.type == TransactionType.Recurrent" class="bar" :style="`width: ${100}%`">
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="amount">
                     <p v-if="transaction.type == TransactionType.OneTime">
-                      {{ transaction.fulfilleds.length }} <span>of {{ transaction.payers.length }}</span>
+                      {{
+                        Converter.toMoney(
+                          Number(
+                            formatUnits(
+                              transaction.adjustedAmount,
+                              getToken(transaction.adjustedToken)?.decimals || 18,
+                            ),
+                          )
+                        )
+                      }}
+                      <span>{{ getToken(transaction.adjustedToken)?.symbol }}</span>
+                    </p>
+                    <p v-if="transaction.type == TransactionType.OneTime">≈ ${{ Converter.toMoney(
+                      (getToken(transaction.adjustedToken)?.price || 0) * Number(
+                        formatUnits(
+                          transaction.adjustedAmount,
+                          getToken(transaction.adjustedToken)?.decimals || 18,
+                        ),
+                      )
+
+                    ) }}
                     </p>
 
-                    <p v-if="transaction.type == TransactionType.Recurrent">1 <span>of 1</span> </p>
+                    <p v-if="transaction.type == TransactionType.Recurrent">
+                      {{
+                        Converter.toMoney(
+                          Number(
+                            formatUnits(
+                              transaction.adjustedAmount,
+                              getToken(transaction.adjustedToken)?.decimals || 18,
+                            ),
+                          )
+                        )
+                      }}
+                      <span>{{ getToken(transaction.adjustedToken)?.symbol }}</span>
+                    </p>
+                    <p v-if="transaction.type == TransactionType.Recurrent">≈ ${{ Converter.toMoney(
+                      (getToken(transaction.adjustedToken)?.price || 0) * Number(
+                        formatUnits(
+                          transaction.adjustedAmount,
+                          getToken(transaction.adjustedToken)?.decimals || 18,
+                        ),
+                      ))
+                    }}
+                    </p>
                   </div>
+                </td>
 
-                  <div class=" progress">
-                    <div v-if="transaction.type == TransactionType.OneTime" class="bar"
-                      :style="`width: ${(transaction.fulfilleds.length / transaction.payers.length) * 100}%`"></div>
-
-                    <div v-if="transaction.type == TransactionType.Recurrent" class="bar" :style="`width: ${100}%`">
+                <td>
+                  <div class="view_dropdown">
+                    <div class="view">
+                      <ChevronDownIcon />
                     </div>
                   </div>
-                </div>
-              </td>
-
-              <td>
-                <div class="amount">
-                  <p v-if="transaction.type == TransactionType.OneTime">
-                    {{
-                      Converter.toMoney(
-                        Number(
-                          formatUnits(
-                            transaction.adjustedAmount,
-                            getToken(transaction.adjustedToken)?.decimals || 18,
-                          ),
-                        )
-                      )
-                    }}
-                    <span>{{ getToken(transaction.adjustedToken)?.symbol }}</span>
-                  </p>
-                  <p v-if="transaction.type == TransactionType.OneTime">≈ ${{ Converter.toMoney(
-                    (getToken(transaction.adjustedToken)?.price || 0) * Number(
-                      formatUnits(
-                        transaction.adjustedAmount,
-                        getToken(transaction.adjustedToken)?.decimals || 18,
-                      ),
-                    )
-
-                  ) }}
-                  </p>
-
-                  <p v-if="transaction.type == TransactionType.Recurrent">
-                    {{
-                      Converter.toMoney(
-                        Number(
-                          formatUnits(
-                            transaction.adjustedAmount,
-                            getToken(transaction.adjustedToken)?.decimals || 18,
-                          ),
-                        )
-                      )
-                    }}
-                    <span>{{ getToken(transaction.adjustedToken)?.symbol }}</span>
-                  </p>
-                  <p v-if="transaction.type == TransactionType.Recurrent">≈ ${{ Converter.toMoney(
-                    (getToken(transaction.adjustedToken)?.price || 0) * Number(
-                      formatUnits(
-                        transaction.adjustedAmount,
-                        getToken(transaction.adjustedToken)?.decimals || 18,
-                      ),
-                    ))
-                  }}
-                  </p>
-                </div>
-              </td>
-
-              <td>
-                <div class="view_dropdown">
-                  <div class="view">
-                    <ChevronDownIcon />
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
 
       <div class="empty" v-if="!progress && transactions.length == 0">
         <StorageImage src="/images/empty.png" alt="" />
@@ -491,7 +493,7 @@ onMounted(() => {
 
 <style scoped>
 .treasury {
-  padding: 30px 50px;
+  padding: 30px var(--page-gutter);
   padding-bottom: 100px;
 }
 
@@ -773,6 +775,16 @@ onMounted(() => {
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.table_wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table_wrap table {
+  min-width: 720px;
 }
 
 thead {
@@ -1161,5 +1173,99 @@ tr {
 .txn_expanded_confirmations {
   margin-top: 12px;
   background: var(--bg);
+}
+
+@media (max-width: 960px) {
+  .assets_grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .assets {
+    padding-right: 0;
+    border-right: none;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--bg-lightest);
+  }
+
+  .top_assets {
+    padding-left: 0;
+  }
+
+  .assets_head {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .assets_value {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .value_tokens {
+    align-items: flex-start;
+  }
+
+  .top_asset .info,
+  .top_asset .balance,
+  .top_asset .price {
+    width: auto;
+    min-width: 0;
+  }
+
+  .top_asset .info {
+    flex: 1;
+  }
+
+  .top_asset .info p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .transactions .title {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .filter {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .treasury {
+    padding-top: 20px;
+    padding-bottom: 80px;
+  }
+
+  .assets_actions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .value_amount > p {
+    font-size: 22px;
+  }
+
+  .top_asset .price p,
+  .top_asset .price span {
+    font-size: 14px;
+  }
+
+  .txn_expanded_header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .txn_expanded_status {
+    justify-content: flex-start;
+  }
+
+  .txn_expanded_summary {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

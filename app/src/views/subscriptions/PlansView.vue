@@ -78,7 +78,7 @@ const getPlans = async () => {
 
 <style scoped>
 .plans {
-    padding: 0 50px;
+    padding: 0 var(--page-gutter);
     padding-bottom: 50px;
     gap: 30px;
     display: flex;
@@ -92,6 +92,24 @@ const getPlans = async () => {
     background: var(--bg-light);
     width: 530px;
     cursor: pointer;
+}
+
+@media (max-width: 960px) {
+    .plan {
+        width: 100%;
+        max-width: 530px;
+    }
+}
+
+@media (max-width: 600px) {
+    .plan {
+        max-width: 100%;
+    }
+
+    .plan :deep(img) {
+        width: 120px;
+        height: 120px;
+    }
 }
 
 .plan :deep(img) {

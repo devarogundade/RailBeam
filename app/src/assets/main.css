@@ -1,6 +1,27 @@
 @import "./base.css";
 @import url("https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap");
 
+:root {
+  --page-gutter: 50px;
+}
+
+@media (max-width: 960px) {
+  :root {
+    --page-gutter: 16px;
+  }
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 * {
   padding: 0;
   margin: 0;
@@ -75,5 +96,6 @@ input::-webkit-inner-spin-button {
 }
 
 input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }

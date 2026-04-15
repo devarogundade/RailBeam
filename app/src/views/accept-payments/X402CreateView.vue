@@ -300,7 +300,7 @@ watch(sourceKind, (k) => {
 
 <style scoped>
 .page {
-  padding: 0 50px 50px;
+  padding: 0 var(--page-gutter) 50px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -353,7 +353,7 @@ watch(sourceKind, (k) => {
 
 .form {
   width: 520px;
-  max-width: min(520px, calc(100vw - 100px));
+  max-width: min(520px, calc(100vw - (var(--page-gutter) * 2)));
   box-sizing: border-box;
 }
 
@@ -585,7 +585,7 @@ watch(sourceKind, (k) => {
 
 @media (max-width: 960px) {
   .page {
-    padding: 0 16px 40px;
+    padding: 0 var(--page-gutter) 40px;
   }
 
   .toolbar {

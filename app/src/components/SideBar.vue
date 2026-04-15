@@ -206,11 +206,13 @@ const copyAddress = async () => {
     top: 0;
     position: sticky;
     height: 100vh;
+    height: 100dvh;
     width: 250px;
     z-index: 20;
     position: fixed;
     border-right: 1px solid var(--bg-lightest);
     background: var(--bg);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 header {
@@ -237,6 +239,7 @@ header {
 main {
     padding-top: 24px;
     height: calc(100vh - 250px);
+    height: calc(100dvh - 250px);
     overflow: auto;
 }
 
@@ -456,10 +459,12 @@ footer a {
 
     .sidebar {
         height: 100vh;
+        height: 100dvh;
         width: min(320px, 85vw);
         transform: translateX(-110%);
         transition: transform 200ms ease;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     .sidebar_wrap[data-open="true"] .sidebar {

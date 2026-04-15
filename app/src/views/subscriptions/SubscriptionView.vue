@@ -71,7 +71,7 @@ const creatingPlan = ref<boolean>(false);
 
 <style scoped>
 .stats_wrapper {
-    padding: 0 50px;
+    padding: 0 var(--page-gutter);
 }
 
 .stats {
@@ -80,6 +80,27 @@ const creatingPlan = ref<boolean>(false);
     grid-template-columns: repeat(2, 1fr);
     border-bottom: 1px solid var(--bg-lightest);
     width: 100%;
+}
+
+@media (max-width: 600px) {
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .stat {
+        border-right: none;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--bg-lightest);
+    }
+
+    .stat:first-child {
+        padding-top: 0;
+    }
+
+    .stat:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
 }
 
 .stat {

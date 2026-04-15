@@ -193,7 +193,7 @@ onMounted(() => {
 
 <style scoped>
 .container {
-    padding: 0 50px;
+    padding: 0 var(--page-gutter);
     padding-bottom: 40px;
 }
 
@@ -369,7 +369,7 @@ input {
 
 @media (max-width: 960px) {
     .container {
-        padding: 0 16px;
+        padding: 0 var(--page-gutter);
         padding-bottom: 40px;
     }
 

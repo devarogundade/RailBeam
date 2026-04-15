@@ -460,7 +460,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page {
-    padding: 0 50px 50px;
+    padding: 0 var(--page-gutter) 50px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -530,14 +530,14 @@ onBeforeUnmount(() => {
 .form {
     flex: 0 0 auto;
     width: 520px;
-    max-width: min(520px, calc(100vw - 100px));
+    max-width: min(520px, calc(100vw - (var(--page-gutter) * 2)));
     box-sizing: border-box;
 }
 
 .qr_card {
     flex: 0 0 auto;
     width: 800px;
-    max-width: min(800px, calc(100vw - 100px));
+    max-width: min(800px, calc(100vw - (var(--page-gutter) * 2)));
     box-sizing: border-box;
     border-radius: 14px;
     background: var(--bg-light);
@@ -1067,7 +1067,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 960px) {
     .page {
-        padding: 0 16px 40px;
+        padding: 0 var(--page-gutter) 40px;
         overflow-x: hidden;
     }
 

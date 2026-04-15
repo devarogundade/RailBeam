@@ -117,18 +117,22 @@ header {
     position: sticky;
     z-index: 99;
     background: var(--bg);
-    height: 90px;
+    height: calc(90px + env(safe-area-inset-top));
     display: flex;
     align-items: center;
-    padding: 0 50px;
+    padding: env(safe-area-inset-top) var(--page-gutter) 0;
     justify-content: space-between;
     border-bottom: 1px solid var(--bg-lightest);
+    box-sizing: border-box;
+    gap: 16px;
 }
 
 .header_info {
     display: flex;
     align-items: center;
     gap: 20px;
+    min-width: 0;
+    flex: 1;
 }
 
 .menu_btn {
@@ -149,6 +153,10 @@ header {
     line-height: 25px;
     letter-spacing: 2%;
     color: var(--tx-normal);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .header_info p span {
@@ -180,6 +188,7 @@ header {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex-shrink: 0;
 }
 
 .actions button {
@@ -202,10 +211,6 @@ header {
 }
 
 @media (max-width: 960px) {
-    header {
-        padding: 0 16px;
-    }
-
     .menu_btn {
         display: inline-flex;
         align-items: center;
@@ -214,6 +219,29 @@ header {
 
     .actions button p {
         display: none;
+    }
+}
+
+@media (max-width: 420px) {
+    header {
+        gap: 12px;
+    }
+
+    .header_info {
+        gap: 12px;
+    }
+
+    .header_info p {
+        font-size: 16px;
+        line-height: 20px;
+    }
+
+    .actions {
+        gap: 12px;
+    }
+
+    .actions button {
+        padding: 0 12px;
     }
 }
 </style>
