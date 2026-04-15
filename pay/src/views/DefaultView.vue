@@ -4,6 +4,7 @@ import { useDataStore } from '@/stores/data';
 import { useWalletStore } from '@/stores/wallet';
 import { formatUnits, parseUnits, zeroAddress, type Hex } from 'viem';
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import BeamSDK from '@railbeam/beam-ts';
 import { Network, TransactionType } from '@/scripts/types';
 import type { Token, Transaction, TransactionCallback } from '@railbeam/beam-ts';
@@ -25,6 +26,7 @@ import { mapSubscriptionPlanToPlan, type Plan } from "@railbeam/beam-ts";
 import StorageImage from "@/components/StorageImage.vue";
 
 const web3Modal = useWeb3Modal();
+const router = useRouter();
 
 const dataStore = useDataStore();
 const walletStore = useWalletStore();
@@ -438,6 +440,11 @@ const makePayment = async () => {
 
         if (window.opener && session) {
             window.opener.postMessage(result, dataStore.initiator.url);
+        }
+
+        // Move checkout flow to in-app success screen with CTA to detail.
+        if (result.transactionId) {
+            router.push({ name: 'payment-tx-success', params: { id: result.transactionId } });
         }
     } else {
         notify.push({
