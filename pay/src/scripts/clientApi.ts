@@ -54,7 +54,6 @@ export type TransactionView = {
 };
 
 export async function createApiClient(isX402: boolean): Promise<AxiosInstance> {
-
   const auth = useAuthStore();
   const base = axios.create({ baseURL: import.meta.env.VITE_CLIENT_URL });
   if (auth.accessToken) {
@@ -65,7 +64,7 @@ export async function createApiClient(isX402: boolean): Promise<AxiosInstance> {
 
   if (!isX402) return base;
 
-    const walletClient = await getWalletClient(config);
+  const walletClient = await getWalletClient(config);
   const account = walletClient?.account;
 
   const evmSigner = {
@@ -174,7 +173,7 @@ export class ClientApi {
     console.log("ensureVirtualCard", body);
     const client = await createApiClient(false);
     const userAgent =
-      typeof navigator !== "undefined" ? navigator.userAgent ?? "" : "";
+      typeof navigator !== "undefined" ? (navigator.userAgent ?? "") : "";
     const response = await client.post(`/issuing/virtual-card`, {
       ...(body ?? {}),
       termsAcceptance: {
@@ -203,7 +202,8 @@ export class ClientApi {
     previousMessages?: AgentChatPreviousMessage[];
   }): Promise<AgentChatResponse> {
     const client = await createApiClient(false);
-    const { agentId, ...body } = params;
+    const { agentId, previousMessages, ...body } = params;
+    // todo remove previousMessages from body
     const response = await client.post(`/agents/${agentId}/chat`, body);
     return response.data;
   }
