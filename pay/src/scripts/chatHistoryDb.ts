@@ -5,6 +5,10 @@ export type PersistedChatBubble = {
   id: string;
   direction: "in" | "out";
   text: string;
+  kind?: "text" | "x402" | "transaction";
+  cta?: { label: string; action: "x402" | "transaction"; payload: unknown };
+  ctaStatus?: "idle" | "sending" | "failed" | "success";
+  ctaError?: string;
   computeVerified?: boolean;
   chatId?: string;
   createdAt: number;
@@ -26,6 +30,48 @@ function nowMs() {
 
 function safeString(v: unknown) {
   return typeof v === "string" ? v : v == null ? "" : String(v);
+}
+
+function tableColumnNames(db: Database, table: string): Set<string> {
+  const res = db.exec(`PRAGMA table_info(${table})`);
+  const names = new Set<string>();
+  const values = res[0]?.values;
+  if (!values) return names;
+  for (const row of values) {
+    if (row[1] != null) names.add(String(row[1]));
+  }
+  return names;
+}
+
+function migrateChatMessagesTable(db: Database) {
+  const cols = tableColumnNames(db, "chat_messages");
+  if (!cols.has("kind")) {
+    db.run(`ALTER TABLE chat_messages ADD COLUMN kind TEXT;`);
+  }
+  if (!cols.has("cta_json")) {
+    db.run(`ALTER TABLE chat_messages ADD COLUMN cta_json TEXT;`);
+  }
+  if (!cols.has("cta_status")) {
+    db.run(`ALTER TABLE chat_messages ADD COLUMN cta_status TEXT;`);
+  }
+  if (!cols.has("cta_error")) {
+    db.run(`ALTER TABLE chat_messages ADD COLUMN cta_error TEXT;`);
+  }
+}
+
+function parseCtaJson(raw: string | null | undefined): PersistedChatBubble["cta"] | undefined {
+  if (!raw || !raw.trim()) return undefined;
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object") return undefined;
+    const o = v as Record<string, unknown>;
+    const action = o.action === "x402" || o.action === "transaction" ? o.action : null;
+    const label = typeof o.label === "string" ? o.label : "";
+    if (!action || !label.trim()) return undefined;
+    return { label, action, payload: o.payload };
+  } catch {
+    return undefined;
+  }
 }
 
 async function getState(): Promise<DbState> {
@@ -68,6 +114,8 @@ async function getState(): Promise<DbState> {
       ON chat_messages(agent_id, user_address, created_at);
     `);
 
+    migrateChatMessagesTable(db);
+
     return { SQL, db, persistTimer: null };
   })();
 
@@ -94,7 +142,7 @@ export async function loadChatBubbles(params: {
 
   const stmt = st.db.prepare(
     `
-    SELECT id, direction, text, compute_verified, chat_id, created_at
+    SELECT id, direction, text, kind, cta_json, cta_status, cta_error, compute_verified, chat_id, created_at
     FROM chat_messages
     WHERE agent_id = ? AND user_address = ?
     ORDER BY created_at ASC
@@ -106,10 +154,24 @@ export async function loadChatBubbles(params: {
   const out: PersistedChatBubble[] = [];
   while (stmt.step()) {
     const row = stmt.getAsObject() as any;
+    const kindRaw = row.kind != null ? safeString(row.kind) : "";
+    const kind =
+      kindRaw === "x402" || kindRaw === "transaction" || kindRaw === "text"
+        ? (kindRaw as PersistedChatBubble["kind"])
+        : undefined;
+    const ctaStatusRaw = row.cta_status != null ? safeString(row.cta_status).trim().toLowerCase() : "";
+    const ctaStatus =
+      ctaStatusRaw === "sending" || ctaStatusRaw === "failed" || ctaStatusRaw === "success"
+        ? (ctaStatusRaw as PersistedChatBubble["ctaStatus"])
+        : undefined;
     out.push({
       id: safeString(row.id),
       direction: row.direction === "out" ? "out" : "in",
       text: safeString(row.text),
+      kind,
+      cta: parseCtaJson(row.cta_json != null ? safeString(row.cta_json) : undefined),
+      ctaStatus,
+      ctaError: row.cta_error ? safeString(row.cta_error) : undefined,
       computeVerified:
         row.compute_verified === null || row.compute_verified === undefined
           ? undefined
@@ -130,12 +192,16 @@ export async function appendChatBubble(params: {
   const st = await getState();
   const b = params.bubble;
   const createdAt = typeof b.createdAt === "number" ? b.createdAt : nowMs();
+  const ctaJson =
+    b.cta && typeof b.cta === "object"
+      ? JSON.stringify({ label: b.cta.label, action: b.cta.action, payload: b.cta.payload })
+      : null;
 
   st.db.run(
     `
     INSERT OR REPLACE INTO chat_messages
-      (id, agent_id, user_address, direction, text, compute_verified, chat_id, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (id, agent_id, user_address, direction, text, kind, cta_json, cta_status, cta_error, compute_verified, chat_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
       safeString(b.id),
@@ -143,12 +209,41 @@ export async function appendChatBubble(params: {
       safeString(params.userAddress),
       b.direction === "out" ? "out" : "in",
       safeString(b.text),
+      b.kind ? safeString(b.kind) : null,
+      ctaJson,
+      b.ctaStatus ? safeString(b.ctaStatus) : null,
+      b.ctaError ? safeString(b.ctaError) : null,
       typeof b.computeVerified === "boolean" ? (b.computeVerified ? 1 : 0) : null,
       b.chatId ? safeString(b.chatId) : null,
       createdAt,
     ]
   );
 
+  await persistSoon();
+}
+
+export async function updateChatBubbleCtaState(params: {
+  agentId: string;
+  userAddress: string;
+  id: string;
+  ctaStatus?: PersistedChatBubble["ctaStatus"];
+  ctaError?: string | null;
+}) {
+  const st = await getState();
+  st.db.run(
+    `
+    UPDATE chat_messages
+    SET cta_status = ?, cta_error = ?
+    WHERE id = ? AND agent_id = ? AND user_address = ?
+  `,
+    [
+      params.ctaStatus ? safeString(params.ctaStatus) : null,
+      params.ctaError ? safeString(params.ctaError) : null,
+      safeString(params.id),
+      safeString(params.agentId),
+      safeString(params.userAddress),
+    ],
+  );
   await persistSoon();
 }
 

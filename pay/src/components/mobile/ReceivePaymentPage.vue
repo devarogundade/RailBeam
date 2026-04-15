@@ -1,45 +1,76 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import ChevronLeftIcon from "@/components/icons/ChevronLeftIcon.vue";
+import QrcodeVue from "qrcode.vue";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
 import { useWalletStore } from "@/stores/wallet";
+import { useProfileStore } from "@/stores/profile";
 import { notify } from "@/reactives/notify";
 import AppFrame from "@/components/layout/AppFrame.vue";
 
 const router = useRouter();
 const walletStore = useWalletStore();
+const profileStore = useProfileStore();
 
-const displayAddress = computed(
-  () => walletStore.address ?? "Connect your wallet to see your receive address."
+const username = computed(() => {
+  const u = (profileStore.user?.username ?? "").trim();
+  if (!u) return "";
+  return u.startsWith("@") ? u : `@${u}`;
+});
+
+const viewMode = ref<"username" | "address">("address");
+
+const displayAddress = computed(() => {
+  if (!walletStore.address) return "";
+  return walletStore.address;
+});
+
+const hasUsername = computed(() => !!username.value && username.value.length > 1);
+
+const activeLabel = computed(() =>
+  viewMode.value === "username" ? "Your username" : "Your address"
 );
 
-const qrSrc = computed(() => {
-  if (!walletStore.address) return "";
-  const payload = encodeURIComponent(
-    `ethereum:${walletStore.address}` as string
-  );
-  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${payload}`;
+const activeValue = computed(() => {
+  if (viewMode.value === "username") return username.value;
+  return displayAddress.value;
+});
+
+const qrValue = computed(() => {
+  const v = activeValue.value;
+  if (!v) return "";
+  return viewMode.value === "address" ? (`ethereum:${v}` as string) : v;
 });
 
 function back() {
   router.push({ name: "payment-home" });
 }
 
-async function copyAddress() {
-  if (!walletStore.address) {
+function pickMode(mode: "username" | "address") {
+  viewMode.value = mode;
+}
+
+async function copyActive() {
+  const v = activeValue.value;
+  if (!v) {
     notify.push({
-      title: "Wallet",
-      description: "Connect a wallet first.",
+      title: "Receive",
+      description: hasUsername.value
+        ? "Connect a wallet to load your receive details."
+        : "Connect a wallet first.",
       category: "error",
     });
     return;
   }
   try {
-    await navigator.clipboard.writeText(walletStore.address);
+    await navigator.clipboard.writeText(v);
     notify.push({
       title: "Copied",
-      description: "Address copied to clipboard.",
+      description:
+        viewMode.value === "username"
+          ? "Username copied to clipboard."
+          : "Address copied to clipboard.",
       category: "success",
     });
   } catch {
@@ -50,6 +81,28 @@ async function copyAddress() {
     });
   }
 }
+
+onMounted(() => {
+  if (walletStore.address) void profileStore.refresh(walletStore.address);
+});
+
+watch(
+  () => walletStore.address,
+  (addr) => {
+    if (!addr) return;
+    void profileStore.refresh(addr);
+  },
+  { immediate: true }
+);
+
+watch(
+  hasUsername,
+  (has) => {
+    if (has) viewMode.value = "username";
+    else viewMode.value = "address";
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -68,10 +121,38 @@ async function copyAddress() {
 
     <AppFrame :topInset="false">
       <div class="page-body">
-        <p class="intro">Share your address or QR code to receive funds on 0G Chain.</p>
+        <p class="intro">
+          Share your Beam username or wallet address to receive funds on 0G Chain.
+        </p>
+
+        <div v-if="walletStore.address && hasUsername" class="seg">
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ on: viewMode === 'username' }"
+            @click="pickMode('username')"
+          >
+            Username
+          </button>
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ on: viewMode === 'address' }"
+            @click="pickMode('address')"
+          >
+            Address
+          </button>
+        </div>
 
         <div class="qr-card">
-          <img v-if="qrSrc" :src="qrSrc" alt="QR code for your wallet address" class="qr" width="240" height="240" />
+          <div v-if="qrValue" class="qr">
+            <QrcodeVue
+              :value="qrValue"
+              :size="240"
+              level="H"
+              render-as="svg"
+            />
+          </div>
           <div v-else class="qr-fallback">
             <img :src="DEFAULT_PLACEHOLDER_IMAGE" alt="" width="80" height="80" class="ph" />
             <p>Connect wallet to generate QR</p>
@@ -79,10 +160,21 @@ async function copyAddress() {
         </div>
 
         <div class="addr-block">
-          <label>Your address</label>
-          <p class="addr">{{ displayAddress }}</p>
-          <button type="button" class="copy" :disabled="!walletStore.address" @click="copyAddress">
-            Copy address
+          <label>{{ activeLabel }}</label>
+          <p v-if="walletStore.address" class="addr">{{ activeValue }}</p>
+          <p v-else class="addr muted">Connect your wallet to see your receive details.</p>
+
+          <div v-if="walletStore.address && hasUsername" class="sub">
+            <p v-if="viewMode === 'username'" class="subline">
+              Address: <span class="mono">{{ displayAddress }}</span>
+            </p>
+            <p v-else class="subline">
+              Username: <span class="mono">{{ username }}</span>
+            </p>
+          </div>
+
+          <button type="button" class="copy" :disabled="!activeValue" @click="copyActive">
+            Copy {{ viewMode === "username" ? "username" : "address" }}
           </button>
         </div>
       </div>
@@ -160,6 +252,30 @@ async function copyAddress() {
   margin-bottom: 20px;
 }
 
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.seg-btn {
+  min-height: var(--native-tap, 44px);
+  border-radius: var(--radius-12);
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg-light);
+  color: var(--tx-semi);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seg-btn.on {
+  background: rgba(245, 95, 20, 0.18);
+  border-color: rgba(245, 95, 20, 0.5);
+  color: var(--tx-normal);
+}
+
 .qr-card {
   border-radius: var(--radius-14);
   border: 0.5px solid var(--hairline, rgba(255, 255, 255, 0.09));
@@ -172,6 +288,11 @@ async function copyAddress() {
 }
 
 .qr {
+  display: block;
+  border-radius: var(--radius-8);
+}
+
+.qr :deep(svg) {
   display: block;
   border-radius: var(--radius-8);
 }
@@ -210,6 +331,27 @@ async function copyAddress() {
   line-height: 1.45;
   word-break: break-all;
   color: var(--tx-normal);
+}
+
+.addr.muted {
+  color: var(--tx-dimmed);
+}
+
+.sub {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bg-lightest);
+}
+
+.subline {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tx-dimmed);
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
 }
 
 .copy {

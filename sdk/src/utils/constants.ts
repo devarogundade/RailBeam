@@ -12,10 +12,25 @@ export const getTokens: Token[] = [
     name: "0G",
     symbol: "0G",
     address: zeroAddress,
-    image: "/images/eth.png",
+    image: "/images/0g.png",
     decimals: 18,
-    aToken: zeroAddress,
-    price: 0,
+    price: 0.5904,
+  },
+  {
+    name: "USDC",
+    symbol: "USDC",
+    address: "0x0000000000000000000000000000000000000001" as Hex,
+    image: "/images/usdc.png",
+    decimals: 6,
+    price: 0.9998,
+  },
+  {
+    name: "USDT",
+    symbol: "USDT",
+    address: "0x0000000000000000000000000000000000000002" as Hex,
+    image: "/images/usdt.png",
+    decimals: 6,
+    price: 1,
   },
 ];
 
@@ -57,5 +72,7 @@ export const ContractAddresses = {
         "0xFcC011AB456c010aD9DD2075d68d14A353923092" as Hex,
     },
   },
-  Mainnet: {},
+  Mainnet: {
+    Beam: "0x0000000000000000000000000000000000000000" as Hex,
+  },
 };

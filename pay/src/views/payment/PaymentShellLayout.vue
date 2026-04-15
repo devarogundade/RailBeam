@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { useWeb3Modal } from "@web3modal/wagmi/vue";
 import { getWalletClient, watchAccount } from "@wagmi/core";
 import { config } from "@/scripts/config";
+import { storeToRefs } from "pinia";
 import { useWalletStore } from "@/stores/wallet";
 import {
   buildProfileUriString,
@@ -39,15 +40,22 @@ const modal = useWeb3Modal();
 const walletStore = useWalletStore();
 const profileStore = useProfileStore();
 const authStore = useAuthStore();
+const { card: cardSummary } = storeToRefs(profileStore);
 
 const cardSheetOpen = ref(false);
 const profileSheetOpen = ref(false);
 const assetsSheetOpen = ref(false);
 const cardSheetStep = ref<"details" | "remove">("details");
-const cardFrozen = ref(false);
+const cardFrozen = computed(() => (cardSummary.value?.status ?? null) === "inactive");
+const freezeLoading = ref(false);
 const cardLoading = ref(false);
-const cardSummary = ref<VirtualCardSummary | null>(null);
 const cardLoadError = ref<string | null>(null);
+const cardAuthRequired = ref(false);
+
+const cardRevealLoading = ref(false);
+const cardRevealError = ref<string | null>(null);
+const cardPan = ref<string | null>(null);
+const cardCvc = ref<string | null>(null);
 
 const createCardOpen = ref(false);
 const creatingCard = ref(false);
@@ -68,6 +76,11 @@ watch(cardSheetOpen, (open) => {
   if (!open) {
     cardSheetStep.value = "details";
     cvvVisible.value = false;
+    cardAuthRequired.value = false;
+    cardRevealLoading.value = false;
+    cardRevealError.value = null;
+    cardPan.value = null;
+    cardCvc.value = null;
   }
 });
 
@@ -76,6 +89,16 @@ watch(createCardOpen, (open) => {
     createCardError.value = null;
   }
 });
+
+const createCardNameNormalized = computed(() =>
+  createCardName.value.trim().replace(/\s+/g, " "),
+);
+const createCardNameTwoWordsValid = computed(() => {
+  const parts = createCardNameNormalized.value.split(" ").filter(Boolean);
+  return parts.length >= 2;
+});
+
+// Billing address is hardcoded on backend for issuing.
 
 const cardSuffix = computed(() => {
   const last4 = cardSummary.value?.last4;
@@ -117,11 +140,22 @@ function toggleRemoveAssetMenu() {
   removeAssetMenuOpen.value = !removeAssetMenuOpen.value;
 }
 
-const sheetCardName = computed(() =>
-  walletStore.address ? Converter.fineAddress(walletStore.address, 4) : "—"
-);
-const sheetCardPan = computed(() => "•••• •••• •••• ••••");
-const sheetCardCvvReveal = "•••";
+const sheetCardName = computed(() => {
+  const fromStripe = (cardSummary.value?.cardholderName ?? "").toString().trim();
+  if (fromStripe) return fromStripe;
+  return walletStore.address ? Converter.fineAddress(walletStore.address, 4) : "—";
+});
+const sheetCardPan = computed(() => {
+  const pan = (cardPan.value ?? "").trim();
+  if (!pan) return "•••• •••• •••• ••••";
+  return pan.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+});
+const sheetCardPanCopy = computed(() => {
+  const pan = (cardPan.value ?? "").trim();
+  if (!pan) return "";
+  return pan.replace(/\s+/g, "");
+});
+const sheetCardCvvReveal = computed(() => (cardCvc.value ?? "").trim() || "•••");
 const sheetCardExp = computed(() => {
   const m = cardSummary.value?.expMonth;
   const y = cardSummary.value?.expYear;
@@ -130,10 +164,57 @@ const sheetCardExp = computed(() => {
   const yy = String(y).slice(-2);
   return `${mm}/${yy}`;
 });
-const sheetBillingLine1 = "—";
-const sheetBillingLine2 = "—";
-const sheetBillingPostal = "—";
-const sheetBillingCountry = "—";
+const sheetBillingLine1 = computed(() => {
+  const b = cardSummary.value?.billingAddress ?? null;
+  const line1 = (b?.line1 ?? "").trim();
+  const line2 = (b?.line2 ?? "").trim();
+  if (!line1 && !line2) return "—";
+  return [line1, line2].filter(Boolean).join(", ");
+});
+const sheetBillingLine2 = computed(() => {
+  const b = cardSummary.value?.billingAddress ?? null;
+  const city = (b?.city ?? "").trim();
+  const state = (b?.state ?? "").trim();
+  if (!city && !state) return "—";
+  return [city, state].filter(Boolean).join(", ");
+});
+const sheetBillingPostal = computed(() => {
+  const b = cardSummary.value?.billingAddress ?? null;
+  const pc = (b?.postal_code ?? "").trim();
+  return pc || "—";
+});
+const sheetBillingCountry = computed(() => {
+  const b = cardSummary.value?.billingAddress ?? null;
+  const c = (b?.country ?? "").trim();
+  return c || "—";
+});
+
+function canCopyValue(v: unknown): boolean {
+  const s = String(v ?? "").trim();
+  if (!s) return false;
+  if (s === "—") return false;
+  if (s.includes("•")) return false;
+  return true;
+}
+
+async function copyCardDetail(label: string, value: string) {
+  const v = (value ?? "").trim();
+  if (!canCopyValue(v)) return;
+  try {
+    await navigator.clipboard.writeText(v);
+    notify.push({
+      title: "Copied",
+      description: `${label} copied to clipboard.`,
+      category: "success",
+    });
+  } catch {
+    notify.push({
+      title: "Copy failed",
+      description: "Your browser blocked clipboard access.",
+      category: "error",
+    });
+  }
+}
 
 const chainUser = computed<User | null>(() => profileStore.user);
 const chainProfileUri = computed<ProfileUri>(() => parseProfileUri(chainUser.value?.metadataURI));
@@ -263,15 +344,48 @@ function openFundFromSheet() {
   router.push({ name: "payment-fund" });
 }
 
-function toggleFreeze() {
-  cardFrozen.value = !cardFrozen.value;
-  notify.push({
-    title: cardFrozen.value ? "Card frozen" : "Card active",
-    description: cardFrozen.value
-      ? "New charges are paused until you unfreeze."
-      : "Your card can be used again.",
-    category: "success",
-  });
+async function toggleFreeze() {
+  if (!walletStore.address) {
+    notify.push({
+      title: "Connect wallet",
+      description: "Connect a wallet to manage your card.",
+      category: "error",
+    });
+    return;
+  }
+  if (!cardSummary.value) {
+    notify.push({
+      title: "Card",
+      description: "Create a virtual card first.",
+      category: "error",
+    });
+    return;
+  }
+  if (freezeLoading.value) return;
+
+  const nextFrozen = !cardFrozen.value;
+  freezeLoading.value = true;
+  try {
+    await ensureAuthForIssuing();
+    const res = await getClientApi().setVirtualCardFrozen({ frozen: nextFrozen });
+    cardSummary.value = res.card ?? cardSummary.value;
+    notify.push({
+      title: nextFrozen ? "Card frozen" : "Card active",
+      description: nextFrozen
+        ? "New charges are paused until you unfreeze."
+        : "Your card can be used again.",
+      category: "success",
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    notify.push({
+      title: "Could not update card",
+      description: msg || "Try again.",
+      category: "error",
+    });
+  } finally {
+    freezeLoading.value = false;
+  }
 }
 
 function confirmRemove() {
@@ -304,12 +418,16 @@ function confirmRemove() {
 
 provide("paymentShellCard", {
   openCardSheet,
-  cardFrozen: cardFrozen as Ref<boolean>,
+  cardFrozen: cardFrozen as unknown as Ref<boolean>,
+  cardSummary: cardSummary as Ref<VirtualCardSummary | null>,
+  cardLoading: cardLoading as Ref<boolean>,
 });
 
 provide("paymentShellAssets", {
   openAssetsSheet,
 });
+
+
 
 onMounted(() => {
   watchAccount(config, {
@@ -345,6 +463,10 @@ watch(
       editUsername.value = "";
       cardSummary.value = null;
       cardLoadError.value = null;
+      cardAuthRequired.value = false;
+      cardRevealError.value = null;
+      cardPan.value = null;
+      cardCvc.value = null;
       authStore.clear();
       return;
     }
@@ -360,6 +482,15 @@ watch(
     createCardPhone.value = "";
   },
   { immediate: true },
+);
+
+watch(
+  () => authStore.accessToken,
+  (t) => {
+    // If we just authenticated, immediately refetch card summary.
+    if (!t || !walletStore.address) return;
+    void loadCardSummary({ refresh: true });
+  },
 );
 
 watch(
@@ -379,6 +510,23 @@ watch(
   },
   { immediate: true },
 );
+
+async function ensureAuthForIssuing() {
+  if (!walletStore.address) throw new Error("Connect a wallet to continue.");
+  if (authStore.accessToken) return;
+  const walletClient = await getWalletClient(config);
+  const account = walletClient?.account;
+  if (!walletClient || !account) throw new Error("Wallet client not available");
+  const { message } = await getClientApi().authChallenge(walletStore.address);
+  const signature = await walletClient.signMessage({ account, message });
+  const { accessToken } = await getClientApi().authVerify({
+    walletAddress: walletStore.address,
+    message,
+    signature,
+    setCookie: false,
+  });
+  authStore.setAccessToken(accessToken);
+}
 
 async function onPickAvatar(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -426,22 +574,60 @@ async function onPickAvatar(e: Event) {
   }
 }
 
-async function loadCardSummary(opts?: { refresh?: boolean }) {
+async function loadCardSummary(opts?: { refresh?: boolean; }) {
   if (!walletStore.address) return;
   cardLoading.value = true;
   cardLoadError.value = null;
+  cardAuthRequired.value = false;
   try {
     const res = await getClientApi().getVirtualCard({
       refresh: opts?.refresh ?? false,
     });
     cardSummary.value = res.card ?? null;
   } catch (e: unknown) {
-    cardLoadError.value = e instanceof Error ? e.message : String(e);
+    const status =
+      (e as any)?.response?.status ??
+      (e as any)?.status ??
+      null;
+    if (status === 401 || status === 403) {
+      cardAuthRequired.value = true;
+      cardLoadError.value = "Sign to load your virtual card.";
+    } else {
+      cardLoadError.value = e instanceof Error ? e.message : String(e);
+    }
     cardSummary.value = null;
   } finally {
     cardLoading.value = false;
   }
 }
+
+async function revealCardDetails() {
+  if (!walletStore.address) return;
+  if (cardRevealLoading.value) return;
+  cardRevealLoading.value = true;
+  cardRevealError.value = null;
+  try {
+    await ensureAuthForIssuing();
+    const res = await getClientApi().revealVirtualCard();
+    cardPan.value = res.card?.pan ?? null;
+    cardCvc.value = res.card?.cvc ?? null;
+    if (!cardPan.value && !cardCvc.value) {
+      cardRevealError.value = "Card details are not available to reveal right now.";
+    }
+  } catch (e: unknown) {
+    cardRevealError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    cardRevealLoading.value = false;
+  }
+}
+
+watch(
+  () => cvvVisible.value,
+  (on) => {
+    if (!on) return;
+    if (!cardPan.value || !cardCvc.value) void revealCardDetails();
+  },
+);
 
 async function initiateCreateVirtualCard() {
   if (!walletStore.address) {
@@ -457,28 +643,15 @@ async function initiateCreateVirtualCard() {
   creatingCard.value = true;
   createCardError.value = null;
   try {
-    const walletClient = await getWalletClient(config);
-    const account = walletClient?.account;
-    if (!walletClient || !account) {
-      throw new Error("Wallet client not available");
-    }
-
-    const { message } = await getClientApi().authChallenge(walletStore.address);
-    const signature = await walletClient.signMessage({ account, message });
-    const { accessToken } = await getClientApi().authVerify({
-      walletAddress: walletStore.address,
-      message,
-      signature,
-      setCookie: false,
-    });
-    authStore.setAccessToken(accessToken);
+    await ensureAuthForIssuing();
 
     const created = await getClientApi().ensureVirtualCard({
-      name: createCardName.value.trim() || undefined,
+      name: createCardNameNormalized.value || undefined,
       email: createCardEmail.value.trim() || undefined,
       phone: createCardPhone.value.trim() || undefined,
     });
     cardSummary.value = created.card;
+    void loadCardSummary({ refresh: true });
     createCardOpen.value = false;
     notify.push({
       title: "Card created",
@@ -543,7 +716,11 @@ async function initiateCreateVirtualCard() {
         </div>
         <div v-else-if="cardLoadError" class="sheet-banner sheet-banner--error">
           <p>{{ cardLoadError }}</p>
-          <button type="button" class="sheet-ghost" @click="loadCardSummary({ refresh: true })">
+          <button v-if="cardAuthRequired" type="button" class="sheet-ghost"
+            @click="ensureAuthForIssuing().then(() => loadCardSummary({ refresh: true }))">
+            Sign & load
+          </button>
+          <button v-else type="button" class="sheet-ghost" @click="loadCardSummary({ refresh: true })">
             Retry
           </button>
         </div>
@@ -560,47 +737,138 @@ async function initiateCreateVirtualCard() {
         <section class="sheet-kv-block" aria-label="Card numbers and billing">
           <div class="sheet-kv">
             <span class="sheet-k">Name on card</span>
-            <span class="sheet-v sheet-v--caps">{{ sheetCardName }}</span>
+            <span class="sheet-v-row">
+              <span class="sheet-v sheet-v--caps">{{ sheetCardName }}</span>
+              <button
+                type="button"
+                class="sheet-copy"
+                :disabled="!canCopyValue(sheetCardName)"
+                @click="copyCardDetail('Name on card', sheetCardName)"
+              >
+                Copy
+              </button>
+            </span>
           </div>
           <div class="sheet-kv">
             <span class="sheet-k">Number</span>
-            <span class="sheet-v sheet-v--mono">{{ sheetCardPan }}</span>
+            <span class="sheet-v-row">
+              <span class="sheet-v sheet-v--mono">{{ sheetCardPan }}</span>
+              <button
+                type="button"
+                class="sheet-copy"
+                :disabled="!sheetCardPanCopy"
+                @click="copyCardDetail('Card number', sheetCardPanCopy)"
+              >
+                Copy
+              </button>
+            </span>
           </div>
           <div class="sheet-kv sheet-kv--pair">
             <div class="sheet-kv-col">
               <span class="sheet-k">Expires</span>
-              <span class="sheet-v sheet-v--mono">{{ sheetCardExp }}</span>
+              <span class="sheet-v-row">
+                <span class="sheet-v sheet-v--mono">{{ sheetCardExp }}</span>
+                <button
+                  type="button"
+                  class="sheet-copy"
+                  :disabled="!canCopyValue(sheetCardExp)"
+                  @click="copyCardDetail('Expiry', sheetCardExp)"
+                >
+                  Copy
+                </button>
+              </span>
             </div>
             <div class="sheet-kv-col sheet-kv-col--narrow sheet-kv-col--cvv">
               <span class="sheet-k">CVV</span>
               <div class="sheet-cvv-row">
                 <span class="sheet-v sheet-v--mono sheet-cvv-value">{{
                   cvvVisible ? sheetCardCvvReveal : "•••"
-                }}</span>
-                <button type="button" class="sheet-cvv-toggle" :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
-                  :aria-pressed="cvvVisible" @click="cvvVisible = !cvvVisible">
-                  <EyeOffIcon v-if="cvvVisible" class="sheet-cvv-ico" />
-                  <EyeIcon v-else class="sheet-cvv-ico" />
-                </button>
+                  }}</span>
+                <span class="sheet-cvv-actions">
+                  <button
+                    type="button"
+                    class="sheet-copy"
+                    :disabled="!cvvVisible || !canCopyValue(sheetCardCvvReveal)"
+                    @click="copyCardDetail('CVV', sheetCardCvvReveal)"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    class="sheet-cvv-toggle"
+                    :aria-label="cvvVisible ? 'Hide CVV' : 'Show CVV'"
+                    :aria-pressed="cvvVisible"
+                    @click="cvvVisible = !cvvVisible"
+                  >
+                    <EyeOffIcon v-if="cvvVisible" class="sheet-cvv-ico" />
+                    <EyeIcon v-else class="sheet-cvv-ico" />
+                  </button>
+                </span>
               </div>
+              <p v-if="cvvVisible && cardRevealLoading" class="sheet-muted" style="margin: 8px 0 0">
+                Revealing…
+              </p>
+              <p v-else-if="cvvVisible && cardRevealError" class="sheet-muted" style="margin: 8px 0 0">
+                {{ cardRevealError }}
+              </p>
             </div>
           </div>
           <div class="sheet-kv">
             <span class="sheet-k">Billing address</span>
-            <span class="sheet-v">{{ sheetBillingLine1 }}</span>
+            <span class="sheet-v-row">
+              <span class="sheet-v">{{ sheetBillingLine1 }}</span>
+              <button
+                type="button"
+                class="sheet-copy"
+                :disabled="!canCopyValue(sheetBillingLine1)"
+                @click="copyCardDetail('Billing address', sheetBillingLine1)"
+              >
+                Copy
+              </button>
+            </span>
           </div>
           <div class="sheet-kv">
             <span class="sheet-k">City & region</span>
-            <span class="sheet-v">{{ sheetBillingLine2 }}</span>
+            <span class="sheet-v-row">
+              <span class="sheet-v">{{ sheetBillingLine2 }}</span>
+              <button
+                type="button"
+                class="sheet-copy"
+                :disabled="!canCopyValue(sheetBillingLine2)"
+                @click="copyCardDetail('City & region', sheetBillingLine2)"
+              >
+                Copy
+              </button>
+            </span>
           </div>
           <div class="sheet-kv sheet-kv--pair">
             <div class="sheet-kv-col">
               <span class="sheet-k">Postal code</span>
-              <span class="sheet-v sheet-v--mono">{{ sheetBillingPostal }}</span>
+              <span class="sheet-v-row">
+                <span class="sheet-v sheet-v--mono">{{ sheetBillingPostal }}</span>
+                <button
+                  type="button"
+                  class="sheet-copy"
+                  :disabled="!canCopyValue(sheetBillingPostal)"
+                  @click="copyCardDetail('Postal code', sheetBillingPostal)"
+                >
+                  Copy
+                </button>
+              </span>
             </div>
             <div class="sheet-kv-col">
               <span class="sheet-k">Country</span>
-              <span class="sheet-v">{{ sheetBillingCountry }}</span>
+              <span class="sheet-v-row">
+                <span class="sheet-v">{{ sheetBillingCountry }}</span>
+                <button
+                  type="button"
+                  class="sheet-copy"
+                  :disabled="!canCopyValue(sheetBillingCountry)"
+                  @click="copyCardDetail('Country', sheetBillingCountry)"
+                >
+                  Copy
+                </button>
+              </span>
             </div>
           </div>
         </section>
@@ -615,7 +883,7 @@ async function initiateCreateVirtualCard() {
           <div class="sheet-row">
             <span>Freeze card</span>
             <button type="button" class="toggle" :class="{ on: cardFrozen }" role="switch" :aria-checked="cardFrozen"
-              @click="toggleFreeze">
+              :disabled="freezeLoading" @click="toggleFreeze">
               <span class="knob" />
             </button>
           </div>
@@ -669,41 +937,26 @@ async function initiateCreateVirtualCard() {
     <BottomSheet v-model="createCardOpen" title="Create virtual card">
       <div class="create-card">
         <p class="sheet-muted">
-          Enter cardholder details, then sign a message to authenticate. We’ll create a Stripe Issuing virtual card for this wallet.
+          Enter cardholder details, then sign a message to authenticate. We’ll create a Stripe Issuing virtual card for
+          this
+          wallet.
         </p>
 
-        <label class="sheet-label" for="cc-name">Name</label>
-        <input
-          id="cc-name"
-          v-model="createCardName"
-          class="sheet-input"
-          type="text"
-          autocomplete="name"
-          placeholder="Jane Doe"
-          :disabled="creatingCard"
-        />
+        <label class="sheet-label" for="cc-name">Name <span class="sheet-label-optional">(required)</span></label>
+        <input id="cc-name" v-model="createCardName" class="sheet-input" type="text" autocomplete="name"
+          placeholder="Jane Doe" :disabled="creatingCard" />
+        <p v-if="createCardName.trim() && !createCardNameTwoWordsValid" class="sheet-muted" style="margin-top: -6px">
+          Enter your first and last name (two words).
+        </p>
 
         <label class="sheet-label" for="cc-email">Email <span class="sheet-label-optional">(optional)</span></label>
-        <input
-          id="cc-email"
-          v-model="createCardEmail"
-          class="sheet-input"
-          type="email"
-          autocomplete="email"
-          placeholder="jane@example.com"
-          :disabled="creatingCard"
-        />
+        <input id="cc-email" v-model="createCardEmail" class="sheet-input" type="email" autocomplete="email"
+          placeholder="jane@example.com" :disabled="creatingCard" />
 
         <label class="sheet-label" for="cc-phone">Phone <span class="sheet-label-optional">(optional)</span></label>
-        <input
-          id="cc-phone"
-          v-model="createCardPhone"
-          class="sheet-input"
-          type="tel"
-          autocomplete="tel"
-          placeholder="+14155551234"
-          :disabled="creatingCard"
-        />
+        <input id="cc-phone" v-model="createCardPhone" class="sheet-input" type="tel" autocomplete="tel"
+          placeholder="+14155551234" :disabled="creatingCard" />
+
 
         <div class="sheet-kv-block" aria-label="Wallet used for issuing">
           <div class="sheet-kv">
@@ -714,12 +967,10 @@ async function initiateCreateVirtualCard() {
 
         <p v-if="createCardError" class="create-card-error">{{ createCardError }}</p>
 
-        <button
-          type="button"
-          class="sheet-primary"
-          :disabled="creatingCard || !walletStore.address || !createCardName.trim()"
-          @click="initiateCreateVirtualCard"
-        >
+        <button type="button" class="sheet-primary" :disabled="creatingCard ||
+          !walletStore.address ||
+          !createCardNameTwoWordsValid
+          " @click="initiateCreateVirtualCard">
           {{ creatingCard ? "Creating…" : "Create card" }}
         </button>
         <button type="button" class="sheet-ghost" :disabled="creatingCard" @click="createCardOpen = false">
@@ -732,15 +983,16 @@ async function initiateCreateVirtualCard() {
       <div class="profile-sheet">
         <StorageImage class="profile-sheet-avatar" :src="headerAvatar" width="96" height="96" alt="" />
 
-        <label class="sheet-secondary profile-upload-btn" :class="{ disabled: uploadingAvatar || !walletStore.address }">
+        <label class="sheet-secondary profile-upload-btn"
+          :class="{ disabled: uploadingAvatar || !walletStore.address }">
           <input class="profile-upload-input" type="file" accept="image/*"
             :disabled="uploadingAvatar || !walletStore.address" @change="onPickAvatar" />
           <span>{{ uploadingAvatar ? "Uploading…" : "Upload image" }}</span>
         </label>
 
         <p class="profile-sheet-label">Username</p>
-        <input v-model="editUsername" class="profile-sheet-input" type="text" autocapitalize="none"
-          autocomplete="off" spellcheck="false" placeholder="@username" />
+        <input v-model="editUsername" class="profile-sheet-input" type="text" autocapitalize="none" autocomplete="off"
+          spellcheck="false" placeholder="@username" />
         <p class="profile-sheet-hint">Saved as {{ normalizeHandle(editUsername) }} (lowercase)</p>
 
         <button type="button" class="sheet-primary profile-sheet-cta" @click="onProfileUpdate">
@@ -1144,6 +1396,50 @@ async function initiateCreateVirtualCard() {
   color: var(--tx-normal);
   line-height: 1.35;
   word-break: break-word;
+}
+
+.sheet-v-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sheet-v-row .sheet-v {
+  min-width: 0;
+}
+
+.sheet-copy {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-8);
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg-lighter);
+  color: var(--tx-semi);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheet-copy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sheet-copy:not(:disabled):active {
+  transform: scale(0.98);
+  opacity: 0.92;
+}
+
+.sheet-cvv-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .sheet-v--caps {

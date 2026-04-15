@@ -52,6 +52,7 @@ const a2aEndpoint = ref("");
 const config = ref("");
 
 const merchantWallet = computed(() => walletStore.address);
+const merchant = computed(() => walletStore.merchant);
 
 const canProceedStep1 = computed(() =>
   Boolean(name.value.trim() && description.value.trim() && !saving.value)
@@ -134,10 +135,6 @@ async function createAgent() {
       {
         metadataKey: "encryptedConfigTx",
         metadataValue: encryptedMetadata.txHash as `0x${string}`,
-      },
-      {
-        metadataKey: "agentWallet",
-        metadataValue: merchantWallet.value as `0x${string}`,
       }
     ],
   );

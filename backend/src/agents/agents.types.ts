@@ -19,7 +19,7 @@ export type ChainAgent = {
 };
 
 export type ChatWithAgentResponse = {
-  type: 'text' | 'x402';
+  type: 'text' | 'x402' | 'transaction';
   content: string;
   compute: Pick<
     OgComputeChatResult,

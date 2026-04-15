@@ -14,6 +14,10 @@ export class AgentsController {
       userAddress?: string;
       network?: string;
       providerAddress?: string;
+      previousMessages?: Array<{
+        role?: 'user' | 'assistant';
+        content?: string;
+      }>;
     },
   ) {
     const agentId = Number(agentIdRaw);
@@ -38,6 +42,7 @@ export class AgentsController {
       network: body.network,
       userAddress: body.userAddress,
       providerAddress: body.providerAddress,
+      previousMessages: body.previousMessages,
     });
   }
 
@@ -50,6 +55,25 @@ export class AgentsController {
   ): Promise<{ rootHash: string; txHash: string }> {
     return this.agents.createEncryptedMetadata({
       metadataValue: body.metadataValue,
+    });
+  }
+
+  @Post(':agentId/knowledgebase')
+  async updateKnowledgebase(
+    @Param('agentId') agentIdRaw: string,
+    @Body() body: { knowledgebaseHtml: string },
+  ): Promise<{ rootHash: string; txHash: string; metadataValue: string }> {
+    const agentId = Number(agentIdRaw);
+    if (!Number.isFinite(agentId)) {
+      return {
+        rootHash: '',
+        txHash: '',
+        metadataValue: 'Invalid agentId',
+      };
+    }
+    return this.agents.updateAgentKnowledgebase({
+      agentId,
+      knowledgebaseHtml: body.knowledgebaseHtml,
     });
   }
 }

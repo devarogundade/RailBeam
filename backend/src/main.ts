@@ -14,16 +14,22 @@ async function bootstrap() {
   http.use(json());
   http.use(urlencoded({ extended: true }));
   app.use(cookieParser());
-  app.enableCors({
-    origin: '*',
-  });
 
-  const cors = process.env.CORS_ORIGINS?.split(',')
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  if (cors?.length) {
-    app.enableCors({ origin: cors, credentials: true });
-  }
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (corsOrigins.length === 0) return callback(null, true);
+      return callback(null, corsOrigins.includes(origin));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

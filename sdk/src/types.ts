@@ -7,7 +7,6 @@ export type Token = {
   address: Hex;
   image: string;
   decimals: number;
-  aToken: Hex;
   price: number;
 };
 

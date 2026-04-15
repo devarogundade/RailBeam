@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { computed, inject } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useWalletStore } from "@/stores/wallet";
 import PlusIcon from "@/components/icons/PlusIcon.vue";
@@ -13,8 +13,17 @@ import { Swiper, SwiperSlide } from "swiper/vue";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
+import type { VirtualCardSummary } from "@/scripts/clientApi";
+import { getBalance } from "@wagmi/core";
+import { config } from "@/scripts/config";
+import type { Hex } from "viem";
 
-type CardApi = { openCardSheet: () => void; cardFrozen: Ref<boolean>; };
+type CardApi = {
+  openCardSheet: () => void;
+  cardFrozen: Ref<boolean>;
+  cardSummary: Ref<VirtualCardSummary | null>;
+  cardLoading: Ref<boolean>;
+};
 type AssetsApi = { openAssetsSheet: () => void; };
 const card = inject<CardApi>("paymentShellCard");
 const assetsApi = inject<AssetsApi>("paymentShellAssets");
@@ -27,7 +36,6 @@ const recentTx = computed(() => (txQuery.data.value ?? []).slice(0, 3));
 const subs = computed(() => subQuery.data.value ?? []);
 const txLoading = computed(() => txQuery.isFetching.value);
 const txError = computed(() => (txQuery.error.value as unknown) ?? null);
-
 
 const swiperMods = [Pagination];
 
@@ -45,21 +53,70 @@ function parseSymbol(v: string): string | null {
 }
 
 const primarySymbol = computed(() => {
-  const rows = txQuery.data.value ?? [];
-  for (const r of rows) {
-    const sym = parseSymbol(r.amount);
-    if (sym) return sym;
+  // return walletBalanceSymbol.value ?? "0G";
+  return "0G";
+});
+
+const walletBalance = ref<string>("0");
+const walletBalanceSymbol = ref<string | null>(null);
+const walletBalanceLoading = ref<boolean>(false);
+
+async function refreshWalletBalance() {
+  const addr = walletStore.address as Hex | null;
+  if (!addr) {
+    walletBalance.value = "0";
+    walletBalanceSymbol.value = "0G";
+    walletBalanceLoading.value = false;
+    return;
   }
-  return "TOKEN";
+
+  walletBalanceLoading.value = true;
+  try {
+    const b = await getBalance(config, { address: addr });
+    // `formatted` is already decimal-adjusted, but can be long.
+    const n = Number(b.formatted);
+    const shown = Number.isFinite(n)
+      ? String(Math.round(n * 10_000) / 10_000)
+      : b.formatted;
+    walletBalance.value = shown;
+    walletBalanceSymbol.value = b.symbol ?? "0G";
+  } catch {
+    walletBalance.value = "0";
+    walletBalanceSymbol.value = "0G";
+  } finally {
+    walletBalanceLoading.value = false;
+  }
+}
+
+watch(
+  () => walletStore.address,
+  () => {
+    refreshWalletBalance();
+  },
+  { immediate: true },
+);
+
+const netBalance = computed(() => `${walletBalance.value} ${primarySymbol.value}`);
+
+const cardBrand = computed(() => {
+  const b = (card?.cardSummary?.value?.brand ?? "").toString().trim();
+  return b ? b.toUpperCase() : "VISA";
 });
 
-const netBalance = computed(() => {
-  const rows = txQuery.data.value ?? [];
-  const net = rows.reduce((acc, r) => acc + parseSignedAmountNumber(r.amount), 0);
-  const rounded = Math.round(net * 10_000) / 10_000;
-  return `${rounded} ${primarySymbol.value}`;
+const cardLast4 = computed(() => {
+  const last4 = (card?.cardSummary?.value?.last4 ?? "").toString().trim();
+  if (last4) return last4;
+  return walletStore.address?.slice(-4) ?? "—";
 });
 
+const cardExp = computed(() => {
+  const m = card?.cardSummary?.value?.expMonth ?? null;
+  const y = card?.cardSummary?.value?.expYear ?? null;
+  if (!m || !y) return "—";
+  const mm = String(m).padStart(2, "0");
+  const yy = String(y).slice(-2);
+  return `${mm}/${yy}`;
+});
 </script>
 
 <template>
@@ -79,7 +136,15 @@ const netBalance = computed(() => {
                 {{ walletStore.address ? "Connected" : "Connect wallet" }}
               </p>
             </div>
-            <p class="bal-amt">{{ walletStore.address ? netBalance : `0 ${primarySymbol}` }}</p>
+            <p class="bal-amt">
+              {{
+                !walletStore.address
+                  ? `0 ${primarySymbol}`
+                  : walletBalanceLoading
+                    ? `… ${primarySymbol}`
+                    : netBalance
+              }}
+            </p>
             <p class="bal-sub">
               {{ walletStore.address ? "Tap to view assets" : "Connect to see your assets" }}
             </p>
@@ -93,13 +158,13 @@ const netBalance = computed(() => {
             <div class="v-card-bg" />
             <p v-if="card?.cardFrozen?.value" class="frozen-badge">Frozen</p>
             <div class="v-card-top">
-              <span class="network">VISA</span>
-              <span class="dots">···· {{ walletStore.address?.slice(-4) ?? "—" }}</span>
-              <span class="exp">Exp —</span>
+              <span class="network">{{ cardBrand }}</span>
+              <span class="dots">···· {{ cardLast4 }}</span>
+              <span class="exp">Exp {{ cardExp }}</span>
             </div>
             <div class="v-card-mid">
               <p class="bal-label">Card</p>
-              <p class="bal-val">—</p>
+              <p class="bal-val">4000 .... .... ....</p>
             </div>
             <button type="button" class="fab-plus" aria-label="Add funds"
               @click.stop="router.push({ name: 'payment-fund' })">
@@ -356,7 +421,7 @@ const netBalance = computed(() => {
 
 .bal-val {
   margin-top: 6px;
-  font-size: 32px;
+  font-size: 20px;
   font-weight: 600;
 }
 

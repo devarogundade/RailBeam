@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import type { User } from "beam-ts";
 import { getBeamSdk } from "@/scripts/beamSdk";
+import { getClientApi } from "@/scripts/clientApi";
+import type { VirtualCardSummary } from "@/scripts/clientApi";
 
 export type ProfileUri = {
   image: string;
@@ -12,6 +14,7 @@ export const useProfileStore = defineStore("profile", {
     loading: false,
     error: null as string | null,
     address: null as `0x${string}` | null,
+    card: null as VirtualCardSummary | null,
   }),
   actions: {
     setAddress(address: `0x${string}` | null) {
@@ -21,6 +24,7 @@ export const useProfileStore = defineStore("profile", {
       this.user = null;
       this.loading = false;
       this.error = null;
+      this.card = null;
     },
     async refresh(address?: `0x${string}` | null) {
       const addr = (address ?? this.address) as `0x${string}` | null;
@@ -32,6 +36,8 @@ export const useProfileStore = defineStore("profile", {
       try {
         const sdk = getBeamSdk();
         this.user = await sdk.users.getUser({ user: addr });
+        const res = await getClientApi().getVirtualCard({ refresh: false });
+        this.card = res.card ?? null;
       } catch (e: any) {
         this.error = e?.message ? String(e.message) : "Failed to fetch user profile.";
       } finally {

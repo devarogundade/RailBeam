@@ -15,6 +15,7 @@ import { replySchema } from './reply.schema';
 const IDENTITY_REGISTRY_ABI = [
   'function tokenURI(uint256 tokenId) view returns (string)',
   'function getMetadata(uint256 agentId, string metadataKey) view returns (bytes)',
+  'function getAgentWallet(uint256 agentId) view returns (address)',
 ];
 
 function safeJsonParse<T>(raw: string): T | null {
@@ -24,6 +25,16 @@ function safeJsonParse<T>(raw: string): T | null {
     return null;
   }
 }
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+type AgentConfig = Record<string, unknown> & {
+  knowledgebaseHtml?: string;
+};
+
+type PreviousMessageInput = { role?: 'user' | 'assistant'; content?: string };
 
 @Injectable()
 export class AgentsService {
@@ -93,10 +104,7 @@ export class AgentsService {
       agentId,
       'encryptedConfig',
     )) as ethers.BytesLike;
-    const agentWallet = (await reg.getMetadata(
-      agentId,
-      'agentWallet',
-    )) as string;
+    const agentWallet = (await reg.getAgentWallet(agentId)) as string;
 
     const parsedTokenURI = safeJsonParse<AgentCardRegistrationV1>(tokenURIJson);
     const encryptedConfig = await this.storage.getString(
@@ -105,7 +113,29 @@ export class AgentsService {
 
     const decryptedConfig = decryptString(encryptedConfig, this.pk());
 
-    return { parsedTokenURI, decryptedConfig, agentWallet };
+    return {
+      parsedTokenURI,
+      decryptedConfig,
+      agentWallet,
+    };
+  }
+
+  private normalizePreviousMessages(
+    input: unknown,
+    limit: number,
+  ): ChatMessage[] {
+    if (!Array.isArray(input)) return [];
+    const out: ChatMessage[] = [];
+    for (const item of input as PreviousMessageInput[]) {
+      if (!item || typeof item !== 'object') continue;
+      const role =
+        item.role === 'user' || item.role === 'assistant' ? item.role : null;
+      const content =
+        typeof item.content === 'string' ? item.content.trim() : '';
+      if (!role || !content) continue;
+      out.push({ role, content });
+    }
+    return out.slice(-Math.max(0, limit));
   }
 
   async chatWithAgent(params: {
@@ -114,45 +144,129 @@ export class AgentsService {
     network?: string;
     userAddress?: string;
     providerAddress?: string;
+    previousMessages?: unknown;
   }): Promise<ChatWithAgentResponse> {
     // Cache onchain reads for chat, to avoid repeated RPC/storage hits.
     const agent = await this.getAgentOnchainCached(params.agentId);
 
+    console.log('agent', agent);
+
     try {
+      const previousMessages = this.normalizePreviousMessages(
+        params.previousMessages,
+        3,
+      );
+
       const messages: ChatMessage[] = [
         {
           role: 'system',
           content: `
-            You are a helpful AI agent. If you need to return structured data, return JSON only.
-            `,
-        },
-        {
-          role: 'system',
-          content: `Agent metadata: ${JSON.stringify(agent.parsedTokenURI)}`,
-        },
-        {
-          role: 'system',
-          content: `Agent config (may be null): ${agent.decryptedConfig}`,
-        },
-        {
-          role: 'system',
-          content: `
-            Agent config may include x402 payment acceptance details. If present, use them to guide the user to pay for paid content/actions.
+            You are a helpful AI agent.
 
-            When you want the client to initiate an x402 payment flow, respond with type "x402" and put a JSON-stringified payload in "content".
+            You MUST always respond with a single JSON object only (no markdown, no extra text):
+            { "type": "text" | "x402" | "transaction", "content": <string> }
 
-            Reply format: { "type": "text" | "x402", "content": <string> }
+            HARD RULES (follow exactly):
+            - If you are returning a payment object with fields like kind/merchant/token/amount/resource/payTo, then type MUST be "transaction" or "x402". NEVER use type "text" for payment objects.
+            - type "text" means the content is ONLY HTML for a chat bubble. It must NOT be JSON. It must NOT start with "{".
+            - type "transaction" means the content is a JSON-stringified object (a string that JSON.parse can parse) describing a transaction CTA.
+            - type "x402" means the content is a JSON-stringified object (a string that JSON.parse can parse) describing an x402 payment flow.
 
-            Example (text):
-            { "type": "text", "content": "Hello, world!" }
+            QUICK SELF-CHECK before you answer:
+            - If content starts with "<": it is probably type "text".
+            - If content starts with "{": it is NOT type "text" (it must be "transaction" or "x402" depending on fields).
 
-            Example (x402):
+            EXAMPLES (copy the pattern, replace values):
+            - Correct text:
+              { "type": "text", "content": "<p>Hello</p>" }
+            - Correct transaction:
+              { "type": "transaction", "content": "{\\"text\\":\\"<p>Pay now</p>\\",\\"kind\\":\\"onetime\\",\\"merchant\\":\\"0x...\\",\\"token\\":\\"0x...\\",\\"amount\\":\\"0.001 0G\\",\\"description\\":\\"...\\",\\"splitPayment\\":false}" }
+            - WRONG (do not do this):
+              { "type": "text", "content": "{\\"kind\\":\\"onetime\\",\\"merchant\\":\\"0x...\\"}" }
+            - Wrong: (do not do this)
+              {
+                "type": "text",
+                "content": "{\"text\":\"<p>Great choice!.</p>\n<p>Please confirm the payment and we will send your e-books shortly.</p>\n\",\"kind\":\"onetime\",\"merchant\":\"0xF6EB1b94B2511851c5e8FbfaE8B5C8890C22173c\",\"token\":\"0x0000000000000000000000000000000000000000\",\"amount\":\"0.001001\",\"description\":\"Avatar 2 + Doctor Strange: Mystic Arts\",\"splitPayment\":false,\"payTo\":\"0x10dBf1eC31BE3E41B8ccaa5BcB51a9348f0c57dd\"}",
+              }
+            - Correct: (do this)
+              {
+                "type": "transaction",
+                "content": "{\"text\":\"<p>Great choice!.</p>\n<p>Please confirm the payment and we will send your e-books shortly.</p>\n\",\"kind\":\"onetime\",\"merchant\":\"0xF6EB1b94B2511851c5e8FbfaE8B5C8890C22173c\",\"token\":\"0x0000000000000000000000000000000000000000\",\"amount\":\"0.001001\",\"description\":\"Avatar 2 + Doctor Strange: Mystic Arts\",\"splitPayment\":false,\"payTo\":\"0x10dBf1eC31BE3E41B8ccaa5BcB51a9348f0c57dd\"}",
+              }
+
+            - type "x402": content MUST be a JSON-stringified payload (a string containing valid JSON) that the client uses to start an x402 payment flow. In the payload, only the "text" field is HTML; fields like "title" MUST be plain text (no HTML).
+            - type "transaction": content MUST be a JSON-stringified payload (a string containing valid JSON) that the client uses to render a transaction CTA bubble. In the payload, only the "text" field is HTML; fields like "description" MUST be plain text (no HTML).
+            
+            Agent metadata: ${JSON.stringify(agent.parsedTokenURI)}
+            Agent config (may be null): ${agent.decryptedConfig}
+            Agent Wallet <payTo> or <merchant>: ${agent.agentWallet}
+ 
+            Agent config is JSON and may include fields such as knowledgebaseHtml (authoritative domain knowledge), x402 resource URLs, pricing/settlement details, merchant identifiers, subscription identifiers, etc. Prefer agent metadata + agent config + the user message as the only sources of concrete values. If the user message includes explicit payment details, you may use those.
+
+            Choosing a payment reply type:
+            - Use type "x402" when access is gated by an HTTP x402 paid resource: you have a real resource URL the client should open or resolve (often containing /resource/pay/<id>), and the agent card indicates x402Support is true. x402 is for resource-based paywalls / x402-native flows, not a generic substitute for an arbitrary on-chain transfer when no resource exists.
+            - Use type "transaction" with kind "onetime" for a single checkout: one payment amount in a specified token to a merchant address (simple purchase, invoice, cart).
+            - Use type "transaction" with kind "recurrent" for an existing subscription product: you need a subscriptionId the backend recognizes plus merchant; token/amount are not the primary contract for this shape.
+
+            x402 (type "x402") requirements:
+            - content must be JSON.stringify(...) of an object the pay client can use to start payment. Include at minimum a correct "resource" string when you have one from config or the user.
+            - Other common fields (amount, currency, network, payTo, asset, title, etc.) must match what this deployment expects—take them from agent config / user input, not placeholders.
+            - Only "text" in that object is HTML; "title" and similar must be plain text.
+
+            Transaction (type "transaction") requirements:
+            - content must be JSON.stringify(...) of an object with "text" (HTML), "kind" ("onetime" | "recurrent"), and "merchant" (hex address string).
+            - kind "onetime" additionally requires "token" and "amount" (strings as the app expects).
+            - kind "recurrent" additionally requires "subscriptionId" (string).
+            - Optional: "description" (plain text), "splitPayment" (boolean) for onetime.
+
+            If any required value is missing from agent metadata, agent config, or the user message, do not invent addresses, amounts, URLs, subscription IDs, networks, or token contracts. Respond with type "text" (HTML) explaining what is missing or what the user should provide, or summarize using only information you actually have.
+
+            Minimal shape reminders (replace placeholders only with real values from context):
+            - text: { "type": "text", "content": "<p>...</p>" }
+            - x402: { "type": "x402", "content": "<stringified JSON with real resource and settlement fields>" }
+            - transaction: { "type": "transaction", "content": "<stringified JSON matching kind onetime|recurrent rules above>" }
+
+            SCHEMA (must strictly follow this schema for your outputs):
             {
+              "type": "text" | "x402" | "transaction",
+              "content": <string>
+            }
+
+            CRITICAL: For type "x402" and "transaction", the "content" field MUST be JSON.stringify(...) of an object.
+            That means the string itself must be valid JSON. If you include HTML in the payload "text" field, avoid raw
+            double quotes inside it (they will break JSON) by using single quotes for attributes (e.g. <a href='ebook://X'>)
+            or escaping double quotes as \\".
+
+            "x402": {
               "type": "x402",
-              "content": "{\\"text\\":\\"Please complete payment to continue.\\",\\"resource\\":\\"https://example.com/resource/pay/<resourceId>\\",\\"amount\\":\\"1000000\\",\\"currency\\":\\"USDC\\",\\"network\\":\\"eip155:16601\\",\\"payTo\\":\\"<agentWallet>\\",\\"asset\\":\\"0x...\\",\\"title\\":\\"Paid resource\\"}"
+              "content": "{
+                "text": "<p>...</p>", (your response)
+                "resource": "<string> (HTTP URL)", (required from agent config)
+                "amount": "<string> (human amount string, not base units)", (required from agent config)
+                "currency": "<string>", (required from agent config)
+                "network": "<string> (default: 'eip155:16601')", 
+                "payTo": "0x... (Ethereum address string)", (required from agent wallet)
+                "asset": "0x... (Ethereum address string)", (required from agent config)
+                "title": "<string>", (required from agent config)
+              }"
+            }
+
+            "transaction": {
+              "type": "transaction",
+              "content": "{
+                "text": "<p>...</p>", (your response)
+                "kind": "onetime" | "recurrent", (required from agent config)
+                "merchant": "0x... (Ethereum address string)",  (required from agent wallet)
+                "token": "0x... (Ethereum address string)", (required from agent config)
+                "amount": "<string> (human amount string, not base units)", (required from agent config)
+                "description": "<string>", (required from agent config)
+                "splitPayment": <boolean>, (optional)
+                "subscriptionId": "0x... (Ethereum address string)", (required from agent config)
+              }"
             }
           `,
         },
+        ...previousMessages,
         { role: 'user', content: params.message },
         { role: 'user', content: `Wallet address: ${params.userAddress}` },
       ];
@@ -167,6 +281,68 @@ export class AgentsService {
       if (modelJson) {
         const parsed = replySchema.safeParse(modelJson);
         if (parsed.success) {
+          // Auto-correct: some models incorrectly set type="text" but put a JSON-stringified
+          // transaction/x402 payload into content. Detect and normalize to keep UX intact.
+          if (parsed.data.type === 'text') {
+            const maybePayload = safeJsonParse<unknown>(parsed.data.content);
+            if (isPlainObject(maybePayload)) {
+              const kind = maybePayload.kind;
+              const merchant = maybePayload.merchant;
+              const resource = (maybePayload as any).resource;
+              const payTo = (maybePayload as any).payTo;
+              if (
+                (kind === 'onetime' || kind === 'recurrent') &&
+                typeof merchant === 'string' &&
+                merchant.startsWith('0x')
+              ) {
+                return {
+                  type: 'transaction',
+                  content: parsed.data.content,
+                  compute: {
+                    model: result.model,
+                    verified: result.verified,
+                    chatId: result.chatId,
+                    provider: result.provider,
+                    computeNetwork: result.computeNetwork,
+                  },
+                };
+              }
+              if (typeof resource === 'string' && typeof payTo === 'string') {
+                return {
+                  type: 'x402',
+                  content: parsed.data.content,
+                  compute: {
+                    model: result.model,
+                    verified: result.verified,
+                    chatId: result.chatId,
+                    provider: result.provider,
+                    computeNetwork: result.computeNetwork,
+                  },
+                };
+              }
+            }
+          }
+
+          // Guardrail: the pay client expects JSON-parsable payloads for x402/transaction types.
+          if (
+            parsed.data.type === 'x402' ||
+            parsed.data.type === 'transaction'
+          ) {
+            const payload = safeJsonParse<unknown>(parsed.data.content);
+            if (!payload || typeof payload !== 'object') {
+              return {
+                type: 'text',
+                content: parsed.data.content,
+                compute: {
+                  model: result.model,
+                  verified: result.verified,
+                  chatId: result.chatId,
+                  provider: result.provider,
+                  computeNetwork: result.computeNetwork,
+                },
+              };
+            }
+          }
           return {
             ...parsed.data,
             compute: {
@@ -206,5 +382,41 @@ export class AgentsService {
     const { rootHash, txHash } = await this.storage.uploadString(metadata);
     if (!txHash) throw new Error('Storage upload returned no txHash');
     return { rootHash, txHash };
+  }
+
+  /**
+   * Updates the agent's knowledgebase inside the encrypted config JSON and
+   * returns a new storage rootHash/txHash pair that can be set onchain as
+   * `encryptedConfig`.
+   */
+  async updateAgentKnowledgebase(params: {
+    agentId: number;
+    knowledgebaseHtml: string;
+  }): Promise<{ rootHash: string; txHash: string; metadataValue: string }> {
+    const agent = await this.getAgentOnchain(params.agentId);
+    const raw = (agent.decryptedConfig ?? '').trim();
+
+    let cfg: AgentConfig = {};
+    if (raw.length > 0) {
+      const parsed = safeJsonParse<unknown>(raw);
+      if (isPlainObject(parsed)) {
+        cfg = parsed as AgentConfig;
+      } else {
+        // Preserve any legacy non-JSON config without breaking existing fields.
+        cfg = { legacyConfig: raw };
+      }
+    }
+
+    const kb = (params.knowledgebaseHtml ?? '').trim();
+    if (!kb) throw new Error('knowledgebaseHtml is required');
+    if (kb.length > 250_000) throw new Error('knowledgebaseHtml is too large');
+
+    cfg.knowledgebaseHtml = kb;
+    const metadataValue = JSON.stringify(cfg, null, 2);
+
+    const { rootHash, txHash } = await this.createEncryptedMetadata({
+      metadataValue,
+    });
+    return { rootHash, txHash, metadataValue };
   }
 }

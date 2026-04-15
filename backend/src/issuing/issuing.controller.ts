@@ -15,6 +15,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import { CreateVirtualCardDto } from './dto/create-virtual-card.dto';
+import { CreateIssuingEphemeralKeyDto } from './dto/create-issuing-ephemeral-key.dto';
+import { SetCardFrozenDto } from './dto/set-card-frozen.dto';
 import { IssuingService } from './issuing.service';
 
 type AuthedWallet = {
@@ -28,6 +30,18 @@ interface AuthedRequest extends Request {
 @Controller('issuing')
 export class IssuingController {
   constructor(private readonly issuing: IssuingService) {}
+
+  private getRequestIp(req: Request): string {
+    const xff = req.headers['x-forwarded-for'];
+    const raw =
+      typeof xff === 'string'
+        ? xff
+        : Array.isArray(xff)
+          ? xff[0]
+          : '';
+    const first = (raw ?? '').split(',')[0]?.trim();
+    return first || (req.ip ?? '').trim() || '127.0.0.1';
+  }
 
   /**
    * Current virtual card for the authenticated wallet, or `card: null`.
@@ -44,6 +58,17 @@ export class IssuingController {
     return { card };
   }
 
+  /**
+   * Reveal PAN/CVC for the authenticated wallet's virtual card.
+   * Returns `card: null` if the wallet has no card.
+   */
+  @Get('card/reveal')
+  @UseGuards(AuthGuard('jwt'))
+  async revealCard(@Req() req: AuthedRequest) {
+    const card = await this.issuing.revealVirtualCard(req.user.walletAddress);
+    return { card };
+  }
+
   /** One virtual Issuing card per wallet (idempotent). JWT cookie or Bearer. */
   @Post('virtual-card')
   @UseGuards(AuthGuard('jwt'))
@@ -55,8 +80,54 @@ export class IssuingController {
     }),
   )
   async virtualCard(@Req() req: AuthedRequest, @Body() body: CreateVirtualCardDto) {
-    const card = await this.issuing.ensureVirtualCard(req.user.walletAddress, body);
+    const ip = this.getRequestIp(req);
+    const userAgent = String(req.headers['user-agent'] ?? '').trim();
+    const card = await this.issuing.ensureVirtualCard(req.user.walletAddress, {
+      ...body,
+      termsAcceptance: { ip, userAgent },
+    });
     return { card };
+  }
+
+  /** Freeze/unfreeze the authenticated wallet's issuing card. */
+  @Post('card/freeze')
+  @UseGuards(AuthGuard('jwt'))
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  async setFrozen(@Req() req: AuthedRequest, @Body() body: SetCardFrozenDto) {
+    const card = await this.issuing.setVirtualCardFrozen(
+      req.user.walletAddress,
+      body.frozen,
+    );
+    return { card };
+  }
+
+  /**
+   * Create an ephemeral key for Stripe Issuing Elements (PIN display).
+   * The client must first create a nonce via Stripe.js and exchange it here.
+   */
+  @Post('ephemeral-keys')
+  @UseGuards(AuthGuard('jwt'))
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  async createEphemeralKey(
+    @Req() req: AuthedRequest,
+    @Body() body: CreateIssuingEphemeralKeyDto,
+  ) {
+    return await this.issuing.createIssuingEphemeralKey(req.user.walletAddress, {
+      cardId: body.cardId,
+      nonce: body.nonce,
+    });
   }
 
   /** Stripe Issuing webhooks — raw body required (see main.ts). */

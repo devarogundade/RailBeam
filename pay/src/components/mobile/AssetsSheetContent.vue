@@ -1,16 +1,63 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { getTokens } from "beam-ts/src/utils/constants";
 import { DEFAULT_PLACEHOLDER_IMAGE } from "@/constants/ui";
+import { useWalletStore } from "@/stores/wallet";
+import { TokenContract } from "@/scripts/erc20";
+import { formatUnits, type Hex } from "viem";
+import Converter from "@/scripts/converter";
 
 type AssetRow = { sym: string; name: string; bal: string; fiat: string; image: string };
+
+const walletStore = useWalletStore();
+const balances = ref<Record<string, number>>({});
+const loading = ref<boolean>(false);
+
+async function refreshBalances() {
+  const addr = walletStore.address as Hex | null;
+  if (!addr) {
+    balances.value = {};
+    loading.value = false;
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const entries = await Promise.all(
+      getTokens.map(async (t) => {
+        const raw = await TokenContract.getTokenBalance(t.address as Hex, addr);
+        const n = Number(formatUnits(raw, t.decimals));
+        return [t.address, Number.isFinite(n) ? n : 0] as const;
+      }),
+    );
+    balances.value = Object.fromEntries(entries);
+  } finally {
+    loading.value = false;
+  }
+}
+
+watch(
+  () => walletStore.address,
+  () => refreshBalances(),
+  { immediate: true },
+);
+
+onMounted(() => {
+  refreshBalances();
+});
 
 const assets = computed((): AssetRow[] => {
   return getTokens.map((t) => ({
     sym: t.symbol,
     name: t.name,
-    bal: "—",
-    fiat: "—",
+    bal:
+      !walletStore.address ? "—" : loading.value ? "…" : Converter.toMoney(balances.value[t.address] ?? 0),
+    fiat:
+      !walletStore.address
+        ? "—"
+        : loading.value
+          ? "—"
+          : `≈ $${Converter.toMoney((t.price ?? 0) * (balances.value[t.address] ?? 0))}`,
     image: t.image || DEFAULT_PLACEHOLDER_IMAGE,
   }));
 });
