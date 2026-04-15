@@ -76,6 +76,7 @@ section {
 
 .signin_title {
     width: 395px;
+    max-width: calc(100vw - (var(--page-gutter) * 2));
     text-align: center;
 }
 

@@ -153,7 +153,7 @@ const creatingPlan = ref<boolean>(false);
     top: 90px;
     position: sticky;
     margin: 20px 0;
-    padding: 10px 50px;
+  padding: 10px var(--page-gutter);
     display: flex;
     align-items: center;
     justify-content: space-between;

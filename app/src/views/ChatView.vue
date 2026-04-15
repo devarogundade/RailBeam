@@ -126,10 +126,17 @@ function openCreate() {
 <style scoped>
 .container {
     min-height: calc(100dvh - 90px);
-    padding: 24px 50px;
+    padding: 24px var(--page-gutter);
     display: flex;
     flex-direction: column;
     gap: 18px;
+}
+
+@media (max-width: 960px) {
+    .head {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
 }
 
 .head {

@@ -334,7 +334,7 @@ function goBack() {
 <style scoped>
 .container {
   min-height: calc(100dvh - 90px);
-  padding: 24px 50px;
+  padding: 24px var(--page-gutter);
   display: flex;
   flex-direction: column;
 }
@@ -365,6 +365,17 @@ function goBack() {
   border-radius: 12px;
   border: 1px solid var(--bg-lightest);
   background: var(--bg-light);
+}
+
+@media (max-width: 600px) {
+  .steps {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .step_divider {
+    display: none;
+  }
 }
 
 .step {
