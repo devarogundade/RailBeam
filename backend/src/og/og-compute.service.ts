@@ -53,7 +53,27 @@ const COMPUTE_RPC = 'https://evmrpc.0g.ai';
 
 @Injectable()
 export class OgComputeService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    // this.depositFund();
+  }
+
+  // async depositFund() {
+  //   const provider = new ethers.JsonRpcProvider(COMPUTE_RPC);
+  //   const wallet = new ethers.Wallet(this.pk(), provider);
+  //   const broker = await createZGComputeNetworkBroker(wallet);
+
+  //   const services = await broker.inference.listService();
+  //   const chatbot = services.find(
+  //     (s: { serviceType: string }) => s.serviceType === 'chatbot',
+  //   );
+  //   if (!chatbot) {
+  //     throw new Error('No chatbot service available');
+  //   }
+
+  //   await broker.ledger.depositFund(3);
+
+  //   console.log(chatbot);
+  // }
 
   private pk(): string {
     return this.config.get<string>('PRIVATE_KEY') ?? '';
