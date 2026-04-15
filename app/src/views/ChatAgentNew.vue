@@ -54,6 +54,75 @@ const config = ref("");
 const merchantWallet = computed(() => walletStore.address);
 const merchant = computed(() => walletStore.merchant);
 
+function applyQuickstartBookseller() {
+  name.value = "Bookseller";
+  description.value = "Sells sci-fi books via one-time USDC.e checkout (split payments enabled).";
+  topicsRaw.value = "books, sci-fi, checkout, payments, USDC.e, recommendations";
+  x402Enabled.value = true;
+
+  config.value = JSON.stringify(
+    {
+      agentName: "Bookseller",
+      role: "You are an AI agent and a sales person. You are a book seller agent, experienced on selling books.",
+      inventory: [
+        {
+          name: "Spiderman Home Coming",
+          genre: "Sci-fi",
+          price: { amount: "0.1", currency: "USDC.e" },
+          description: "<add 1–2 sentences>",
+        },
+        {
+          name: "Dune",
+          genre: "Sci-fi",
+          price: { amount: "0.25", currency: "USDC.e" },
+          description: "<add 1–2 sentences>",
+        },
+        {
+          name: "The Martian",
+          genre: "Sci-fi",
+          price: { amount: "0.2", currency: "USDC.e" },
+          description: "<add 1–2 sentences>",
+        },
+        {
+          name: "Neuromancer",
+          genre: "Sci-fi",
+          price: { amount: "0.15", currency: "USDC.e" },
+          description: "<add 1–2 sentences>",
+        },
+      ],
+      payment: {
+        kind: "onetime",
+        tokenSymbol: "USDC.e",
+        tokenAddress: "<USDC_E_TOKEN_ADDRESS>",
+        payTo: "<USDC_E_RECIPIENT_ADDRESS>",
+        network: "<CHAIN_NAME>",
+        splitPayment: true,
+        note: "Spiderman Home Coming",
+      },
+      prompt: [
+        "Rules:",
+        "- Only sell items in inventory; never invent additional books or prices.",
+        "- Accept only USDC.e.",
+        "- Use one-time transaction checkout with splitPayment=true.",
+        "- If a required concrete value is missing (tokenAddress, payTo, network), ask for it instead of guessing.",
+        "",
+        "When the user wants to buy:",
+        "- Confirm title, price, token, network, and recipient address.",
+        "- Reply with a transaction payload (kind=onetime) using the agent wallet as merchant and the configured token/amount/splitPayment.",
+      ].join("\n"),
+    },
+    null,
+    2,
+  );
+
+  step.value = 2;
+  notify.push({
+    title: "Quickstart loaded",
+    description: "Bookseller sample applied. Replace <...> placeholders before creating.",
+    category: "success",
+  });
+}
+
 const canProceedStep1 = computed(() =>
   Boolean(name.value.trim() && description.value.trim() && !saving.value)
 );
@@ -234,6 +303,18 @@ function goBack() {
         </div>
 
         <div v-if="step === 1" class="step_panel">
+          <div class="quickstart">
+            <div class="quickstart_text">
+              <p class="quickstart_title">Quickstart</p>
+              <p class="quickstart_sub">
+                Pre-fill an example agent config you can edit.
+              </p>
+            </div>
+            <button class="secondary" type="button" @click="applyQuickstartBookseller">
+              Use Bookseller sample
+            </button>
+          </div>
+
           <div class="img-row">
             <StorageImage class="avatar" :src="imageDataUrl || '/images/colors.png'" alt="" />
             <div class="img-actions">
@@ -345,6 +426,35 @@ function goBack() {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+}
+
+.quickstart {
+  padding: 14px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--bg-lightest);
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quickstart_text {
+  display: grid;
+  gap: 3px;
+}
+
+.quickstart_title {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tx-normal);
+}
+
+.quickstart_sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tx-dimmed);
+  line-height: 1.3;
 }
 
 .form {
