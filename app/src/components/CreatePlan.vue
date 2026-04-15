@@ -47,12 +47,14 @@ const create = async () => {
     if (!token.value) return;
     if (!walletStore.address) return;
 
+    creating.value = true;
     if (form.value.name.length < 3) {
         notify.push({
             title: 'Name is too short!',
             description: 'Try again',
             category: "error"
         });
+        creating.value = false;
         return;
     }
 
@@ -62,6 +64,7 @@ const create = async () => {
             description: 'Try again',
             category: "error"
         });
+        creating.value = false;
         return;
     }
 
@@ -71,6 +74,7 @@ const create = async () => {
             description: 'Try again',
             category: "error"
         });
+        creating.value = false;
         return;
     }
 
@@ -80,6 +84,7 @@ const create = async () => {
             description: 'Try again',
             category: "error"
         });
+        creating.value = false;
         return;
     }
 
@@ -89,57 +94,57 @@ const create = async () => {
             description: 'Try again',
             category: "error"
         });
+        creating.value = false;
         return;
     }
-
-    creating.value = true;
-
-    const signer = await getEthersSigner();
-    for (const image of images.value) {
-        if (image) {
-            const imageURL = await Storage.awaitUpload(image, image.name, signer);
-            form.value.images.push(imageURL);
+    try {
+        const signer = await getEthersSigner();
+        for (const image of images.value) {
+            if (image) {
+                const imageURL = await Storage.awaitUpload(image, image.name, signer);
+                form.value.images.push(imageURL);
+            }
         }
-    }
 
-    const interval = (form.value.interval * 24 * 60 * 60);
+        const interval = (form.value.interval * 24 * 60 * 60);
 
-    const transactionHash = await MerchantContract.createSubscription({
-        token: token.value.address,
-        interval: interval,
-        amount: parseUnits(form.value.amount.toString(), token.value.decimals),
-        gracePeriod: form.value.gracePeriod,
-        description: form.value.description,
-        catalogMetadata: {
-            schemaVersion: 1,
-            value: JSON.stringify({
-                name: form.value.name,
-                description: form.value.description,
-                images: form.value.images,
-                category: form.value.category,
-            }),
-        },
-    });
-
-    if (!transactionHash) {
-        notify.push({
-            title: 'Failed to create subscription on-chain!',
-            description: 'Try again',
-            category: "error"
+        const transactionHash = await MerchantContract.createSubscription({
+            token: token.value.address,
+            interval: interval,
+            amount: parseUnits(form.value.amount.toString(), token.value.decimals),
+            gracePeriod: form.value.gracePeriod,
+            description: form.value.description,
+            catalogMetadata: {
+                schemaVersion: 1,
+                value: JSON.stringify({
+                    name: form.value.name,
+                    description: form.value.description,
+                    images: form.value.images,
+                    category: form.value.category,
+                }),
+            },
         });
-        return;
+
+        if (!transactionHash) {
+            notify.push({
+                title: 'Failed to create subscription on-chain!',
+                description: 'Try again',
+                category: "error"
+            });
+            return;
+        }
+
+        notify.push({
+            title: 'Plan created!',
+            description: 'Share plan link to your customers.',
+            category: "success"
+        });
+
+        emit('refresh');
+        emit('close');
+    } finally {
+        creating.value = false;
     }
-
-    notify.push({
-        title: 'Plan created!',
-        description: 'Share plan link to your customers.',
-        category: "success"
-    });
-
-    emit('refresh');
-    emit('close');
-
-    creating.value = false;
 };
 
 watch(walletStore, () => {
@@ -282,14 +287,14 @@ onUnmounted(() => {
 
             <div class="actions">
                 <div class="buttons">
-                    <button @click="emit('close')">
+                    <button :disabled="creating" @click="emit('close')">
                         <EraserIcon />
                         <p>Cancel</p>
                     </button>
 
-                    <button @click="create">
+                    <button :disabled="creating" @click="create">
                         <CheckIcon />
-                        <p>{{ creating ? 'Saving' : 'Save' }}</p>
+                        <p>{{ creating ? 'Saving…' : 'Save' }}</p>
                     </button>
                 </div>
             </div>

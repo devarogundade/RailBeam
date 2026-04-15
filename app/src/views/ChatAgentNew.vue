@@ -161,6 +161,7 @@ const agentCard = computed<AgentCardRegistrationV1>(() => {
 });
 
 async function createAgent() {
+  if (saving.value) return;
   if (!merchantWallet.value) {
     notify.push({
       title: "Connect wallet",
@@ -274,6 +275,7 @@ function goNext() {
 }
 
 function goBack() {
+  if (saving.value) return;
   step.value = 1;
 }
 </script>
@@ -402,9 +404,11 @@ function goBack() {
           </div>
 
           <div class="row row_three">
-            <button class="secondary" type="button" @click="goBack">Back</button>
-            <button class="secondary" type="button" @click="router.push({ name: 'agents' })">Cancel</button>
-            <button class="primary" type="submit" :disabled="!canSave">Create</button>
+            <button class="secondary" type="button" :disabled="saving" @click="goBack">Back</button>
+            <button class="secondary" type="button" :disabled="saving" @click="router.push({ name: 'agents' })">Cancel</button>
+            <button class="primary" type="submit" :disabled="!canSave || saving">
+              {{ saving ? "Creating…" : "Create" }}
+            </button>
           </div>
         </div>
       </form>

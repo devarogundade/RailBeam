@@ -51,6 +51,7 @@ const freezeLoading = ref(false);
 const cardLoading = ref(false);
 const cardLoadError = ref<string | null>(null);
 const cardAuthRequired = ref(false);
+const signLoadLoading = ref(false);
 
 const cardRevealLoading = ref(false);
 const cardRevealError = ref<string | null>(null);
@@ -259,6 +260,7 @@ provide("paymentShellHeader", {
 });
 
 function onProfileUpdate() {
+  if (profileSaving.value) return;
   if (!walletStore.address) {
     notify.push({
       title: "Profile",
@@ -277,6 +279,7 @@ function onProfileUpdate() {
     });
     return;
   }
+  profileSaving.value = true;
   void (async () => {
     try {
       const addr = walletStore.address as Hex;
@@ -310,6 +313,8 @@ function onProfileUpdate() {
         description: err?.message ? String(err.message) : "Try again.",
         category: "error",
       });
+    } finally {
+      profileSaving.value = false;
     }
   })();
 }
@@ -452,6 +457,7 @@ const isImmersiveScan = computed(() => route.name === "payment-scan");
 const editUsername = ref<string>("");
 const uploadingAvatar = ref(false);
 const avatarUploadProgress = ref<number | null>(null);
+const profileSaving = ref(false);
 
 watch(
   () => walletStore.address,
@@ -526,6 +532,17 @@ async function ensureAuthForIssuing() {
     setCookie: false,
   });
   authStore.setAccessToken(accessToken);
+}
+
+async function onSignAndLoadCard() {
+  if (signLoadLoading.value) return;
+  signLoadLoading.value = true;
+  try {
+    await ensureAuthForIssuing();
+    await loadCardSummary({ refresh: true });
+  } finally {
+    signLoadLoading.value = false;
+  }
 }
 
 async function onPickAvatar(e: Event) {
@@ -717,8 +734,9 @@ async function initiateCreateVirtualCard() {
         <div v-else-if="cardLoadError" class="sheet-banner sheet-banner--error">
           <p>{{ cardLoadError }}</p>
           <button v-if="cardAuthRequired" type="button" class="sheet-ghost"
-            @click="ensureAuthForIssuing().then(() => loadCardSummary({ refresh: true }))">
-            Sign & load
+            :disabled="signLoadLoading"
+            @click="onSignAndLoadCard">
+            {{ signLoadLoading ? "Signing…" : "Sign & load" }}
           </button>
           <button v-else type="button" class="sheet-ghost" @click="loadCardSummary({ refresh: true })">
             Retry
@@ -958,8 +976,9 @@ async function initiateCreateVirtualCard() {
           spellcheck="false" placeholder="@username" />
         <p class="profile-sheet-hint">Saved as {{ normalizeHandle(editUsername) }} (lowercase)</p>
 
-        <button type="button" class="sheet-primary profile-sheet-cta" @click="onProfileUpdate">
-          Save
+        <button type="button" class="sheet-primary profile-sheet-cta" :disabled="profileSaving"
+          @click="onProfileUpdate">
+          {{ profileSaving ? "Saving…" : "Save" }}
         </button>
       </div>
     </BottomSheet>

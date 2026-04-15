@@ -9,9 +9,12 @@ import { beamSdk } from '@/scripts/beamSdk';
 import { getTokens } from '@railbeam/beam-ts';
 import { notify } from '@/reactives/notify';
 import StorageImage from '@/components/StorageImage.vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const walletStore = useWalletStore();
 const tokens = ref<Hex[]>();
+const saving = ref(false);
+const canSave = computed(() => !!tokens.value && tokens.value.length > 0 && !saving.value);
 
 const addOrRemoveToken = (token: Hex) => {
     if (!tokens.value) return;
@@ -30,31 +33,37 @@ const saveChanges = async () => {
     if (!tokens.value) return;
     if (walletStore.connection != Connection.Wallet) return;
     if (tokens.value.length == 0) return;
+    if (saving.value) return;
 
-    const txHash = await MultiSigContract.updateTokens(
-        walletStore.merchant.wallet,
-        tokens.value
-    );
+    saving.value = true;
+    try {
+        const txHash = await MultiSigContract.updateTokens(
+            walletStore.merchant.wallet,
+            tokens.value
+        );
 
-    if (txHash) {
-        walletStore.setMerchant({
-            ...walletStore.merchant,
-            tokens: tokens.value
-        });
+        if (txHash) {
+            walletStore.setMerchant({
+                ...walletStore.merchant,
+                tokens: tokens.value
+            });
 
-        notify.push({
-            title: 'Changes saved!',
-            description: 'Transaction was sent.',
-            category: "success",
-            linkTitle: 'View Trx',
-            linkUrl: `${import.meta.env.VITE_EXPLORER_URL}/tx/${txHash}`
-        });
-    } else {
-        notify.push({
-            title: 'Failed to save changes!',
-            description: 'Try again',
-            category: "error"
-        });
+            notify.push({
+                title: 'Changes saved!',
+                description: 'Transaction was sent.',
+                category: "success",
+                linkTitle: 'View Trx',
+                linkUrl: `${import.meta.env.VITE_EXPLORER_URL}/tx/${txHash}`
+            });
+        } else {
+            notify.push({
+                title: 'Failed to save changes!',
+                description: 'Try again',
+                category: "error"
+            });
+        }
+    } finally {
+        saving.value = false;
     }
 };
 
@@ -103,8 +112,8 @@ watch(walletStore, () => {
                 </RouterLink>
             </div>
 
-            <button :class="tokens && tokens.length > 0 ? 'next_active next' : 'next'" @click="saveChanges">
-                <p>Save Changes</p>
+            <button :disabled="!canSave" :class="canSave ? 'next_active next' : 'next'" @click="saveChanges">
+                <p>{{ saving ? 'Saving…' : 'Save Changes' }}</p>
                 <ChevronRightIcon />
             </button>
         </div>
