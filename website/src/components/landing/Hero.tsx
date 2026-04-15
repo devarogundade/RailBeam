@@ -62,8 +62,8 @@ const Hero = () => {
 
           <div className="relative flex justify-center items-center">
             <div className="relative">
-              <img src={phonePay} alt="Railbeam Pay App" width={550} height={'fit-content'} className="relative z-10 drop-shadow-2xl" />
-              <img src={phoneMerchant} alt="Railbeam Merchant App" width={650} height={'fit-content'} loading="lazy" className="absolute -right-40 top-0 z-0 drop-shadow-2xl opacity-60 scale-90" />
+              <img src={phonePay} alt="Railbeam Pay App" width={350} height={'fit-content'} className="relative z-10 drop-shadow-2xl" />
+              <img src={phoneMerchant} alt="Railbeam Merchant App" width={350} height={'fit-content'} loading="lazy" className="absolute -right-52 top-0 z-0 drop-shadow-2xl opacity-60 scale-90" />
               <div className="absolute inset-0 -z-10 bg-primary/8 blur-[80px] rounded-full scale-75" />
             </div>
           </div>
