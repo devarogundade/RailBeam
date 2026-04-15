@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
-interface IERC7857 is IERC721 {
+interface IERC7857 {
     // Transfer with metadata re-encryption
     function transfer(
         address from,

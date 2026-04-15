@@ -1,15 +1,15 @@
 import { injected, walletConnect } from "@wagmi/connectors";
 import { defaultWagmiConfig } from "@web3modal/wagmi";
-import { ogGalileoTestnet } from "./ogChain";
+import { zeroGMainnet } from "viem/chains";
 
 const metadata = {
   name: "Beam",
-  description: "Beam — merchant payments on 0G (Galileo testnet)",
-  url: "https://beam-app.netlify.app",
+  description: "Beam — merchant payments on 0G (Galileo mainnet)",
+  url: window.location.origin,
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-export const chains = [ogGalileoTestnet];
+export const chains = [zeroGMainnet];
 
 export const config = defaultWagmiConfig({
   // @ts-ignore

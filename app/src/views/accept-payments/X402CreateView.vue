@@ -22,7 +22,7 @@ const submitting = ref(false);
 const submitError = ref<string | null>(null);
 const lastCreated = ref<X402ResourceView | null>(null);
 
-const x402Network = import.meta.env.VITE_X402_NETWORK?.trim() || "eip155:16601";
+const x402Network = import.meta.env.VITE_X402_NETWORK?.trim() || "eip155:16661";
 const x402UsdcAsset = import.meta.env.VITE_X402_USDC_ASSET?.trim();
 
 const clientOrigin = computed(() =>

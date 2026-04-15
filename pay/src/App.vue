@@ -32,7 +32,7 @@ function decodeIntentParam(encoded: string): PaymentIntentV1 {
 }
 
 const beamSdk = new BeamSDK({
-  network: Network.Testnet,
+  network: Network.Mainnet,
 });
 
 const dataStore = useDataStore();

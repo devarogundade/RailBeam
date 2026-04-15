@@ -7,11 +7,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: Beam
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x7c1667fB3836a53163B60351652244C0996C86B8"
+      address: "0x38E6AA7c4FdD1A6bEc0aAAadf3bD1699355E6393"
       abi: Beam
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -37,11 +37,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: IdentityRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x66ac3e37221aC1C7609Ff1125c36403a30D37682"
+      address: "0x8058413563918F3A819b0e320f2d7620c8B1E8c3"
       abi: IdentityRegistry
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -64,11 +64,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: ReputationRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x18E47b8CE75e8bdBDC925b0cdcE54959d61D469d"
+      address: "0x98012307d15926a0354394dF396d8f37a1F8f0bB"
       abi: ReputationRegistry
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -89,11 +89,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: ValidationRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x5E136df2331f978035d817777Bee3Bc39491ae3b"
+      address: "0x2124CC74B98b39Ff15b4aCCAbB82F298546398c9"
       abi: ValidationRegistry
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -111,11 +111,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: Merchant
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0xD7570bc0e11fe315354AE7932C086532b1e38307"
+      address: "0xD0319a33c23FB64d5EE6233ceb66C2A75ADcF6c4"
       abi: Merchant
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -142,11 +142,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: HookManager
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x3054D5d7240C4a4Bc03E2D3A037B64a2aB720c2D"
+      address: "0x967295713C984f952383590c3C62Ca684823BbbE"
       abi: HookManager
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -164,11 +164,11 @@ dataSources:
       file: ./src/events.ts
   - kind: ethereum
     name: UserRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x514Fe0005e1579F8c1075db93BA3B6c9d8070c7B"
+      address: "0x66ac3e37221aC1C7609Ff1125c36403a30D37682"
       abi: UserRegistry
-      startBlock: 27440850
+      startBlock: 30564252
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -189,7 +189,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: MultiSigWallet
-    network: 0g-galileo-testnet
+    network: 0g
     source:
       abi: MultiSigWallet
     mapping:

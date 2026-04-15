@@ -4,10 +4,10 @@ import { Client } from "./client";
 import { Buffer } from "buffer";
 
 const RPC_URL =
-  import.meta.env.VITE_0G_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+  import.meta.env.VITE_0G_RPC_URL ?? "https://evmrpc.0g.ai";
 const INDEXER_RPC =
   import.meta.env.VITE_0G_STORAGE_INDEXER_URL ??
-  "https://indexer-storage-testnet-turbo.0g.ai";
+  "https://indexer-storage-turbo.0g.ai";
 
 export const OG_STORAGE_PREFIX = "0g-storage:";
 

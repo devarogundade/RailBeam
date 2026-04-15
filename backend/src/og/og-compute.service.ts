@@ -49,10 +49,7 @@ export class OgComputeError extends Error {
   }
 }
 
-const COMPUTE_RPCS: Record<string, string> = {
-  mainnet: 'https://evmrpc.0g.ai',
-  testnet: 'https://evmrpc-testnet.0g.ai',
-};
+const COMPUTE_RPC = 'https://evmrpc.0g.ai';
 
 @Injectable()
 export class OgComputeService {
@@ -69,7 +66,7 @@ export class OgComputeService {
     network?: string;
     timeoutMs?: number;
   }): Promise<OgComputeChatResult> {
-    const provider = new ethers.JsonRpcProvider(COMPUTE_RPCS.testnet);
+    const provider = new ethers.JsonRpcProvider(COMPUTE_RPC);
     const wallet = new ethers.Wallet(this.pk(), provider);
     const broker = await createZGComputeNetworkBroker(wallet);
 
@@ -131,7 +128,7 @@ export class OgComputeService {
       verified,
       chatId,
       provider: providerAddress,
-      computeNetwork: 'testnet',
+      computeNetwork: 'mainnet',
     };
   }
 }

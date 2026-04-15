@@ -32,7 +32,7 @@ onMounted(() => {
             <div class="signin">
                 <div class="signin_title">
                     <h3>Get started with Beam</h3>
-                    <p>Connect a wallet on 0G Galileo testnet to explore the app. Merchant setup is optional—use it when you want to accept payments.</p>
+                    <p>Connect a wallet on 0G mainnet to explore the app. Merchant setup is optional—use it when you want to accept payments.</p>
                 </div>
 
                 <div class="signin_wallets">

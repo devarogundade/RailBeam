@@ -3,8 +3,12 @@ pragma solidity ^0.8.28;
 
 import {Errors} from "../libs/Errors.sol";
 
+import {IERC7857} from "../eip7857/IERC7857.sol";
+
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {
+    ERC721URIStorage
+} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
@@ -13,7 +17,7 @@ import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 /// - ERC-721 + URIStorage (agentId = tokenId, agentURI = tokenURI)
 /// - Optional key/value metadata per agentId (bytes)
 /// - Reserved key `agentWallet` with wallet-control verification via EIP-712 signatures (EOA) or ERC-1271 (contract)
-contract IdentityRegistry is ERC721URIStorage, EIP712 {
+contract IdentityRegistry is ERC721URIStorage, EIP712, IERC7857 {
     using ECDSA for bytes32;
 
     struct MetadataEntry {
@@ -21,8 +25,16 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
         bytes metadataValue;
     }
 
-    event Registered(uint256 indexed agentId, string agentURI, address indexed owner);
-    event URIUpdated(uint256 indexed agentId, string newURI, address indexed updatedBy);
+    event Registered(
+        uint256 indexed agentId,
+        string agentURI,
+        address indexed owner
+    );
+    event URIUpdated(
+        uint256 indexed agentId,
+        string newURI,
+        address indexed updatedBy
+    );
     event MetadataSet(
         uint256 indexed agentId,
         string indexed indexedMetadataKey,
@@ -31,20 +43,28 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
     );
 
     bytes32 private constant SET_AGENT_WALLET_TYPEHASH =
-        keccak256("SetAgentWallet(uint256 agentId,address newWallet,uint256 deadline)");
+        keccak256(
+            "SetAgentWallet(uint256 agentId,address newWallet,uint256 deadline)"
+        );
 
     bytes32 private constant KEY_AGENT_WALLET = keccak256(bytes("agentWallet"));
 
     uint256 private _lastAgentId;
 
-    mapping(uint256 agentId => mapping(bytes32 keyHash => bytes)) private _metadata;
+    mapping(uint256 agentId => mapping(bytes32 keyHash => bytes))
+        private _metadata;
     mapping(uint256 agentId => address) private _agentWallet;
 
-    constructor() ERC721("ERC-8004 Agents", "AGENT") EIP712("ERC-8004 Identity Registry", "1") {}
+    constructor()
+        ERC721("Railbeam Agents", "AGENT")
+        EIP712("Railbeam Identity Registry", "1")
+    {}
 
     // ============== ERC-8004: Registration ============== //
 
-    function register(string calldata agentURI) external returns (uint256 agentId) {
+    function register(
+        string calldata agentURI
+    ) external returns (uint256 agentId) {
         MetadataEntry[] memory empty;
         return _register(agentURI, empty);
     }
@@ -80,10 +100,19 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
 
         // Reserved agentWallet: initially set to owner (msg.sender)
         _agentWallet[agentId] = msg.sender;
-        emit MetadataSet(agentId, "agentWallet", "agentWallet", abi.encode(msg.sender));
+        emit MetadataSet(
+            agentId,
+            "agentWallet",
+            "agentWallet",
+            abi.encode(msg.sender)
+        );
 
         for (uint256 i = 0; i < metadata.length; i++) {
-            _setMetadata(agentId, metadata[i].metadataKey, metadata[i].metadataValue);
+            _setMetadata(
+                agentId,
+                metadata[i].metadataKey,
+                metadata[i].metadataValue
+            );
         }
 
         emit Registered(agentId, agentURI, msg.sender);
@@ -138,7 +167,12 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
     function unsetAgentWallet(uint256 agentId) external {
         _requireAuthorized(agentId);
         _agentWallet[agentId] = address(0);
-        emit MetadataSet(agentId, "agentWallet", "agentWallet", abi.encode(address(0)));
+        emit MetadataSet(
+            agentId,
+            "agentWallet",
+            "agentWallet",
+            abi.encode(address(0))
+        );
     }
 
     /// @notice Set the agent wallet after proving control of `newWallet`.
@@ -162,12 +196,52 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
             address recovered = digest.recover(signature);
             require(recovered == newWallet, Errors.INVALID_SIGNATURE);
         } else {
-            bytes4 magic = IERC1271(newWallet).isValidSignature(digest, signature);
-            require(magic == IERC1271.isValidSignature.selector, Errors.INVALID_SIGNATURE);
+            bytes4 magic = IERC1271(newWallet).isValidSignature(
+                digest,
+                signature
+            );
+            require(
+                magic == IERC1271.isValidSignature.selector,
+                Errors.INVALID_SIGNATURE
+            );
         }
 
         _agentWallet[agentId] = newWallet;
-        emit MetadataSet(agentId, "agentWallet", "agentWallet", abi.encode(newWallet));
+        emit MetadataSet(
+            agentId,
+            "agentWallet",
+            "agentWallet",
+            abi.encode(newWallet)
+        );
+    }
+
+    // ============== ERC-7857 ============== //
+
+    function transfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes calldata sealedKey,
+        bytes calldata proof
+    ) external {
+        _requireAuthorized(tokenId);
+    }
+
+    function clone(
+        address to,
+        uint256 tokenId,
+        bytes calldata sealedKey,
+        bytes calldata proof
+    ) external returns (uint256 newTokenId) {
+        _requireAuthorized(tokenId);
+    }
+
+    function authorizeUsage(
+        uint256 tokenId,
+        address executor,
+        bytes calldata permissions
+    ) external {
+        _requireAuthorized(tokenId);
     }
 
     // ============== Internals ============== //
@@ -187,7 +261,12 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
         from = super._update(to, tokenId, auth);
         if (from != address(0) && to != from) {
             _agentWallet[tokenId] = address(0);
-            emit MetadataSet(tokenId, "agentWallet", "agentWallet", abi.encode(address(0)));
+            emit MetadataSet(
+                tokenId,
+                "agentWallet",
+                "agentWallet",
+                abi.encode(address(0))
+            );
         }
     }
 
@@ -197,4 +276,3 @@ contract IdentityRegistry is ERC721URIStorage, EIP712 {
         return super.supportsInterface(interfaceId);
     }
 }
-

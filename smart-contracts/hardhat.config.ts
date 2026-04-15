@@ -28,13 +28,6 @@ module.exports = {
       },
     },
     /** 0G Chain — https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/deploy-contracts */
-    zogTestnet: {
-      url: "https://evmrpc-testnet.0g.ai",
-      chainId: 16602,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
-    },
     zogMainnet: {
       url: "https://evmrpc.0g.ai",
       chainId: 16661,
@@ -46,18 +39,9 @@ module.exports = {
   etherscan: {
     apiKey: {
       // 0G ChainScan accepts a placeholder when using custom verifier URLs
-      zogTestnet: "PLACEHOLDER",
       zogMainnet: "PLACEHOLDER",
     },
     customChains: [
-      {
-        network: "zogTestnet",
-        chainId: 16602,
-        urls: {
-          apiURL: "https://chainscan-galileo.0g.ai/open/api",
-          browserURL: "https://chainscan-galileo.0g.ai",
-        },
-      },
       {
         network: "zogMainnet",
         chainId: 16661,

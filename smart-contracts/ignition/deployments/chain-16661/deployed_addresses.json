@@ -1,0 +1,19 @@
+{
+  "UserRegisterModule#UserRegistry": "0x66ac3e37221aC1C7609Ff1125c36403a30D37682",
+  "BeamModule#AddressLib": "0x6dceDCA60bf15769742935eDfa1b1B72638c5205",
+  "BeamModule#IntegerLib": "0x88CdEAac1f41b55A9CC0D1a3278795093FC6A35c",
+  "HookManagerModule#AddressLib": "0xAaA6ba20aEAF4E87a2cDD4ca83A888c418558D6B",
+  "IdentityRegistryModule#IdentityRegistry": "0x8058413563918F3A819b0e320f2d7620c8B1E8c3",
+  "MerchantModule#HashLib": "0xFcC011AB456c010aD9DD2075d68d14A353923092",
+  "OneTimeTransactionModule#BoolLib": "0x18E47b8CE75e8bdBDC925b0cdcE54959d61D469d",
+  "OneTimeTransactionModule#HashLib": "0x5E136df2331f978035d817777Bee3Bc39491ae3b",
+  "ReceiptModule#Receipt": "0x3054D5d7240C4a4Bc03E2D3A037B64a2aB720c2D",
+  "RecurrentTransactionModule#HashLib": "0xD7570bc0e11fe315354AE7932C086532b1e38307",
+  "ReputationRegistryModule#ReputationRegistry": "0x98012307d15926a0354394dF396d8f37a1F8f0bB",
+  "ValidationRegistryModule#ValidationRegistry": "0x2124CC74B98b39Ff15b4aCCAbB82F298546398c9",
+  "HookManagerModule#HookManager": "0x967295713C984f952383590c3C62Ca684823BbbE",
+  "MerchantModule#Merchant": "0xD0319a33c23FB64d5EE6233ceb66C2A75ADcF6c4",
+  "OneTimeTransactionModule#OneTimeTransaction": "0xA93b39649Ab83903f4d7E7eE7F0bfA68754be29d",
+  "RecurrentTransactionModule#RecurrentTransaction": "0x3bA171032f4123FD97892f787848EB944dD5BF10",
+  "BeamModule#Beam": "0x38E6AA7c4FdD1A6bEc0aAAadf3bD1699355E6393"
+}

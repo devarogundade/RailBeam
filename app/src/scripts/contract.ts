@@ -21,7 +21,7 @@ import type {
 import { ContractAddresses } from "@railbeam/beam-ts";
 
 export const HookManagerContract = {
-  address: ContractAddresses.Testnet.HookManager,
+  address: ContractAddresses.Mainnet.HookManager,
 
   async register(params: RegisterHook): Promise<Hex | null> {
     try {
@@ -226,7 +226,7 @@ export const MultiSigContract = {
 };
 
 export const MerchantContract = {
-  address: ContractAddresses.Testnet.Merchant,
+  address: ContractAddresses.Mainnet.Merchant,
 
   async create(params: CreateMerchant): Promise<Hex | null> {
     console.log(params);
@@ -360,7 +360,7 @@ export const MerchantContract = {
 };
 
 export const IdentityRegistryContract = {
-  address: ContractAddresses.Testnet.IdentityRegistry,
+  address: ContractAddresses.Mainnet.IdentityRegistry,
 
   async register(
     agentURI: string,

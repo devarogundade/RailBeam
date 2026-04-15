@@ -50,7 +50,8 @@ onUnmounted(() => {
             </div>
 
             <div class="subtitle">
-                <p>This is your merchant account address in Beam. Deposit 0G testnet funds by scanning the QR code or copying the
+                <p>This is your merchant account address in Beam. Deposit 0G mainnet funds by scanning the QR code or
+                    copying the
                     address below. <span>Only send Scroll (ETH) and Scroll ERC20 to this address.</span></p>
             </div>
 

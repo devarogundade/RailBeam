@@ -30,7 +30,7 @@ const dataStore = useDataStore();
 const walletStore = useWalletStore();
 
 const beamSdk = new BeamSDK({
-    network: Network.Testnet
+    network: Network.Mainnet
 });
 
 const splitPayments = ref<boolean>(false);

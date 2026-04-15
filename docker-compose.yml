@@ -1,0 +1,36 @@
+services:
+  facilitator:
+    build:
+      context: ./facilitator
+    env_file:
+      - ./facilitator/.env
+    environment:
+      - PORT=3402
+    ports:
+      - "3402:3402"
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      - facilitator
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=3000
+      - X402_FACILITATOR_URL=http://facilitator:3402
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3000:3000"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+volumes:
+  redis_data:

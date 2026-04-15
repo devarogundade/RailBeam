@@ -53,7 +53,7 @@ export class AgentsService {
     return (
       this.config.get<string>('RPC_URL') ??
       this.config.get<string>('OG_RPC_URL') ??
-      'https://evmrpc-testnet.0g.ai'
+      'https://evmrpc.0g.ai'
     );
   }
 
@@ -244,7 +244,7 @@ export class AgentsService {
                 "resource": "<string> (HTTP URL)", (required from agent config)
                 "amount": "<string> (human amount string, not base units)", (required from agent config)
                 "currency": "<string>", (required from agent config)
-                "network": "<string> (default: 'eip155:16601')", 
+                "network": "<string> (default: 'eip155:16661')", 
                 "payTo": "0x... (Ethereum address string)", (required from agent wallet)
                 "asset": "0x... (Ethereum address string)", (required from agent config)
                 "title": "<string>", (required from agent config)

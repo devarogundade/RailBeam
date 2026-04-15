@@ -45,14 +45,14 @@ export class OgStorageService {
 
   private rpcUrl(): string {
     return (
-      this.config.get<string>('OG_RPC_URL') ?? 'https://evmrpc-testnet.0g.ai'
+      this.config.get<string>('OG_RPC_URL') ?? 'https://evmrpc.0g.ai'
     );
   }
 
   private indexerUrl(): string {
     return (
       this.config.get<string>('OG_STORAGE_INDEXER_RPC') ??
-      'https://indexer-storage-testnet-turbo.0g.ai'
+      'https://indexer-storage-turbo.0g.ai'
     );
   }
 

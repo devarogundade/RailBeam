@@ -12,11 +12,10 @@ import { registerExactEvmScheme } from "@x402/evm/exact/facilitator";
 import { toFacilitatorEvmSigner } from "@x402/evm";
 import { createWalletClient, http, publicActions, type Chain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { zeroGGalileoTestnet, zeroGMainnet } from "viem/chains";
+import { zeroGMainnet } from "viem/chains";
 import { Hex } from "viem";
 
 const ZERO_G_BY_CAIP: Record<string, Chain> = {
-  "eip155:16601": zeroGGalileoTestnet,
   "eip155:16661": zeroGMainnet,
 };
 
@@ -24,7 +23,7 @@ function chainForNetwork(caip: string): Chain {
   const chain = ZERO_G_BY_CAIP[caip];
   if (!chain) {
     throw new Error(
-      `Unsupported X402_EVM_NETWORK=${caip}. Use eip155:16601 (0G Galileo testnet) or eip155:16661 (0G mainnet).`,
+      `Unsupported X402_EVM_NETWORK=${caip}. Use eip155:16661 (0G mainnet).`,
     );
   }
   return chain;

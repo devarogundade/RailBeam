@@ -16,7 +16,7 @@ import { recurrentTransactionAbi } from "@/abis/recurrent-transaction";
 import { userRegistryAbi } from "@/abis/user-registry";
 
 const BeamContract = {
-  address: ContractAddresses.Testnet.Beam,
+  address: ContractAddresses.Mainnet.Beam,
 
   async oneTimeTransaction(
     params: CreateOneTimeTransaction,
@@ -146,7 +146,7 @@ const BeamContract = {
 };
 
 const OneTimeTransactionContract = {
-  address: ContractAddresses.Testnet.OneTimeTransaction,
+  address: ContractAddresses.Mainnet.OneTimeTransaction,
 
   async mintReceipt(params: MintReceipt): Promise<Hex | null> {
     const result = await writeContract(config, {
@@ -166,7 +166,7 @@ const OneTimeTransactionContract = {
 };
 
 const RecurrentTransactionContract = {
-  address: ContractAddresses.Testnet.RecurrentTransaction,
+  address: ContractAddresses.Mainnet.RecurrentTransaction,
 
   async mintReceipt(params: MintReceipt): Promise<Hex | null> {
     const result = await writeContract(config, {
@@ -186,7 +186,7 @@ const RecurrentTransactionContract = {
 };
 
 const UserRegistryContract = {
-  address: ContractAddresses.Testnet.UserRegistry,
+  address: ContractAddresses.Mainnet.UserRegistry,
 
   async register(username: string, metadataURI: string): Promise<Hex | null> {
     const result = await writeContract(config, {

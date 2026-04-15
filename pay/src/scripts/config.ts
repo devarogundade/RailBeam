@@ -1,4 +1,4 @@
-import { zeroGGalileoTestnet, zeroGMainnet } from "viem/chains";
+import { zeroGMainnet } from "viem/chains";
 import { injected, walletConnect } from "@wagmi/connectors";
 import { defaultWagmiConfig } from "@web3modal/wagmi";
 
@@ -9,7 +9,7 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-export const chains = [zeroGGalileoTestnet, zeroGMainnet];
+export const chains = [zeroGMainnet];
 
 export const config = defaultWagmiConfig({
   // @ts-ignore

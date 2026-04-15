@@ -33,7 +33,7 @@ const minting = ref<boolean>(false);
 const captureDiv = ref<HTMLDivElement | null>(null);
 
 const beamSdk = new BeamSDK({
-    network: Network.Testnet
+    network: Network.Mainnet
 });
 
 function closeReceipt() {

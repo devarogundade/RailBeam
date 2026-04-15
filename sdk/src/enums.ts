@@ -12,5 +12,5 @@ export enum TransactionType {
 }
 
 export enum Network {
-  Testnet = "Testnet",
+  Mainnet = "Mainnet",
 }

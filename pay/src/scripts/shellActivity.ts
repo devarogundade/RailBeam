@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 import { formatUnits, zeroAddress } from "viem";
-import { zeroGGalileoTestnet } from "viem/chains";
+import { zeroGMainnet } from "viem/chains";
 import type { SubscriptionPlan, Transaction } from '@railbeam/beam-ts';
 import { TransactionStatus, TransactionType } from '@railbeam/beam-ts';
 import { getToken } from '@railbeam/beam-ts';
@@ -152,7 +152,7 @@ export function mapTransactionToShellRow(
     payers,
     amountsWei,
     detailDate: Converter.fullMonth(date),
-    detailNetwork: zeroGGalileoTestnet.name,
+    detailNetwork: zeroGMainnet.name,
   };
 }
 
@@ -209,7 +209,7 @@ export function mapSubscriptionToShellRow(
     merchant: shortAddr(plan.merchant),
     planId: plan.subsciptionId,
     started,
-    network: zeroGGalileoTestnet.name,
+    network: zeroGMainnet.name,
     description: plan.description || "",
     token: plan.token,
   };
