@@ -5,7 +5,7 @@ import { defaultWagmiConfig } from "@web3modal/wagmi";
 const metadata = {
   name: "Beam Pay",
   description: "Beam Pay",
-  url: "https://beam-pay.netlify.app",
+  url: window.location.origin,
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 

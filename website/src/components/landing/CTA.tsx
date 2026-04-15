@@ -14,7 +14,7 @@ const CTA = () => {
             Chat-to-pay infrastructure for the modern web.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
-            <a href="https://railbeam-merchant.netlify.app" target="_blank">
+            <a href="https://console.railbeam.xyz" target="_blank">
               <Button variant="hero" size="lg" className="text-base px-8 py-6">
                 Start Building <ArrowRight className="w-5 h-5 ml-1" />
               </Button>

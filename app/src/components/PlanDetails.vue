@@ -4,8 +4,6 @@ import { Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import CloseIcon from './icons/CloseIcon.vue';
-import CopyIcon from './icons/CopyIcon.vue';
-import ForwardIcon from './icons/ForwardIcon.vue';
 import EditIcon from './icons/EditIcon.vue';
 import EraserIcon from './icons/EraserIcon.vue';
 import TrashIcon from './icons/TrashIcon.vue';
@@ -41,26 +39,8 @@ const copyLink = async () => {
     }
 };
 
-const shareLink = () => {
-    if (!navigator.canShare()) {
-        notify.push({
-            title: 'Cannot share!',
-            description: 'Copy instead.',
-            category: 'error'
-        });
-        return;
-    }
-
-    navigator.share({
-        title: props.plan.names,
-        text: props.plan.description,
-        url: planLink.value
-    });
-};
-
 onMounted(() => {
     document.body.style.overflowY = 'hidden';
-    planLink.value = `https://beam-checkout.netlify.app?id=${props.plan._id}&type=plan`;
 });
 
 onUnmounted(() => {
@@ -112,23 +92,6 @@ onUnmounted(() => {
                         {{ props.plan.description }}
                     </p>
                 </div>
-
-                <div class="link">
-                    <p class="head">Payment Link</p>
-                    <div class="body">
-                        <div class="field">
-                            <p>{{ planLink }}</p>
-                            <div class="icon" @click="copyLink">
-                                <CopyIcon />
-                            </div>
-                        </div>
-
-                        <div class="forward" @click="shareLink">
-                            <ForwardIcon />
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
             <div class="actions">

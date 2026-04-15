@@ -82,10 +82,10 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <a href="https://railbeam-merchant.netlify.app" target="_blank">
+          <a href="https://console.railbeam.xyz" target="_blank">
             <Button variant="ghost" size="sm" className="text-semi hover:text-foreground text-sm">Console</Button>
           </a>
-          <a href="https://railbeam-pay.netlify.app" target="_blank">
+          <a href="https://pay.railbeam.xyz" target="_blank">
             <Button variant="hero" size="sm" className="text-sm">Launch App</Button>
           </a>
         </div>
@@ -101,10 +101,10 @@ const Navbar = () => {
           <a href="#agents" className="block text-semi hover:text-foreground">Agents</a>
           <a href="#sdk" className="block text-semi hover:text-foreground">SDK</a>
           <a href="#flows" className="block text-semi hover:text-foreground">Flows</a>
-          <a href="https://railbeam-pay.netlify.app" target="_blank">
+          <a href="https://pay.railbeam.xyz" target="_blank">
             <Button variant="hero" className="w-full mt-3">Launch App</Button>
           </a>
-          <a href="https://railbeam-merchant.netlify.app" target="_blank">
+          <a href="https://console.railbeam.xyz" target="_blank">
             <Button variant="ghost" className="w-full mt-3">Console</Button>
           </a>
         </div>

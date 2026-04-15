@@ -31,12 +31,12 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <a href="https://railbeam-pay.netlify.app" target="_blank">
+              <a href="https://pay.railbeam.xyz" target="_blank">
                 <Button variant="hero" size="lg" className="text-base px-8 py-6">
                   Launch App <ArrowRight className="w-5 h-5 ml-1" />
                 </Button>
               </a>
-              <a href="https://railbeam-merchant.netlify.app" target="_blank">
+              <a href="https://console.railbeam.xyz" target="_blank">
                 <Button variant="hero-outline" size="lg" className="text-base px-8 py-6">
                   I'm a Merchant
                 </Button>
