@@ -1064,4 +1064,53 @@ onBeforeUnmount(() => {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+@media (max-width: 960px) {
+    .page {
+        padding: 0 16px 40px;
+        overflow-x: hidden;
+    }
+
+    .toolbar {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .tabs {
+        width: 100%;
+    }
+
+    .tab {
+        flex: 1;
+        padding: 0 16px;
+    }
+
+    .layout {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .form {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .qr_card {
+        width: 100%;
+        max-width: 800px;
+    }
+}
+
+@media (max-width: 600px) {
+    .form,
+    .qr_card {
+        max-width: 100%;
+    }
+
+    .tokens {
+        grid-template-columns: 1fr;
+    }
+}
 </style>

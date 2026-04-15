@@ -14,6 +14,14 @@ import Converter from '@/scripts/converter';
 import AIIcon from './icons/AIIcon.vue';
 import { computed } from 'vue';
 import StorageImage from '@/components/StorageImage.vue';
+import CloseIcon from './icons/CloseIcon.vue';
+
+const props = withDefaults(defineProps<{ open?: boolean }>(), {
+    open: false,
+});
+const emit = defineEmits<{
+    (e: 'close'): void;
+}>();
 
 const route = useRoute();
 const walletStore = useWalletStore();
@@ -37,10 +45,16 @@ const copyAddress = async () => {
 </script>
 
 <template>
-    <div class="sidebar" v-if="walletStore.address">
+    <div class="sidebar_wrap" v-if="walletStore.address" :data-open="props.open">
+        <button class="backdrop" type="button" aria-label="Close menu" @click="emit('close')" />
+
+        <div class="sidebar">
         <RouterLink to="/">
             <header>
                 <BeamLogo />
+                <button class="close_btn" type="button" aria-label="Close menu" @click.prevent="emit('close')">
+                    <CloseIcon />
+                </button>
             </header>
         </RouterLink>
 
@@ -169,10 +183,25 @@ const copyAddress = async () => {
                 </RouterLink>
             </div>
         </footer>
+        </div>
     </div>
 </template>
 
 <style scoped>
+.sidebar_wrap {
+    position: relative;
+    z-index: 20;
+}
+
+.backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    border: none;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 19;
+}
+
 .sidebar {
     top: 0;
     position: sticky;
@@ -181,6 +210,7 @@ const copyAddress = async () => {
     z-index: 20;
     position: fixed;
     border-right: 1px solid var(--bg-lightest);
+    background: var(--bg);
 }
 
 header {
@@ -189,6 +219,19 @@ header {
     align-items: center;
     border-bottom: 1px solid var(--bg-lightest);
     margin: 0 24px;
+    justify-content: space-between;
+}
+
+.close_btn {
+    display: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--bg-lightest);
+    background: var(--bg);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
 }
 
 main {
@@ -388,5 +431,47 @@ footer a {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+@media (max-width: 960px) {
+    .sidebar_wrap {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .sidebar_wrap[data-open="true"] {
+        pointer-events: auto;
+    }
+
+    .backdrop {
+        display: block;
+        opacity: 0;
+        transition: opacity 160ms ease;
+    }
+
+    .sidebar_wrap[data-open="true"] .backdrop {
+        opacity: 1;
+    }
+
+    .sidebar {
+        height: 100vh;
+        width: min(320px, 85vw);
+        transform: translateX(-110%);
+        transition: transform 200ms ease;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    .sidebar_wrap[data-open="true"] .sidebar {
+        transform: translateX(0);
+    }
+
+    .close_btn {
+        display: inline-flex;
+    }
+
+    footer {
+        height: 220px;
+    }
 }
 </style>

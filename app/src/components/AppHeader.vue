@@ -21,6 +21,10 @@ interface Props {
     icon: Component;
 }
 
+const emit = defineEmits<{
+    (e: 'open-menu'): void;
+}>();
+
 const route = useRoute();
 const walletStore = useWalletStore();
 
@@ -73,6 +77,9 @@ watch(route, (newValue) => {
 <template>
     <header>
         <div class="header_info">
+            <button class="menu_btn" type="button" aria-label="Open menu" @click="emit('open-menu')">
+                ☰
+            </button>
             <div class="icon_wrapper">
                 <component :is="props.icon" />
             </div>
@@ -113,7 +120,7 @@ header {
     height: 90px;
     display: flex;
     align-items: center;
-    margin: 0 50px;
+    padding: 0 50px;
     justify-content: space-between;
     border-bottom: 1px solid var(--bg-lightest);
 }
@@ -122,6 +129,19 @@ header {
     display: flex;
     align-items: center;
     gap: 20px;
+}
+
+.menu_btn {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--bg-lightest);
+    background: var(--bg);
+    color: var(--tx-normal);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
 }
 
 .header_info p {
@@ -179,5 +199,21 @@ header {
     line-height: 16.8px;
     letter-spacing: 2%;
     color: var(--tx-normal);
+}
+
+@media (max-width: 960px) {
+    header {
+        padding: 0 16px;
+    }
+
+    .menu_btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .actions button p {
+        display: none;
+    }
 }
 </style>

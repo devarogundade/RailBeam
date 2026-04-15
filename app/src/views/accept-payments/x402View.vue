@@ -406,4 +406,39 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
 }
+
+@media (max-width: 960px) {
+  .page {
+    padding: 0 16px 40px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .form {
+    width: 100%;
+    max-width: 640px;
+  }
+}
+
+@media (max-width: 600px) {
+  .form {
+    max-width: 100%;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .req_actions {
+    justify-content: stretch;
+  }
+
+  .btn_secondary {
+    width: 100%;
+  }
+}
 </style>

@@ -53,8 +53,10 @@ function onBackdrop() {
   position: relative;
   width: 100%;
   max-width: 430px;
-  max-height: min(88vh, 720px);
-  overflow: auto;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-radius: var(--radius-16) var(--radius-16) 0 0;
   border: 1px solid var(--bg-lightest);
   border-bottom: none;
@@ -85,6 +87,11 @@ function onBackdrop() {
 
 .body {
   padding: 0 20px 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .sheet-fade-enter-active,

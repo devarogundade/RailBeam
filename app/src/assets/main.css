@@ -28,6 +28,13 @@ body {
   background: var(--bg);
 }
 
+/* Mobile-friendly gutters */
+@media (max-width: 960px) {
+  .app_width {
+    max-width: calc(100% - 32px);
+  }
+}
+
 .swiper-pagination-bullet {
   width: 12px !important;
   height: 4px !important;

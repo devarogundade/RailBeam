@@ -582,4 +582,43 @@ watch(sourceKind, (k) => {
   gap: 12px;
   margin-top: 16px;
 }
+
+@media (max-width: 960px) {
+  .page {
+    padding: 0 16px 40px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0 16px;
+  }
+
+  .form {
+    width: 100%;
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 600px) {
+  .form {
+    max-width: 100%;
+  }
+
+  .result_actions {
+    flex-direction: column;
+  }
+
+  .btn_secondary {
+    width: 100%;
+  }
+}
 </style>

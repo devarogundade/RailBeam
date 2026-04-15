@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import SideBar from '@/components/SideBar.vue';
 import AppHeader from './components/AppHeader.vue';
-import { computed, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWalletStore } from './stores/wallet';
 import ProgressBox from './components/ProgressBox.vue';
@@ -11,6 +11,7 @@ import { useBeamMerchantQuery } from '@/query/beam';
 const router = useRouter();
 const walletStore = useWalletStore();
 const address = computed(() => walletStore.address);
+const sidebarOpen = ref(false);
 
 const merchantQuery = useBeamMerchantQuery(address);
 
@@ -49,15 +50,20 @@ watchEffect(() => {
     router.push('/onboarding/profile');
   }
 });
+
+watchEffect(() => {
+  // Close mobile nav when the app transitions to onboarding.
+  if (!walletStore.address) sidebarOpen.value = false;
+});
 </script>
 
 <template>
   <section>
     <ProgressBox v-if="loading" />
     <main v-else-if="walletStore.address">
-      <SideBar />
+      <SideBar :open="sidebarOpen" @close="sidebarOpen = false" />
       <div class="app-shell">
-        <AppHeader />
+        <AppHeader @open-menu="sidebarOpen = true" />
         <RouterView />
       </div>
     </main>
@@ -83,5 +89,11 @@ main {
   margin-left: 250px;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    margin-left: 0;
+  }
 }
 </style>

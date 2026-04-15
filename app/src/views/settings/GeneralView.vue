@@ -366,4 +366,59 @@ input {
     outline: none;
     border-radius: 8px;
 }
+
+@media (max-width: 960px) {
+    .container {
+        padding: 0 16px;
+        padding-bottom: 40px;
+    }
+
+    .toolbar {
+        height: auto;
+        padding: 12px 0;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .titles {
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .title {
+        padding: 0 16px;
+    }
+
+    .form {
+        width: 100%;
+        max-width: 550px;
+    }
+
+    .file {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px 0;
+    }
+
+    .upload {
+        width: 100%;
+        max-width: 214px;
+        height: auto;
+        aspect-ratio: 1 / 1;
+    }
+
+    .upload_text {
+        padding: 0;
+        border-left: none;
+        border-top: 1px solid var(--bg-lightest);
+        padding-top: 16px;
+        gap: 18px;
+    }
+
+    .input {
+        padding-top: 24px;
+    }
+}
 </style>
