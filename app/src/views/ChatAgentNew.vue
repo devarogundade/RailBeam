@@ -3,6 +3,8 @@ import ProgressBox from "@/components/ProgressBox.vue";
 import { notify } from "@/reactives/notify";
 import { Client } from "@/scripts/client";
 import { IdentityRegistryContract } from "@/scripts/contract";
+import { getEthersSigner } from "@/scripts/ethersSigner";
+import Storage from "@/scripts/storage";
 import { useWalletStore } from "@/stores/wallet";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -43,7 +45,8 @@ const name = ref("");
 const description = ref("");
 const topicsRaw = ref("payments, subscriptions, support");
 const x402Enabled = ref(false);
-const imageDataUrl = ref<string>("");
+const imageRef = ref<string>("");
+const imagePreviewUrl = ref<string>("");
 const imageBusy = ref(false);
 const webEndpoint = ref("");
 const emailEndpoint = ref("");
@@ -151,7 +154,7 @@ const agentCard = computed<AgentCardRegistrationV1>(() => {
     type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
     name: name.value.trim(),
     description: description.value.trim(),
-    image: imageDataUrl.value.trim() ? imageDataUrl.value.trim() : undefined,
+    image: imageRef.value.trim() ? imageRef.value.trim() : undefined,
     services,
     x402Support: Boolean(x402Enabled.value),
     active: true,
@@ -242,24 +245,36 @@ function onPickImage(e: Event) {
   }
 
   imageBusy.value = true;
-  const reader = new FileReader();
-  reader.onload = () => {
-    imageDataUrl.value = typeof reader.result === "string" ? reader.result : "";
-    imageBusy.value = false;
-  };
-  reader.onerror = () => {
-    imageBusy.value = false;
-    notify.push({
-      title: "Image",
-      description: "Could not read image. Try a smaller file.",
-      category: "error",
-    });
-  };
-  reader.readAsDataURL(file);
+
+  // Instant preview while upload runs.
+  if (imagePreviewUrl.value) URL.revokeObjectURL(imagePreviewUrl.value);
+  imagePreviewUrl.value = URL.createObjectURL(file);
+
+  (async () => {
+    try {
+      const signer = await getEthersSigner();
+      const ref = await Storage.awaitUpload(file, file.name, signer);
+      imageRef.value = ref;
+    } catch {
+      notify.push({
+        title: "Image",
+        description: "Could not upload image. Please try again.",
+        category: "error",
+      });
+      if (imagePreviewUrl.value) URL.revokeObjectURL(imagePreviewUrl.value);
+      imagePreviewUrl.value = "";
+      imageRef.value = "";
+    } finally {
+      imageBusy.value = false;
+      if (input) input.value = "";
+    }
+  })();
 }
 
 function clearImage() {
-  imageDataUrl.value = "";
+  if (imagePreviewUrl.value) URL.revokeObjectURL(imagePreviewUrl.value);
+  imagePreviewUrl.value = "";
+  imageRef.value = "";
 }
 
 function goNext() {
@@ -318,13 +333,25 @@ function goBack() {
           </div>
 
           <div class="img-row">
-            <StorageImage class="avatar" :src="imageDataUrl || '/images/colors.png'" alt="" />
+            <StorageImage
+              class="avatar"
+              :url="imagePreviewUrl || undefined"
+              :src="imageRef || '/images/colors.png'"
+              alt=""
+            />
             <div class="img-actions">
               <label class="file">
                 <input class="file__input" type="file" accept="image/*" @change="onPickImage" />
                 <span>{{ imageBusy ? "Loading…" : "Choose image" }}</span>
               </label>
-              <button class="ghost" type="button" :disabled="!imageDataUrl" @click="clearImage">Remove</button>
+              <button
+                class="ghost"
+                type="button"
+                :disabled="!(imagePreviewUrl || imageRef)"
+                @click="clearImage"
+              >
+                Remove
+              </button>
             </div>
           </div>
 

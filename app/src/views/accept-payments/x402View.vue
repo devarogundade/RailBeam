@@ -190,8 +190,10 @@ onMounted(async () => {
             type="button"
             class="btn_primary"
             :disabled="payState.kind === 'paying'"
+            :aria-busy="payState.kind === 'paying' ? 'true' : 'false'"
             @click="onPay"
           >
+            <span v-if="payState.kind === 'paying'" class="btn-spin" aria-hidden="true" />
             {{ payState.kind === "paying" ? "Paying…" : "Pay to access" }}
           </button>
         </div>
@@ -320,6 +322,24 @@ onMounted(async () => {
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.btn-spin {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  margin-right: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  animation: btn-spin 0.9s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn_primary:disabled {

@@ -583,10 +583,14 @@ onMounted(() => {
                         <button type="button" disabled v-else-if="balance < amount" class="flat-cta flat-cta--muted">
                             Insufficient balance
                         </button>
-                        <button type="button" v-else-if="allowance < amount" class="flat-cta" @click="approve">
+                        <button type="button" v-else-if="allowance < amount" class="flat-cta"
+                            :disabled="approving || paying" :aria-busy="approving ? 'true' : 'false'" @click="approve">
+                            <span v-if="approving" class="btn-spin" aria-hidden="true" />
                             {{ approving ? 'Approving…' : `Approve ${token?.symbol}` }}
                         </button>
-                        <button type="button" v-else class="flat-cta" @click="makePayment">
+                        <button type="button" v-else class="flat-cta" :disabled="paying || approving"
+                            :aria-busy="paying ? 'true' : 'false'" @click="makePayment">
+                            <span v-if="paying" class="btn-spin" aria-hidden="true" />
                             {{
                                 paying
                                     ? (dataStore.data?.subscriptionId ? 'Subscribing…' : 'Paying…')
@@ -616,6 +620,24 @@ onMounted(() => {
 .flat-blocked__cta {
     margin-top: 24px;
     max-width: 100%;
+}
+
+.btn-spin {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    margin-right: 10px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: rgba(255, 255, 255, 0.9);
+    animation: btn-spin 0.9s linear infinite;
+    vertical-align: -2px;
+}
+
+@keyframes btn-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .flat {

@@ -34,7 +34,7 @@ export function handleAgentRegistered(event: AgentRegisteredEvent): void {
   agent.agentId = event.params.agentId;
   agent.owner = event.params.owner;
   agent.uri = event.params.agentURI;
-  agent.agentWallet = null;
+  agent.agentWallet = event.params.owner;
 
   agent.blockNumber = event.block.number;
   agent.blockTimestamp = event.block.timestamp;

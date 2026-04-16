@@ -183,7 +183,9 @@ onMounted(() => {
           </section>
 
           <footer class="flat-footer">
-            <button type="button" class="flat-cta" @click="unlock">
+            <button type="button" class="flat-cta" :disabled="paying" :aria-busy="paying ? 'true' : 'false'"
+              @click="unlock">
+              <span v-if="paying" class="btn-spin" aria-hidden="true" />
               {{ paying ? "Processing…" : resource.kind === "file" ? "Pay & download" : "Pay & unlock" }}
             </button>
           </footer>
@@ -338,9 +340,33 @@ onMounted(() => {
   -webkit-tap-highlight-color: transparent;
 }
 
+.flat-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .flat-cta:active {
   transform: scale(0.98);
   opacity: 0.94;
+}
+
+.btn-spin {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  margin-right: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  animation: btn-spin 0.9s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .flat-empty {

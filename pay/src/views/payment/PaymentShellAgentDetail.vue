@@ -840,7 +840,9 @@ watch(
 
                 <button v-if="row.m.direction === 'in' && row.m.cta" type="button" class="cta"
                   :class="row.m.cta.action === 'transaction' ? 'cta--transaction' : ''"
-                  :disabled="row.m.ctaStatus === 'sending' || row.m.ctaStatus === 'success'" @click="runCta(row.m)">
+                  :disabled="row.m.ctaStatus === 'sending' || row.m.ctaStatus === 'success'"
+                  :aria-busy="row.m.ctaStatus === 'sending' ? 'true' : 'false'" @click="runCta(row.m)">
+                  <span v-if="row.m.ctaStatus === 'sending'" class="btn-spin" aria-hidden="true" />
                   {{ ctaButtonLabel(row.m) }}
                 </button>
                 <p v-if="row.m.direction === 'in' && row.m.ctaStatus === 'failed' && row.m.ctaError" class="cta-err">
@@ -1339,6 +1341,24 @@ watch(
 .cta:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.btn-spin {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  margin-right: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  animation: btn-spin 0.9s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .cta--transaction {
