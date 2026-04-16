@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.1",
-    "@railbeam/beam-ts": "file:../sdk",
+    "@railbeam/beam-ts": "^3.0.4",
     "@tanstack/vue-query": "^5.99.0",
     "@wagmi/connectors": "^5.7.8",
     "@wagmi/core": "^2.16.5",
