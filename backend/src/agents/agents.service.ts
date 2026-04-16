@@ -80,7 +80,7 @@ export class AgentsService {
   }
 
   private async getAgentOnchainCached(agentId: number): Promise<ChainAgent> {
-    const ttlSeconds = 10 * 60;
+    const ttlSeconds = 30 * 60;
     const key = this.getAgentOnchainCacheKey({ agentId });
 
     try {
@@ -148,8 +148,6 @@ export class AgentsService {
   }): Promise<ChatWithAgentResponse> {
     // Cache onchain reads for chat, to avoid repeated RPC/storage hits.
     const agent = await this.getAgentOnchainCached(params.agentId);
-
-    console.log('agent', agent);
 
     try {
       const previousMessages = this.normalizePreviousMessages(
@@ -264,6 +262,12 @@ export class AgentsService {
                 "subscriptionId": "0x... (Ethereum address string)", (required from agent config)
               }"
             }
+
+            Supported Asset/Token addresses: (must be used as the token or asset address)
+            - 0G (0G): 0x0000000000000000000000000000000000000000
+            - USDC.e (USDC.e): 0x1f3aa82227281ca364bfb3d253b0f1af1da6473e
+            - Panda AI (PAI): 0x59ef6f3943bbdfe2fb19565037ac85071223e94c  
+            - Wrapped 0G (w0G): 0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c
           `,
         },
         ...previousMessages,

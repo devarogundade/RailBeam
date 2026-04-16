@@ -20,7 +20,9 @@ import { BeamContract } from "@/scripts/contract";
 import { TokenContract } from "@/scripts/erc20";
 import { useWeb3Modal } from "@web3modal/wagmi/vue";
 import { zeroAddress, type Hex, parseUnits, formatUnits } from "viem";
-import { getToken, SCHEMA_JSON } from '@railbeam/beam-ts';
+import { getToken, SCHEMA_JSON, TransactionType } from '@railbeam/beam-ts';
+import SplitPayments from "@/components/SplitPayments.vue";
+import { useDataStore } from "@/stores/data";
 
 type ChatBubble = {
   id: string;
@@ -42,6 +44,7 @@ type ChatBubble = {
 const route = useRoute();
 const router = useRouter();
 const walletStore = useWalletStore();
+const dataStore = useDataStore();
 
 const agentIdParam = computed(() => String(route.params.agentId ?? ""));
 const agentQuery = useBeamAgentByAgentId(agentIdParam);
@@ -58,6 +61,8 @@ const endEl = ref<HTMLElement | null>(null);
 const bubbles = ref<ChatBubble[]>([]);
 const stickToBottom = ref(true);
 const web3Modal = useWeb3Modal();
+const splitPaymentsOpen = ref(false);
+const splitForBubbleId = ref<string | null>(null);
 
 function safeJsonParse<T>(raw: string): T | null {
   try {
@@ -79,6 +84,39 @@ function extractX402ResourceId(resource: unknown): string | null {
 async function runCta(b: ChatBubble) {
   if (!b.cta) return;
   if (b.ctaStatus === "sending" || b.ctaStatus === "success") return;
+
+  // For split one-time payments we open the split sheet first, then execute after confirm.
+  if (b.cta.action === "transaction") {
+    const p = b.cta.payload ?? {};
+    const kind = String(p.kind ?? "").trim().toLowerCase();
+    const wantsSplit = kind === "onetime" && typeof p.splitPayment === "boolean" ? p.splitPayment : false;
+    if (wantsSplit) {
+      if (!walletStore.address) {
+        web3Modal.open();
+        return;
+      }
+      const merchant = String(p.merchant ?? "").trim();
+      const token = (String(p.token ?? "").trim() || zeroAddress) as Hex;
+      const tokenMeta = getToken(token);
+      const decimals = tokenMeta?.decimals ?? 18;
+      const amountWei = parseAmountToBaseUnits(p.amount, decimals);
+      if (!merchant || amountWei <= 0n) return;
+
+      dataStore.setData({
+        type: TransactionType.OneTime,
+        merchant: merchant as Hex,
+        token,
+        description: typeof p.description === "string" ? p.description : "",
+        metadata: p.metadata ?? { schemaVersion: SCHEMA_JSON, value: "{}" },
+        splitPayment: true,
+        payers: [walletStore.address as Hex],
+        amounts: [amountWei],
+      });
+      splitForBubbleId.value = b.id;
+      splitPaymentsOpen.value = true;
+      return;
+    }
+  }
 
   // Update local + DB state to "sending"
   b.ctaStatus = "sending";
@@ -240,6 +278,96 @@ async function runCta(b: ChatBubble) {
     });
   } finally {
     // no-op: button state is derived from persisted status
+  }
+}
+
+async function onSplitPaymentConfirmed(args: { payers: Hex[]; amounts: bigint[] }) {
+  const bubbleId = splitForBubbleId.value;
+  splitForBubbleId.value = null;
+  splitPaymentsOpen.value = false;
+  if (!bubbleId) return;
+
+  const b = bubbles.value.find((x) => x.id === bubbleId);
+  if (!b?.cta || b.cta.action !== "transaction") return;
+
+  // Proceed with the original CTA, using the confirmed split.
+  b.ctaStatus = "sending";
+  b.ctaError = undefined;
+  bubbles.value = bubbles.value.map((x) => (x.id === b.id ? { ...b } : x));
+  await updateChatBubbleCtaState({
+    agentId: agentIdParam.value.trim(),
+    userAddress: (walletStore.address ?? "anon").toLowerCase(),
+    id: b.id,
+    ctaStatus: "sending",
+    ctaError: null,
+  });
+
+  try {
+    const p = b.cta.payload ?? {};
+    const merchant = String(p.merchant ?? "").trim() as Hex;
+    const token = (String(p.token ?? "").trim() || zeroAddress) as Hex;
+    const tokenMeta = getToken(token);
+    const decimals = tokenMeta?.decimals ?? 18;
+    const symbol = tokenMeta?.symbol ?? (token === zeroAddress ? "ETH" : "TOKEN");
+    const totalWei = args.amounts.reduce((a, v) => a + v, 0n);
+    if (!merchant || totalWei <= 0n || args.payers.length === 0 || args.amounts.length !== args.payers.length) {
+      throw new Error("Invalid split payment details");
+    }
+
+    // ERC20: ensure approval for Beam contract transfer (payer is current wallet).
+    if (!walletStore.address) throw new Error("Connect a wallet to continue.");
+    if (token !== zeroAddress) {
+      const allowanceWei = await TokenContract.getAllowance(
+        token,
+        walletStore.address as Hex,
+        BeamContract.address as Hex,
+      );
+      if (allowanceWei < totalWei) {
+        const approvalHash = await TokenContract.approve(token, BeamContract.address as Hex, totalWei);
+        if (!approvalHash) throw new Error("Approval failed");
+      }
+    }
+
+    const txHash = await BeamContract.oneTimeTransaction(
+      {
+        payers: args.payers,
+        merchant,
+        amounts: args.amounts,
+        token,
+        description: typeof p.description === "string" ? p.description : "",
+        metadata: p.metadata ?? { schemaVersion: SCHEMA_JSON, value: "{}" },
+      } as any,
+      token === zeroAddress ? totalWei : 0n,
+    );
+    if (!txHash) throw new Error("Transaction failed");
+    await appendPaymentCompletedMessage({
+      label: merchant,
+      amount: { valueBaseUnits: totalWei, decimals, symbol },
+      txHash,
+    });
+
+    b.ctaStatus = "success";
+    b.ctaError = undefined;
+    bubbles.value = bubbles.value.map((x) => (x.id === b.id ? { ...b } : x));
+    await updateChatBubbleCtaState({
+      agentId: agentIdParam.value.trim(),
+      userAddress: (walletStore.address ?? "anon").toLowerCase(),
+      id: b.id,
+      ctaStatus: "success",
+      ctaError: null,
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    b.ctaStatus = "failed";
+    b.ctaError = msg || "Unknown error";
+    bubbles.value = bubbles.value.map((x) => (x.id === b.id ? { ...b } : x));
+    await updateChatBubbleCtaState({
+      agentId: agentIdParam.value.trim(),
+      userAddress: (walletStore.address ?? "anon").toLowerCase(),
+      id: b.id,
+      ctaStatus: "failed",
+      ctaError: b.ctaError,
+    });
   }
 }
 
@@ -748,8 +876,9 @@ watch(
         </div>
 
         <form class="composer" @submit.prevent="send">
-          <input v-model="draft" class="input" type="text" placeholder="Message…" :disabled="!agent"
-            @focus="stickToBottom = true; scrollToBottom('auto')" />
+          <textarea v-model="draft" class="input" rows="1" placeholder="Message…" :disabled="!agent"
+            @focus="stickToBottom = true; scrollToBottom('auto')"
+            @keydown.enter.exact.prevent="send" />
           <button type="submit" class="send" :disabled="!agent || !draft.trim() || chatMutation.isPending.value">
             {{ chatMutation.isPending.value ? "…" : "Send" }}
           </button>
@@ -821,6 +950,14 @@ watch(
           </div>
         </section>
       </div>
+    </BottomSheet>
+
+    <BottomSheet v-model="splitPaymentsOpen" title="Split payment">
+      <SplitPayments
+        variant="sheet"
+        @close="splitPaymentsOpen = false; splitForBubbleId = null"
+        @confirmed="onSplitPaymentConfirmed"
+      />
     </BottomSheet>
   </div>
 </template>
@@ -1259,13 +1396,18 @@ watch(
 }
 
 .input {
-  height: 46px;
+  min-height: 46px;
   border-radius: 14px;
   border: 1px solid var(--bg-lightest);
   background: rgba(0, 0, 0, 0.16);
   color: var(--tx-normal);
-  padding: 0 14px;
+  padding: 12px 14px;
   outline: none;
+  font-size: 16px;
+  line-height: 1.35;
+  resize: none;
+  max-height: 130px;
+  box-sizing: border-box;
 }
 
 .send {

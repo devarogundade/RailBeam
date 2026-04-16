@@ -33,7 +33,7 @@ export const getTokens: Token[] = [
     price: 0.5904,
   },
   {
-    name: "PAI",
+    name: "Panda AI",
     symbol: "PAI",
     address: "0x59ef6f3943bbdfe2fb19565037ac85071223e94c" as Hex,
     image: "/images/pai.png",

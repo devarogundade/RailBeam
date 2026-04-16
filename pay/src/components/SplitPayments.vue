@@ -24,7 +24,10 @@ const props = withDefaults(
     }
 );
 
-const emit = defineEmits(['close']);
+const emit = defineEmits<{
+    (e: 'close'): void;
+    (e: 'confirmed', payload: { payers: Hex[]; amounts: bigint[] }): void;
+}>();
 
 interface Payer {
     name: string;
@@ -185,6 +188,7 @@ const confirm = () => {
                 category: "success"
             });
 
+            emit('confirmed', { payers, amounts });
             emit('close');
         })
         .finally(() => {
