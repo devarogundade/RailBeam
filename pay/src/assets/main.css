@@ -58,7 +58,7 @@ textarea,
 /** Legacy helper: same horizontal rhythm as the app column (Root + payment shell). */
 .app_width {
   width: 100%;
-  max-width: min(430px, calc(100vw - 24px));
+  max-width: min(var(--app-column-max, 430px), calc(100vw - 24px));
   margin: 0 auto;
   padding: 0 max(12px, env(safe-area-inset-left, 0px)) 0
     max(12px, env(safe-area-inset-right, 0px));

@@ -90,12 +90,15 @@ function openAgent(agentId: bigint) {
   gap: 12px;
   grid-template-columns: 1fr;
 }
-@media (min-width: 860px) {
+
+/* Follows the AppFrame column width (not the viewport), so grids adapt on tablet/desktop. */
+@container app-frame (min-width: 520px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (min-width: 1220px) {
+
+@container app-frame (min-width: 600px) {
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

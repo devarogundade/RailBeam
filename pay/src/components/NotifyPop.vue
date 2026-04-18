@@ -85,7 +85,7 @@ const removeIndex = (index: number) => {
 .snackbar {
   pointer-events: auto;
   width: 100%;
-  max-width: 580px;
+  max-width: min(var(--app-column-max, 430px), calc(100vw - 24px));
   box-sizing: border-box;
   background: var(--bg-lightest);
   box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.8);

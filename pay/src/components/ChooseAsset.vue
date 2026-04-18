@@ -105,11 +105,15 @@ function onTokenImgError(e: Event) {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
 }
 
 .form {
     height: fit-content;
-    width: 500px;
+    width: 100%;
+    max-width: min(500px, calc(100vw - 24px));
     border-radius: var(--radius-16);
     background: var(--bg);
     overflow: hidden;
@@ -141,7 +145,7 @@ function onTokenImgError(e: Event) {
 
 .scroll {
     overflow-y: auto;
-    height: calc(100vh - 480px);
+    max-height: min(520px, calc(100dvh - 220px));
 }
 
 .search {

@@ -38,10 +38,12 @@ const frameClass = computed(() => ({
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: min(430px, 100%);
+  max-width: min(var(--app-column-max, 430px), 100%);
   min-height: 0;
   margin: 0 auto;
   box-sizing: border-box;
+  container-type: inline-size;
+  container-name: app-frame;
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: max(12px, env(safe-area-inset-left, 0px));
   padding-right: max(12px, env(safe-area-inset-right, 0px));

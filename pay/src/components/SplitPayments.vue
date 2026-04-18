@@ -412,6 +412,9 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
 }
 
 .root--sheet {
@@ -424,7 +427,8 @@ onMounted(() => {
 }
 
 .form {
-    width: 450px;
+    width: 100%;
+    max-width: min(450px, calc(100vw - 48px));
     border-radius: var(--radius-16);
     background: var(--bg);
     overflow: hidden;

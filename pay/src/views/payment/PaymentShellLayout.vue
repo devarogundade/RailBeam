@@ -990,7 +990,7 @@ async function initiateCreateVirtualCard() {
 </template>
 
 <style scoped>
-/* Outer chrome (gradient, 430px column, side safe areas) lives on the view-level `AppFrame`. */
+/* Outer chrome (responsive column via --app-column-max, side safe areas) lives on `AppFrame`. */
 .shell {
   flex: 1 1 auto;
   display: flex;
@@ -1085,7 +1085,7 @@ async function initiateCreateVirtualCard() {
 
 .profile-sheet-input {
   width: 100%;
-  max-width: 320px;
+  max-width: min(100%, var(--app-column-max, 430px));
   margin-top: 10px;
   height: 48px;
   border-radius: var(--radius-10);
@@ -1128,7 +1128,7 @@ async function initiateCreateVirtualCard() {
   left: 50%;
   bottom: calc(10px + env(safe-area-inset-bottom, 0));
   transform: translateX(-50%);
-  width: min(392px, calc(100% - 28px));
+  width: min(calc(var(--app-column-max, 430px) - 38px), calc(100vw - 28px));
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 2px;

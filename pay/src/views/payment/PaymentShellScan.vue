@@ -340,7 +340,7 @@ onBeforeUnmount(() => {
   font-size: 15px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.88);
-  max-width: 300px;
+  max-width: min(420px, calc(100vw - 48px));
 }
 
 .scan-retry {

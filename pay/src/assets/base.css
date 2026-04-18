@@ -68,6 +68,36 @@
   --slider-tooltip-px: 6px;
   --slider-tooltip-arrow-size: 6px;
   --slider-tooltip-distance: 6px;
+
+  /**
+   * Main content column (phone shell). Mobile-first; widens on tablet/desktop
+   * so the UI does not stay stuck at phone width on large screens.
+   */
+  --app-column-max: 430px;
+}
+
+@media (min-width: 600px) {
+  :root {
+    --app-column-max: 520px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-column-max: 560px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-column-max: 600px;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --app-column-max: 640px;
+  }
 }
 
 /* Shared sticky header utility for pay views */

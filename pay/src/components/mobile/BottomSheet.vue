@@ -52,7 +52,7 @@ function onBackdrop() {
 .panel {
   position: relative;
   width: 100%;
-  max-width: 430px;
+  max-width: min(var(--app-column-max, 430px), 100%);
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -112,5 +112,22 @@ function onBackdrop() {
 .sheet-fade-enter-from .panel,
 .sheet-fade-leave-to .panel {
   transform: translateY(100%);
+}
+
+@media (min-width: 900px) {
+  .root {
+    align-items: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 24px
+      max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel {
+    border-radius: var(--radius-16);
+    border-bottom: 1px solid var(--bg-lightest);
+    max-height: min(720px, calc(100dvh - 48px));
+    box-shadow:
+      0 24px 64px rgba(0, 0, 0, 0.55),
+      0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
 }
 </style>
