@@ -8,7 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
 import { Model, Types } from 'mongoose';
-import { onRampTokensInputSchema } from '@beam/stardorm-api-contract';
+import {
+  onRampRecordSchema,
+  onRampTokensInputSchema,
+} from '@beam/stardorm-api-contract';
+import type { OnRampRecord } from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
 import { OnRamp, type OnRampDocument } from '../mongo/schemas/on-ramp.schema';
 import { getStripe } from './stripe.client';
@@ -28,6 +32,56 @@ export class OnRampService {
   ) {}
 
   readonly id = 'on_ramp_tokens' as const;
+
+  toPublicRecord(doc: OnRampDocument): OnRampRecord {
+    return onRampRecordSchema.parse({
+      id: doc._id.toHexString(),
+      status: doc.status,
+      walletAddress: doc.walletAddress,
+      recipientWallet: doc.recipientWallet,
+      network: doc.network,
+      tokenAddress: doc.tokenAddress,
+      tokenDecimals: doc.tokenDecimals,
+      tokenSymbol: doc.tokenSymbol,
+      tokenAmountWei: doc.tokenAmountWei,
+      usdAmountCents: doc.usdAmountCents,
+      ...(doc.usdValue !== undefined ? { usdValue: doc.usdValue } : {}),
+      ...(doc.stripeCheckoutSessionId
+        ? { stripeCheckoutSessionId: doc.stripeCheckoutSessionId }
+        : {}),
+      ...(doc.stripePaymentIntentId
+        ? { stripePaymentIntentId: doc.stripePaymentIntentId }
+        : {}),
+      ...(doc.fulfillmentTxHash
+        ? { fulfillmentTxHash: doc.fulfillmentTxHash }
+        : {}),
+      ...(doc.errorMessage ? { errorMessage: doc.errorMessage } : {}),
+      ...(doc.createdAt ? { createdAt: doc.createdAt } : {}),
+      ...(doc.updatedAt ? { updatedAt: doc.updatedAt } : {}),
+    });
+  }
+
+  async listForWallet(
+    wallet: string,
+    limit: number,
+    range?: { from?: Date; to?: Date },
+  ): Promise<OnRampRecord[]> {
+    const w = wallet.trim().toLowerCase();
+    const time: { $gte?: Date; $lte?: Date } = {};
+    if (range?.from) time.$gte = range.from;
+    if (range?.to) time.$lte = range.to;
+    const hasTime = Object.keys(time).length > 0;
+    const docs = await this.onRampModel
+      .find({
+        walletAddress: w,
+        ...(hasTime ? { createdAt: time } : {}),
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+    return docs.map((d) => this.toPublicRecord(d));
+  }
+
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
     const stripe = getStripe(this.config);

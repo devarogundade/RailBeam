@@ -30,6 +30,9 @@ export class KycStatus {
 
   @Prop()
   lastError?: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const KycStatusSchema = SchemaFactory.createForClass(KycStatus);

@@ -88,3 +88,16 @@ export const onRampRecordSchema = z.object({
 });
 
 export type OnRampRecord = z.infer<typeof onRampRecordSchema>;
+
+/** Query for GET `/users/me/on-ramps`. */
+export const meOnRampsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type MeOnRampsQuery = z.infer<typeof meOnRampsQuerySchema>;
+
+export const onRampsListResponseSchema = z.object({
+  items: z.array(onRampRecordSchema),
+});
+
+export type OnRampsListResponse = z.infer<typeof onRampsListResponseSchema>;

@@ -7,14 +7,8 @@ import {
   type CatalogResponse,
 } from "@beam/stardorm-api-contract";
 import { formatUnits, hexToString, isHex } from "viem";
-import {
-  fetchAllSubgraphAgents,
-  type SubgraphAgentMapped,
-} from "./stardorm-subgraph-queries";
-import {
-  type AgentUriParseResult,
-  parseAgentUriFromString,
-} from "./agent-uri-metadata";
+import { fetchAllSubgraphAgents, fetchAllSubgraphAgentsClonedByOwner, type SubgraphAgentMapped } from "./stardorm-subgraph-queries";
+import { type AgentUriParseResult, parseAgentUriFromString } from "./agent-uri-metadata";
 import { IDENTITY_REGISTRY_NATIVE_DECIMALS } from "./web3/identity-registry";
 
 function shortOwner(owner: string): string {
@@ -68,6 +62,33 @@ function feePerDayWeiFromRow(feePerDay: string | null): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * ERC-8004 registration JSON often uses root-relative `imageUrl` (`/images/…`).
+ * Pass those through; only normalize absolute http(s) URLs.
+ */
+function resolveCatalogAvatarUrl(
+  row: SubgraphAgentMapped,
+  uriDetails: AgentUriParseResult | null | undefined,
+): string {
+  const raw = uriDetails?.imageUrl?.trim();
+  const fallback = "/images/beam.png";
+  if (!raw) return fallback;
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      return new URL(raw).href;
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (raw.startsWith("/")) {
+    return raw;
+  }
+
+  return fallback;
 }
 
 function taglineFromUriDescription(description: string | undefined): string | undefined {
@@ -158,10 +179,11 @@ export function mapSubgraphAgentToCatalogAgent(
 
   const pricePerMonth = pricePerMonthFromFeePerDay(row.feePerDay);
   const feePerDayWei = feePerDayWeiFromRow(row.feePerDay);
-  const avatar =
-    uriDetails?.imageUrl
-      ? uriDetails.imageUrl
-      : `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(String(row.agentId))}`;
+  const avatar = resolveCatalogAvatarUrl(row, uriDetails);
+
+  const ownerLower = row.owner.trim().toLowerCase();
+  const ownerAddress =
+    /^0x[a-f0-9]{40}$/.test(ownerLower) ? (ownerLower as `0x${string}`) : undefined;
 
   return {
     id: `chain-${row.agentId}`,
@@ -182,6 +204,9 @@ export function mapSubgraphAgentToCatalogAgent(
         ? { skillHandles: seed.skillHandles }
         : {}),
     chainAgentId: row.agentId,
+    isCloned: row.isCloned,
+    ...(ownerAddress ? { ownerAddress } : {}),
+    ...(row.uri && row.uri.length > 0 ? { registrationUriRaw: row.uri } : {}),
   };
 }
 
@@ -200,9 +225,11 @@ function slugHandle(name: string, agentId: number): string {
  */
 export async function fetchSubgraphBackedCatalogResponse(opts: {
   subgraphUrl: string;
+  /** When set, merged in cloned agents this wallet owns (excluded from marketplace query). */
+  viewerAddress?: `0x${string}`;
 }): Promise<CatalogResponse> {
   const seed = buildStardormCatalogResponse();
-  const beam = seed.agents.find((a) => a.id === "beam-default");
+  const beam = seed.agents.find((a: Agent) => a.id === "beam-default");
   if (!beam) {
     throw new Error("buildStardormCatalogResponse: missing beam-default");
   }
@@ -219,9 +246,20 @@ export async function fetchSubgraphBackedCatalogResponse(opts: {
     mapSubgraphAgentToCatalogAgent(r, seedByChain, parseAgentUriFromString(r.uri)),
   );
 
-  const agents: Agent[] = [beamRouter, ...chainAgents];
+  const viewer = opts.viewerAddress?.trim().toLowerCase() as `0x${string}` | undefined;
+  const cloneRows: SubgraphAgentMapped[] =
+    viewer && /^0x[a-f0-9]{40}$/.test(viewer)
+      ? await fetchAllSubgraphAgentsClonedByOwner(viewer, { subgraphUrl: opts.subgraphUrl })
+      : [];
+  const clonedAgents = cloneRows.map((r) =>
+    mapSubgraphAgentToCatalogAgent(r, seedByChain, parseAgentUriFromString(r.uri)),
+  );
 
-  const defaultHiredIds = seed.defaultHiredIds.filter((id) => agents.some((a) => a.id === id));
+  const agents: Agent[] = [beamRouter, ...chainAgents, ...clonedAgents];
+
+  const defaultHiredIds = seed.defaultHiredIds.filter((id: string) =>
+    agents.some((a: Agent) => a.id === id),
+  );
   if (!defaultHiredIds.includes("beam-default")) {
     defaultHiredIds.unshift("beam-default");
   }

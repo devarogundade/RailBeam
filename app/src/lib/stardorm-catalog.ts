@@ -13,10 +13,13 @@ import { fetchSubgraphBackedCatalogResponse } from "./stardorm-subgraph-catalog"
  * Prefers the Stardorm subgraph when `VITE_STARDORM_SUBGRAPH_URL` is set; otherwise `GET /agents/catalog`;
  * if the API base URL is unset, falls back to the bundled seed catalog.
  */
-export async function fetchStardormCatalog(beamChainId?: number): Promise<CatalogResponse> {
+export async function fetchStardormCatalog(
+  beamChainId?: number,
+  viewerAddress?: `0x${string}`,
+): Promise<CatalogResponse> {
   const subgraphUrl = getStardormSubgraphUrlForChain(beamChainId);
   if (subgraphUrl) {
-    return fetchSubgraphBackedCatalogResponse({ subgraphUrl });
+    return fetchSubgraphBackedCatalogResponse({ subgraphUrl, viewerAddress });
   }
   const base = getStardormApiBase();
   if (!base) {

@@ -40,6 +40,8 @@ export const stardormChatRichBlockSchema = z.discriminatedUnion("type", [
     type: z.literal("x402_checkout_form"),
     title: z.string().min(1).max(200),
     intro: z.string().max(2000).optional(),
+    /** Paywalled HTTP resource URL for x402 clients (optional). */
+    resourceUrl: z.string().url().max(2048).optional(),
     supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
     networks: z
       .array(

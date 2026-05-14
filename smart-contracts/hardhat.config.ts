@@ -78,9 +78,9 @@ export default defineConfig({
       name: "0g Galileo",
       blockExplorers: {
         etherscan: {
-          name: "0g Chainscan (Galileo)",
-          url: "https://chainscan-galileo.0g.ai",
-          apiUrl: "https://chainscan-galileo.0g.ai/open/api",
+          name: "0g Chainscan (Testnet)",
+          url: "https://chainscan-testnet.0g.ai",
+          apiUrl: "https://chainscan-testnet.0g.ai/open/api",
         },
       },
     },

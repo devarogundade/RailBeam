@@ -132,7 +132,7 @@ function pickString(o: Record<string, unknown>, ...keys: string[]): string | und
 function httpsImageUrl(raw: string | undefined, name: string | undefined): string | undefined {
   const t = raw?.trim();
   if (!t && name) return `/images/${name}.png`;
-  if (!t) return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(name || "")}`;
+  if (!t) return undefined;
   return t;
 }
 
@@ -288,4 +288,40 @@ export function parseAgentUriFromString(
   }
 
   return null;
+}
+
+/**
+ * Updates display fields on an EIP-8004 registration v1 JSON document while
+ * preserving skills, skillHandles, services, and other non-display keys.
+ */
+export function mergeDisplayFieldsIntoRegistrationUri(
+  rawUri: string | null | undefined,
+  patch: { name: string; description: string; imageUrl: string },
+): string {
+  const raw = rawUri?.trim();
+  let root: Record<string, unknown> = {
+    type: EIP8004_REGISTRATION_V1_TYPE,
+    name: patch.name.trim(),
+    description: patch.description.trim(),
+    imageUrl: patch.imageUrl.trim(),
+    skills: ["General"],
+    active: true,
+  };
+
+  if (raw) {
+    const text = decodeAgentUriIfHex(raw);
+    const parsed = parseJsonDocumentRoot(text);
+    const rec =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? ({ ...(parsed as Record<string, unknown>) })
+        : null;
+    if (rec) root = rec;
+  }
+
+  root.type = EIP8004_REGISTRATION_V1_TYPE;
+  root.name = patch.name.trim();
+  root.description = patch.description.trim();
+  root.imageUrl = patch.imageUrl.trim();
+
+  return JSON.stringify(root);
 }

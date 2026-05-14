@@ -5,6 +5,7 @@ export const AGENT_DETAIL_FIELDS = `
   uri
   agentWallet
   feePerDay
+  isCloned
   blockNumber
   blockTimestamp
   transactionHash

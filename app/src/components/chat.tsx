@@ -1,8 +1,23 @@
 import * as React from "react";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/lib/app-state";
 import type { ChatMessage as Msg, ChatAttachment, Agent } from "@/lib/types";
-import type { ConversationSummary, ChatHistoryResponse, ConversationsPageResponse } from "@beam/stardorm-api-contract";
+import type {
+  ConversationSummary,
+  ChatHistoryResponse,
+  ConversationsPageResponse,
+} from "@beam/stardorm-api-contract";
+import {
+  ISO_3166_1_ALPHA2_CODES,
+  isoCountryDisplayName,
+} from "@beam/stardorm-api-contract";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -29,6 +44,7 @@ import {
   Info,
   Menu,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -45,17 +61,32 @@ import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { useUserAvatarPreset } from "@/lib/hooks/use-user-avatar-preset";
 import { USER_AVATAR_URLS } from "@/lib/user-avatar-assets";
 import { queryKeys } from "@/lib/query-keys";
+import { resolveCatalogAgentForChatBubble } from "@/lib/resolve-catalog-agent";
 import {
-  fetchStardormMe,
+  isRegistryTokenIdOneAgent,
+  REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+} from "@/lib/registry-token-one-agent";
+import {
   patchStardormUser,
   fetchStardormConversationsPage,
   createStardormConversation,
+  fetchStardormMe,
+  deleteStardormConversation,
 } from "@/lib/stardorm-user-api";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StorageImage } from "@stardorm/agentflow-finance/src/components/storage-image";
 import { StorageFile } from "@stardorm/agentflow-finance/src/components/storage-file";
 import {
@@ -137,25 +168,21 @@ const CHAT_PAGE_SIZE = 35;
 
 export function Chat() {
   const queryClient = useQueryClient();
-  const { hired, activeAgentId, setActiveAgentId, address, stardormAccessToken } = useApp();
+  const { workspaceAgents, activeAgentId, setActiveAgentId, address, stardormAccessToken } = useApp();
   const userKey = address ? (address.toLowerCase() as `0x${string}`) : null;
   const apiOn = isStardormInferenceEnabled();
   const { data: catalog, isError: catalogError } = useStardormCatalog();
   const catalogAgents = catalog?.agents ?? [];
   const suggestions = catalog?.chatSuggestions ?? [];
   const activeAgent =
-    hired.find((a: Agent) => a.id === activeAgentId) ??
+    workspaceAgents.find((a: Agent) => a.id === activeAgentId) ??
     catalogAgents.find((a: Agent) => a.id === activeAgentId) ??
     catalogAgents.find((a: Agent) => a.id === "beam-default") ??
     catalogAgents[0];
 
-  const meQuery = useQuery({
-    queryKey: queryKeys.user.me(userKey),
-    queryFn: fetchStardormMe,
-    enabled: Boolean(getStardormApiBase() && stardormAccessToken && userKey),
-  });
-  const activeConversationId = meQuery.data?.activeConversationId;
-  const convChatKey = activeConversationId ?? "_default";
+  /** Which thread is open in the UI; `null` means none (blank composer) until the user picks one or sends a message. */
+  const [openConversationId, setOpenConversationId] = React.useState<string | null>(null);
+  const convChatKey = openConversationId ?? "_none";
 
   const convInfinite = useInfiniteQuery({
     queryKey: queryKeys.user.conversations(userKey),
@@ -180,7 +207,7 @@ export function Chat() {
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       const r = await fetchStardormChatMessages({
         limit: CHAT_PAGE_SIZE,
-        conversationId: activeConversationId,
+        conversationId: openConversationId ?? undefined,
         cursor: pageParam,
       });
       if (!r) throw new Error("Could not load messages");
@@ -189,7 +216,7 @@ export function Chat() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last: ChatHistoryResponse) =>
       last.hasMoreOlder && last.nextCursorOlder ? last.nextCursorOlder : undefined,
-    enabled: Boolean(apiOn && userKey && stardormAccessToken),
+    enabled: Boolean(apiOn && userKey && stardormAccessToken && openConversationId),
   });
 
   const apiBaseMemo = getStardormApiBase();
@@ -217,7 +244,51 @@ export function Chat() {
   const chatTopSentinelRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
-  const historyLoading = Boolean(chatInfinite.isPending && !chatInfinite.data);
+  const historyLoading = Boolean(
+    openConversationId && chatInfinite.isPending && !chatInfinite.data,
+  );
+  const sendInFlightRef = React.useRef(false);
+  const prevOpenConversationIdRef = React.useRef(openConversationId);
+  const prevLastMessageIdRef = React.useRef<string | undefined>(undefined);
+
+  /**
+   * Pin to the latest bubbles when new messages land at the end, without breaking
+   * infinite-scroll (prepend older history: last id unchanged) or yanking scroll
+   * for typing-only updates while the user has scrolled up.
+   */
+  React.useLayoutEffect(() => {
+    if (historyLoading) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    if (prevOpenConversationIdRef.current !== openConversationId) {
+      prevOpenConversationIdRef.current = openConversationId;
+      prevLastMessageIdRef.current = undefined;
+    }
+
+    const hadNoLast = prevLastMessageIdRef.current === undefined;
+    const lastMsg = displayMessages[displayMessages.length - 1];
+    const lastId = typeof lastMsg?.id === "string" ? lastMsg.id : undefined;
+    const lastIdChanged = lastId !== prevLastMessageIdRef.current;
+    prevLastMessageIdRef.current = lastId;
+
+    const slackPx = 200;
+    const nearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight <= slackPx;
+
+    const needTypingScroll = typing && nearBottom;
+    const needMessageScroll =
+      lastIdChanged &&
+      (nearBottom ||
+        lastMsg?.role === "user" ||
+        (Boolean(lastId) && hadNoLast));
+
+    if (!needTypingScroll && !needMessageScroll) return;
+
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [displayMessages, typing, historyLoading, openConversationId]);
 
   React.useEffect(() => {
     const root = convScrollRef.current;
@@ -263,11 +334,12 @@ export function Chat() {
     );
     io.observe(target);
     return () => io.disconnect();
-  }, [apiOn, chatInfinite, activeConversationId]);
+  }, [apiOn, chatInfinite, openConversationId]);
 
   const createConvMutation = useMutation({
     mutationFn: () => createStardormConversation({}),
-    onSuccess: () => {
+    onSuccess: (summary) => {
+      setOpenConversationId(summary.id);
       if (userKey) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
@@ -283,7 +355,8 @@ export function Chat() {
 
   const selectConvMutation = useMutation({
     mutationFn: (id: string) => patchStardormUser({ activeConversationId: id }),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      setOpenConversationId(id);
       if (userKey) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
@@ -296,12 +369,48 @@ export function Chat() {
     },
   });
 
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
+  const deleteConvMutation = useMutation({
+    mutationFn: (id: string) => deleteStardormConversation(id),
+    onSuccess: async (_data, deletedId) => {
+      setDeleteTargetId(null);
+      if (userKey) {
+        queryClient.removeQueries({
+          queryKey: queryKeys.user.chatMessages(userKey, deletedId),
+        });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
+        let nextActive: string | null = null;
+        try {
+          const me = await fetchStardormMe();
+          nextActive = me.activeConversationId ?? null;
+          queryClient.setQueryData(queryKeys.user.me(userKey), me);
+        } catch {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
+        }
+        setOpenConversationId((prev) => (prev === deletedId ? nextActive : prev));
+      } else {
+        setOpenConversationId((prev) => (prev === deletedId ? null : prev));
+      }
+      toast.success("Conversation deleted");
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Could not delete conversation", { description: msg });
+    },
+  });
+
+  const deleteTargetTitle = React.useMemo(() => {
+    if (!deleteTargetId) return "";
+    const row = flatConversations.find((c: ConversationSummary) => c.id === deleteTargetId);
+    return row?.title?.trim() || "Conversation";
+  }, [deleteTargetId, flatConversations]);
+
   const headerTitle = React.useMemo(() => {
-    const id = activeConversationId;
+    const id = openConversationId;
     if (!id) return "Messages";
     const row = flatConversations.find((c: ConversationSummary) => c.id === id);
     return row?.title?.trim() || "Messages";
-  }, [activeConversationId, flatConversations]);
+  }, [openConversationId, flatConversations]);
 
   /** Revoke any object URLs created by `URL.createObjectURL` once the component unmounts. */
   const attachmentsRef = React.useRef<DraftAttachment[]>(attachments);
@@ -331,9 +440,9 @@ export function Chat() {
           return;
         }
         if (!("message" in res)) return;
-        if (userKey) {
+        if (userKey && openConversationId) {
           await queryClient.invalidateQueries({
-            queryKey: queryKeys.user.chatMessages(userKey, convChatKey),
+            queryKey: queryKeys.user.chatMessages(userKey, openConversationId),
           });
         }
       } catch (e) {
@@ -343,7 +452,7 @@ export function Chat() {
         setExecutingHandlerForId(null);
       }
     },
-    [activeAgentId_, convChatKey, queryClient, userKey],
+    [activeAgentId_, openConversationId, queryClient, userKey],
   );
 
   if (!activeAgent) {
@@ -373,6 +482,9 @@ export function Chat() {
       return;
     }
 
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
+
     const userAttachments: ChatAttachment[] = draftFiles.map((a) => ({
       id: a.id,
       type: a.type,
@@ -395,42 +507,64 @@ export function Chat() {
     setTyping(true);
 
     void (async () => {
+      let threadId: string | null = openConversationId;
       let chatFailed = false;
       try {
-        const res = await stardormChat({
-          agentKey: activeAgent.id,
-          message: content,
-          conversationId: activeConversationId,
-          files: draftFiles.map((a) => a.file),
-        });
-        if (!res) {
-          chatFailed = true;
-          toast.error("Chat", {
-            description: "API is not configured or returned no response.",
-          });
-        } else if ("error" in res && res.error) {
-          chatFailed = true;
-          toast.error("Chat", { description: res.error });
+        if (!threadId) {
+          try {
+            const created = await createStardormConversation({});
+            threadId = created.id;
+            setOpenConversationId(created.id);
+            if (userKey) {
+              void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
+              void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
+            }
+          } catch (e) {
+            chatFailed = true;
+            const msg = e instanceof Error ? e.message : String(e);
+            toast.error("Could not start conversation", { description: msg });
+          }
         }
-      } catch (e) {
-        chatFailed = true;
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error("Chat unavailable", { description: msg });
+
+        if (!chatFailed && threadId) {
+          try {
+            const res = await stardormChat({
+              agentKey: activeAgent.id,
+              message: content,
+              conversationId: threadId,
+              files: draftFiles.map((a) => a.file),
+            });
+            if (!res) {
+              chatFailed = true;
+              toast.error("Chat", {
+                description: "API is not configured or returned no response.",
+              });
+            } else if ("error" in res && res.error) {
+              chatFailed = true;
+              toast.error("Chat", { description: res.error });
+            }
+          } catch (e) {
+            chatFailed = true;
+            const msg = e instanceof Error ? e.message : String(e);
+            toast.error("Chat unavailable", { description: msg });
+          }
+        }
       } finally {
         setTyping(false);
+        sendInFlightRef.current = false;
       }
 
       if (!userKey) {
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
         return;
       }
-      if (chatFailed) {
+      if (chatFailed || !threadId) {
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
         return;
       }
       try {
         await queryClient.refetchQueries({
-          queryKey: queryKeys.user.chatMessages(userKey, convChatKey),
+          queryKey: queryKeys.user.chatMessages(userKey, threadId),
         });
       } catch {
         toast.error("Thread sync failed", {
@@ -440,7 +574,6 @@ export function Chat() {
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
-      scrollRef.current?.scrollTo({ top: 9e9, behavior: "smooth" });
     })();
   };
 
@@ -462,7 +595,39 @@ export function Chat() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <>
+      <AlertDialog
+        open={deleteTargetId != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <span className="block">
+                {`"${deleteTargetTitle}"`} and all of its messages will be removed from your account. This cannot
+                be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteConvMutation.isPending || !deleteTargetId}
+              onClick={() => {
+                if (deleteTargetId) deleteConvMutation.mutate(deleteTargetId);
+              }}
+            >
+              {deleteConvMutation.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border bg-surface/40 px-3 py-2.5 md:px-5">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
@@ -484,7 +649,7 @@ export function Chat() {
               </p>
             </div>
             <div ref={convScrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">
-              {convInfinite.isPending && !convInfinite.data?.pages.length ? (
+              {convInfinite.isPending && convInfinite.data == null ? (
                 <p className="px-2 py-4 text-sm text-muted-foreground">Loading…</p>
               ) : convInfinite.isError ? (
                 <p className="px-2 py-4 text-sm text-destructive">Could not load conversations.</p>
@@ -494,7 +659,7 @@ export function Chat() {
                 <>
                   <ul className="flex flex-col gap-1">
                     {flatConversations.map((c: ConversationSummary) => {
-                      const active = c.id === activeConversationId;
+                      const active = c.id === openConversationId;
                       const when = new Date(c.lastMessageAt).toLocaleString(undefined, {
                         month: "short",
                         day: "numeric",
@@ -502,7 +667,7 @@ export function Chat() {
                         minute: "2-digit",
                       });
                       return (
-                        <li key={c.id}>
+                        <li key={c.id} className="flex gap-0.5">
                           <button
                             type="button"
                             disabled={selectConvMutation.isPending}
@@ -514,7 +679,7 @@ export function Chat() {
                               selectConvMutation.mutate(c.id);
                             }}
                             className={cn(
-                              "flex w-full flex-col rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                              "flex min-w-0 flex-1 flex-col rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                               active
                                 ? "border-primary/40 bg-primary/10"
                                 : "border-transparent hover:bg-(--bg-hover)",
@@ -525,6 +690,20 @@ export function Chat() {
                             </span>
                             <span className="text-[11px] text-muted-foreground">{when}</span>
                           </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-auto shrink-0 self-stretch rounded-lg text-muted-foreground hover:text-destructive"
+                            aria-label={`Delete conversation ${c.title?.trim() || c.id}`}
+                            disabled={!apiOn || deleteConvMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTargetId(c.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </li>
                       );
                     })}
@@ -570,11 +749,19 @@ export function Chat() {
               {displayMessages.length === 0 && (
                 <div className="rounded-xl border border-dashed border-border bg-surface/50 px-6 py-10 text-center text-sm text-muted-foreground">
                   {apiOn ? (
-                    <p>
-                      No messages in this thread yet. Send a message to talk to{" "}
-                      <span className="font-medium text-foreground">{activeAgent.name}</span> — replies
-                      are generated on the backend and stored with your account.
-                    </p>
+                    openConversationId ? (
+                      <p>
+                        No messages in this thread yet. Send a message to talk to{" "}
+                        <span className="font-medium text-foreground">{activeAgent.name}</span> — replies
+                        are generated on the backend and stored with your account.
+                      </p>
+                    ) : (
+                      <p>
+                        No conversation selected. Send a message to start a new thread with{" "}
+                        <span className="font-medium text-foreground">{activeAgent.name}</span>, or use the
+                        menu to open an existing one.
+                      </p>
+                    )
                   ) : (
                     <p>
                       Connect your wallet and sign in.
@@ -596,7 +783,14 @@ export function Chat() {
           )}
           {typing && (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <img src={activeAgent.avatar} alt="" className="h-7 w-7 rounded-full bg-pill" />
+              <img
+                src={activeAgent.avatar}
+                alt=""
+                className={cn(
+                  "h-7 w-7 rounded-full bg-pill",
+                  isRegistryTokenIdOneAgent(activeAgent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                )}
+              />
               <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-2.5">
                 <span className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                 <span className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
@@ -619,6 +813,7 @@ export function Chat() {
                   <button
                     key={s}
                     type="button"
+                    disabled={typing}
                     onClick={() => void send(s)}
                     className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground"
                   >
@@ -690,7 +885,7 @@ export function Chat() {
 
           <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface p-2 focus-within:border-(--border-medium)">
             <AgentDropdown
-              agents={hired}
+              agents={workspaceAgents}
               activeId={activeAgentId}
               onSelect={setActiveAgentId}
               fallbackAgent={activeAgent}
@@ -716,7 +911,7 @@ export function Chat() {
             </Button>
             <textarea
               value={input}
-              disabled={!apiOn}
+              disabled={!apiOn || typing}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -732,7 +927,7 @@ export function Chat() {
               }
               className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
             />
-            <Button onClick={() => void send()} size="sm" className="font-semibold" disabled={!apiOn}>
+            <Button onClick={() => void send()} size="sm" className="font-semibold" disabled={!apiOn || typing}>
               <Send className="h-3.5 w-3.5" /> Send
             </Button>
           </div>
@@ -748,6 +943,7 @@ export function Chat() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -757,7 +953,7 @@ function AgentDropdown({
   onSelect,
   fallbackAgent,
 }: {
-  agents: ReturnType<typeof useApp>["hired"];
+  agents: ReturnType<typeof useApp>["workspaceAgents"];
   activeId: string;
   onSelect: (id: string) => void;
   /** Used when `agents` is empty or no entry matches `activeId` (e.g. catalog-only active agent). */
@@ -769,7 +965,14 @@ function AgentDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-lg border border-border bg-surface-elevated px-2 py-1.5 text-sm hover:border-(--border-medium)">
-          <img src={active.avatar} alt="" className="h-5 w-5 rounded-full bg-pill" />
+          <img
+            src={active.avatar}
+            alt=""
+            className={cn(
+              "h-5 w-5 rounded-full bg-pill",
+              isRegistryTokenIdOneAgent(active) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+            )}
+          />
           <span className="font-medium">{active.name}</span>
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </button>
@@ -782,7 +985,14 @@ function AgentDropdown({
             onClick={() => onSelect(a.id)}
             className="flex items-center gap-2"
           >
-            <img src={a.avatar} alt="" className="h-6 w-6 rounded-full bg-pill" />
+            <img
+              src={a.avatar}
+              alt=""
+              className={cn(
+                "h-6 w-6 rounded-full bg-pill",
+                isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+              )}
+            />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm">{a.name}</div>
               <div className="truncate text-[11px] text-muted-foreground">{a.category}</div>
@@ -801,12 +1011,81 @@ function AgentDropdown({
   );
 }
 
+const TAX_COUNTRY_SELECT_OPTIONS: { code: string; label: string }[] = (() => {
+  return [...ISO_3166_1_ALPHA2_CODES]
+    .map((code) => {
+      const name = isoCountryDisplayName(code);
+      return {
+        code,
+        label: name !== code ? `${name} (${code})` : code,
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, "en"));
+})();
+
+function TaxReportHandlerCtaRow({
+  m,
+  disabled,
+  onRunHandlerCta,
+}: {
+  m: Msg;
+  disabled: boolean;
+  onRunHandlerCta: (m: Msg, overrideParams?: Record<string, unknown>) => void | Promise<void>;
+}) {
+  const params = (m.handlerCta?.params ?? {}) as Record<string, unknown>;
+  let serverCountry =
+    typeof params.countryCode === "string" && /^[A-Za-z]{2}$/.test(params.countryCode)
+      ? params.countryCode.toUpperCase()
+      : "US";
+  if (serverCountry === "UK") serverCountry = "GB";
+  if (!ISO_3166_1_ALPHA2_CODES.includes(serverCountry)) serverCountry = "US";
+  const [country, setCountry] = React.useState(serverCountry);
+  React.useEffect(() => {
+    setCountry(serverCountry);
+  }, [m.id, serverCountry]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-0.5">
+      <Select value={country} onValueChange={setCountry}>
+        <SelectTrigger className="h-8 w-[min(100%,16rem)] shrink-0 text-left text-xs sm:text-sm">
+          <SelectValue placeholder="Country / region" />
+        </SelectTrigger>
+        <SelectContent className="max-h-72">
+          {TAX_COUNTRY_SELECT_OPTIONS.map((o) => (
+            <SelectItem key={o.code} value={o.code} className="text-xs sm:text-sm">
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={disabled}
+        onClick={() =>
+          void onRunHandlerCta(m, {
+            ...params,
+            countryCode: country,
+          })
+        }
+      >
+        {disabled ? "Running…" : handlerCtaLabel("generate_tax_report")}
+      </Button>
+    </div>
+  );
+}
+
 function handlerCtaLabel(handler: string) {
   if (handler === "generate_tax_report") return "Generate tax PDF";
   if (handler === "create_x402_payment") return "Create payment link";
   if (handler === "on_ramp_tokens") return "Create Stripe checkout";
   if (handler === "complete_stripe_kyc") return "Start Identity verification";
   if (handler === "create_credit_card") return "Create virtual card";
+  if (handler === "generate_payment_invoice")
+    return "Download payment summary";
+  if (handler === "generate_financial_activity_report")
+    return "Download activity report";
   return handler.replace(/_/g, " ");
 }
 
@@ -1013,7 +1292,7 @@ function Bubble({
   onRunHandlerCta: (m: Msg, overrideParams?: Record<string, unknown>) => void | Promise<void>;
 }) {
   const isUser = m.role === "user";
-  const agent = agents.find((a) => a.id === m.agentId);
+  const agent = resolveCatalogAgentForChatBubble(m.agentId, agents);
   const userAvatarPreset = useUserAvatarPreset();
   const userAvatarSrc = USER_AVATAR_URLS[userAvatarPreset];
   return (
@@ -1024,7 +1303,14 @@ function Bubble({
       )}
     >
       {!isUser && (
-        <img src={agent?.avatar} alt="" className="h-7 w-7 shrink-0 rounded-full bg-pill" />
+        <img
+          src={agent?.avatar}
+          alt=""
+          className={cn(
+            "h-7 w-7 shrink-0 rounded-full bg-pill",
+            agent && isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+          )}
+        />
       )}
       <div className={cn("flex max-w-[78%] flex-col gap-1.5", isUser && "items-end")}>
         {!isUser && agent && (
@@ -1153,19 +1439,28 @@ function Bubble({
         {m.handlerCta &&
           !isUser &&
           m.rich?.type !== "x402_checkout_form" &&
-          m.rich?.type !== "on_ramp_checkout_form" && (
-          <div className="flex flex-wrap gap-2 px-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
+          m.rich?.type !== "on_ramp_checkout_form" &&
+          (m.handlerCta.handler === "generate_tax_report" ? (
+            <TaxReportHandlerCtaRow
+              m={m}
               disabled={executingHandlerForId === m.id}
-              onClick={() => void onRunHandlerCta(m)}
-            >
-              {executingHandlerForId === m.id ? "Running…" : handlerCtaLabel(m.handlerCta.handler)}
-            </Button>
-          </div>
-        )}
+              onRunHandlerCta={onRunHandlerCta}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-2 px-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={executingHandlerForId === m.id}
+                onClick={() => void onRunHandlerCta(m)}
+              >
+                {executingHandlerForId === m.id
+                  ? "Running…"
+                  : handlerCtaLabel(m.handlerCta.handler)}
+              </Button>
+            </div>
+          ))}
         {m.followUp && !isUser && <FollowUpRow m={m} apiBase={apiBase} />}
         {isUser && (
           <div className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground">

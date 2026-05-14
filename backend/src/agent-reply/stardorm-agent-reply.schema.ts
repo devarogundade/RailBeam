@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { formatUnits } from 'ethers';
-import { stardormChatRichBlockSchema } from '@beam/stardorm-api-contract';
+import {
+  isoCountryDisplayName,
+  stardormChatRichBlockSchema,
+} from '@beam/stardorm-api-contract';
 import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
 import {
   HANDLER_ACTION_IDS,
@@ -28,6 +31,8 @@ import {
   onRampTokensInputSchema,
   stripeKycInputSchema,
   createCreditCardInputSchema,
+  generatePaymentInvoiceInputSchema,
+  generateFinancialActivityReportInputSchema,
 } from '@beam/stardorm-api-contract';
 import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
 
@@ -71,6 +76,10 @@ function shortenAssetDisplay(asset: string): string {
 export const agentChatRichBlockSchema = stardormChatRichBlockSchema;
 
 export type AgentRichCard = StardormChatRichBlock;
+
+/** CAIP-2 chain ids for 0G EVM; wired into chat system prompts for correct `network` fields. */
+export const STARDORM_AGENT_CAIP2_NETWORKS =
+  '0G EVM CAIP-2: `eip155:16661` on mainnet; `eip155:16602` on testnet.';
 
 const handlerEnum = z.enum(HANDLER_ACTION_IDS);
 
@@ -185,6 +194,30 @@ export const agentComputeReplySchema = z
         });
       }
     }
+    if (handler === 'generate_payment_invoice') {
+      const r = generatePaymentInvoiceInputSchema.safeParse(
+        params && typeof params === 'object' ? params : {},
+      );
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for generate_payment_invoice',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'generate_financial_activity_report') {
+      const r = generateFinancialActivityReportInputSchema.safeParse(
+        params && typeof params === 'object' ? params : {},
+      );
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for generate_financial_activity_report',
+          path: ['params'],
+        });
+      }
+    }
   })
   .transform((val) => ({
     text: val.text,
@@ -232,6 +265,18 @@ export type AgentComputeReplyWithParams =
       handler: 'create_credit_card';
       params: z.infer<typeof createCreditCardInputSchema>;
       rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'generate_payment_invoice';
+      params: z.infer<typeof generatePaymentInvoiceInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'generate_financial_activity_report';
+      params: z.infer<typeof generateFinancialActivityReportInputSchema>;
+      rich?: AgentRichCard;
     };
 
 /** Narrow `AgentComputeReply` after successful schema parse. */
@@ -257,6 +302,7 @@ export function asTypedAgentReply(
           supportedAssets: formTry.data.supportedAssets,
           networks: formTry.data.networks,
           intro: formTry.data.intro,
+          resourceUrl: formTry.data.resourceUrl,
         } as AgentRichCard);
       return {
         text: r.text,
@@ -299,6 +345,23 @@ export function asTypedAgentReply(
   if (r.handler === 'create_credit_card') {
     const p = createCreditCardInputSchema.parse(r.params);
     return { text: r.text, handler: 'create_credit_card', params: p, rich };
+  }
+  if (r.handler === 'generate_payment_invoice') {
+    const p = generatePaymentInvoiceInputSchema.parse(
+      r.params && typeof r.params === 'object' ? r.params : {},
+    );
+    return { text: r.text, handler: 'generate_payment_invoice', params: p, rich };
+  }
+  if (r.handler === 'generate_financial_activity_report') {
+    const p = generateFinancialActivityReportInputSchema.parse(
+      r.params && typeof r.params === 'object' ? r.params : {},
+    );
+    return {
+      text: r.text,
+      handler: 'generate_financial_activity_report',
+      params: p,
+      rich,
+    };
   }
   return { text: r.text, rich };
 }
@@ -344,11 +407,13 @@ export function buildAgentOutputContract(
           '- If the user asks for card-to-crypto on-ramp or Stripe checkout for tokens: tell them to hire **Ramp** (agentKey `ramp`, Payments), switch to that agent, then ask again.',
           '- If the user asks for KYC or identity verification: tell them to hire **Passport** (agentKey `passport`, Compliance), switch to that agent, then ask again.',
           '- If the user asks for a virtual company payment card, billing profile on file, or card spend balance: tell them to hire **Capita** (agentKey `capita`, Payments), switch to that agent, then ask again.',
-          '- For other specialist work (treasury PDFs, yield plans, audits): point them to the marketplace to hire the matching specialist agent.',
+          '- If the user asks for a wallet invoice or PDF covering their checkouts, on-ramp, cards, and KYC: tell them to hire **Ledger** (agentKey `ledger`, Payments), switch to that agent, then ask again.',
+          '- If the user asks for an activity snapshot or treasury-style counts across payments, on-ramp, cards, and KYC: tell them to hire **Scribe** or **Audita** (Reports), or **Settler** (Payments for settlements), switch agents, then ask again.',
         ].join('\n')
       : '';
   return [
     'You are a Stardorm financial agent.',
+    STARDORM_AGENT_CAIP2_NETWORKS,
     'Your entire reply MUST be a single JSON object only (no markdown, no prose outside JSON).',
     `JSON shape: {"text": string, "handler"?: ${handlerIdsForJsonContract()}|null, "params"?: object|null, "rich"?: …}`,
     'Rules:',
@@ -365,7 +430,7 @@ export function buildAgentOutputContract(
     allowed.includes('create_x402_payment')
       ? [
           '- create_x402_payment (JSON-only): use when the user message explicitly contains every required field: `id`, `amount` (wei integer string), `currency`, `network`, `payTo` (0x…40), plus optional `title`, `resourceUrl`, `decimals`. Never invent values.',
-          '- Checkout form mode (JSON-only): use when anything is missing or ambiguous: params `{"_checkoutForm":true,"supportedAssets":[...], ...}` and matching `rich` type `x402_checkout_form` so the client collects the rest.',
+          '- Checkout form mode (JSON-only): use when anything is missing or ambiguous: params `{"_checkoutForm":true,"supportedAssets":[...], ...}` (optional `resourceUrl` for the paywalled resource) and matching `rich` type `x402_checkout_form` so the client collects the rest.',
         ].join('\n')
       : '',
     allowed.includes('on_ramp_tokens')
@@ -379,6 +444,12 @@ export function buildAgentOutputContract(
       : '',
     allowed.includes('create_credit_card')
       ? '- create_credit_card params: `firstName`, `lastName`, `line1`, optional `line2`, `city`, `region`, `postalCode`, `countryCode` (ISO 3166-1 alpha-2), optional `cardLabel`, optional `currency` (3-letter ISO, default USD), optional `initialBalanceCents` (non-negative integer). Optional matching `rich` type `credit_card` with title + rows for the same fields. Never invent the user\'s legal name or address.'
+      : '',
+    allowed.includes('generate_payment_invoice')
+      ? '- generate_payment_invoice params: optional `from`/`to` each `{"year","month","day"}` (UTC), optional `invoiceTitle`; may be `{}` for all recent rows.'
+      : '',
+    allowed.includes('generate_financial_activity_report')
+      ? '- generate_financial_activity_report params: optional `from`/`to` each `{"year","month","day"}` (UTC), optional `reportTitle`; may be `{}` for all recent rows.'
       : '',
   ]
     .filter(Boolean)
@@ -417,6 +488,12 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
   if (handler === 'create_credit_card') {
     return 'I can issue a virtual payment card with the billing profile you confirmed on request.';
   }
+  if (handler === 'generate_payment_invoice') {
+    return 'I can generate a payment summary PDF from your Beam checkout, on-ramp, card, and KYC records on request.';
+  }
+  if (handler === 'generate_financial_activity_report') {
+    return 'I can generate an activity snapshot report across your Beam payments, on-ramp, cards, and KYC on request.';
+  }
   return 'I can run that action on request.';
 }
 
@@ -426,16 +503,22 @@ function fmtTaxDatePart(p: { year: number; month: number; day: number }): string
 
 function agentRichFromTaxReportToolArgs(
   data: GenerateTaxReportToolArgs,
-): AgentRichCard | undefined {
-  if (data.reportCard === undefined) return undefined;
+): AgentRichCard {
   const period = `${fmtTaxDatePart(data.from)} → ${fmtTaxDatePart(data.to)}`;
+  const countryName = isoCountryDisplayName(data.countryCode);
   const baseRows = [
-    { label: 'Country', value: data.countryCode },
+    {
+      label: 'Country',
+      value:
+        countryName !== data.countryCode
+          ? `${countryName} (${data.countryCode})`
+          : data.countryCode,
+    },
     { label: 'Filing period', value: period },
   ];
-  const extras = data.reportCard.supplementalRows ?? [];
+  const extras = data.reportCard?.supplementalRows ?? [];
   const title =
-    data.reportCard.cardTitle ?? `Tax report (${data.countryCode})`;
+    data.reportCard?.cardTitle ?? `Tax report (${data.countryCode})`;
   return {
     type: 'report',
     title,
@@ -638,6 +721,26 @@ export function agentReplyFromChatCompletion(
         const rich = agentRichFromCreateCreditCardToolArgs(full.data);
         return { text, handler: 'create_credit_card', params, rich };
       }
+      if (name === 'generate_payment_invoice') {
+        const full = generatePaymentInvoiceInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        return {
+          text,
+          handler: 'generate_payment_invoice',
+          params: full.data,
+          rich: undefined,
+        };
+      }
+      if (name === 'generate_financial_activity_report') {
+        const full = generateFinancialActivityReportInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        return {
+          text,
+          handler: 'generate_financial_activity_report',
+          params: full.data,
+          rich: undefined,
+        };
+      }
     }
 
     for (const tc of toolCalls) {
@@ -664,6 +767,7 @@ export function agentReplyFromChatCompletion(
         supportedAssets: parsed.data.supportedAssets,
         networks: parsed.data.networks,
         intro: parsed.data.intro,
+        resourceUrl: parsed.data.resourceUrl,
       });
       const rich = {
         type: 'x402_checkout_form' as const,
@@ -671,6 +775,7 @@ export function agentReplyFromChatCompletion(
         intro: parsed.data.intro,
         supportedAssets: parsed.data.supportedAssets,
         networks: parsed.data.networks,
+        resourceUrl: parsed.data.resourceUrl,
       } as AgentRichCard;
       const text =
         content.trim() ||
@@ -736,9 +841,16 @@ export function buildAgentToolCallingSystemPrompt(
       : []),
     ...(allowed.includes('complete_stripe_kyc') ? ['complete_stripe_kyc'] : []),
     ...(allowed.includes('create_credit_card') ? ['create_credit_card'] : []),
+    ...(allowed.includes('generate_payment_invoice')
+      ? ['generate_payment_invoice']
+      : []),
+    ...(allowed.includes('generate_financial_activity_report')
+      ? ['generate_financial_activity_report']
+      : []),
   ].join(', ');
   return [
     'You are Stardorm chat: a concise financial assistant.',
+    STARDORM_AGENT_CAIP2_NETWORKS,
     'Put the user-visible answer in the message content (plain language).',
     toolNames
       ? `When a one-tap server action is appropriate, call at most one function tool from this list: ${toolNames}.`
@@ -748,7 +860,7 @@ export function buildAgentToolCallingSystemPrompt(
     allowed.includes('create_x402_payment')
       ? [
           'For x402 checkout: if the user’s message(s) already state every required value — stable `id`, wei `amount` (integer string), `currency` (0x token or symbol), `network`, full `payTo` (0x…40) — call **create_x402_payment** with those exact arguments (optional `paymentCard` for an invoice-style preview).',
-          'If any required value is missing, vague, or would be a guess, call **offer_x402_checkout_form** with `supportedAssets` (and optional `networks`); never invent wei, payTo, or token addresses.',
+          'If any required value is missing, vague, or would be a guess, call **offer_x402_checkout_form** with `supportedAssets` (and optional `networks`, optional `resourceUrl`); never invent wei, payTo, or token addresses.',
           'When a handler CTA appears, remind the user to tap **Create payment link** to obtain the `/pay/...` checkout URL for their payer.',
         ].join(' ')
       : '',
@@ -767,6 +879,12 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     allowed.includes('generate_tax_report')
       ? 'After proposing generate_tax_report, remind the user they must tap **Generate tax PDF** to run the server job and attach the PDF to the thread.'
+      : '',
+    allowed.includes('generate_payment_invoice')
+      ? 'After proposing generate_payment_invoice, remind the user to tap **Download payment summary** to build the PDF from live Beam records.'
+      : '',
+    allowed.includes('generate_financial_activity_report')
+      ? 'After proposing generate_financial_activity_report, remind the user to tap **Download activity report** to build the snapshot PDF.'
       : '',
   ]
     .filter(Boolean)

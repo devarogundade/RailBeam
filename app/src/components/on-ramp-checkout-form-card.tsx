@@ -11,6 +11,7 @@ import { toast } from "sonner";
 type OnRampFormRich = Extract<StardormChatRichBlock, { type: "on_ramp_checkout_form" }>;
 
 const DEFAULT_NETWORKS = [
+  { id: "eip155:16661", label: "0G Mainnet" },
   { id: "eip155:16602", label: "0G Galileo testnet" },
 ] as const;
 

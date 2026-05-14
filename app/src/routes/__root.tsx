@@ -16,6 +16,7 @@ import { BeamNetworkProvider } from "@/lib/beam-network-context";
 import { AppProvider } from "@/lib/app-state";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
+import { MobileSidebarProvider } from "@/lib/mobile-sidebar-context";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -126,15 +127,17 @@ function RootComponent() {
         <BeamNetworkProvider>
           <AppProvider>
             <OnboardingRedirect>
-              <div className="flex h-dvh min-h-0 w-full overflow-hidden">
-                <AppSidebar />
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                  <AppHeader />
-                  <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                    <Outlet />
-                  </main>
+              <MobileSidebarProvider>
+                <div className="flex h-dvh min-h-0 w-full overflow-hidden">
+                  <AppSidebar />
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <AppHeader />
+                    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                      <Outlet />
+                    </main>
+                  </div>
                 </div>
-              </div>
+              </MobileSidebarProvider>
             </OnboardingRedirect>
             <Toaster richColors position="bottom-right" theme="dark" />
           </AppProvider>

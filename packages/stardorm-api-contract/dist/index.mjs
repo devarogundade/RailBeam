@@ -13,11 +13,15 @@ var skillHandleSchema = z.object({
   handle: z.string().min(1),
   label: z.string().min(1)
 });
+var agentAvatarSchema = z.union([
+  z.string().url(),
+  z.string().regex(/^\/\S+/, "avatar must be a URL or a root-relative path")
+]);
 var agentSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   handle: z.string().min(1),
-  avatar: z.string().url(),
+  avatar: agentAvatarSchema,
   category: agentCategorySchema,
   tagline: z.string(),
   description: z.string(),
@@ -28,14 +32,20 @@ var agentSchema = z.object({
   reputation: z.number().min(0).max(100).optional(),
   /** Estimated from indexer `feePerDay` (wei) when available; omit if unknown. */
   pricePerMonth: z.number().nonnegative().optional(),
-  /** Raw `feePerDay` (wei, decimal string) straight from the subgraph. Used to compute `subscribe` msg.value without a contract read. */
+  /** Raw `feePerDay` (wei, decimal string) from the subgraph. `subscribe` must send exactly `feePerDay * numDays` wei. */
   feePerDayWei: z.string().regex(/^\d+$/).optional(),
   /** Presence-only when we have a live signal; omit if unknown. */
   online: z.boolean().optional(),
   skills: z.array(z.string()),
   creator: z.string().min(1),
   skillHandles: z.array(skillHandleSchema).optional(),
-  chainAgentId: z.number().int().positive().optional()
+  chainAgentId: z.number().int().positive().optional(),
+  /** From indexer when the token is an ERC-7857 clone of another agent. */
+  isCloned: z.boolean().optional(),
+  /** Lowercase `0x` registry owner (subgraph); used for “my clone” ownership checks. */
+  ownerAddress: z.string().regex(/^0x[a-f0-9]{40}$/).optional(),
+  /** Raw on-chain registration string (hex or JSON) for owner-only URI updates. */
+  registrationUriRaw: z.string().optional()
 });
 var agentsListSchema = z.array(agentSchema).nonempty();
 var catalogResponseSchema = z.object({
@@ -52,7 +62,11 @@ var HANDLER_ACTION_IDS = [
   /** Stripe Identity hosted verification for the signed-in wallet user. */
   "complete_stripe_kyc",
   /** Issue a virtual payment card record with billing profile and spend balance. */
-  "create_credit_card"
+  "create_credit_card",
+  /** PDF + structured snapshot: payment requests, on-ramps, cards, KYC for this wallet. */
+  "generate_payment_invoice",
+  /** Summary report across payment requests, on-ramps, virtual cards, and KYC status. */
+  "generate_financial_activity_report"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -91,7 +105,7 @@ var STARDORM_CATALOG_SEED = [
         label: "Create x402 payment resource link"
       }
     ],
-    allowedHandlers: ["create_x402_payment"]
+    allowedHandlers: ["create_x402_payment", "generate_payment_invoice"]
   },
   {
     chainAgentId: 3,
@@ -125,7 +139,7 @@ var STARDORM_CATALOG_SEED = [
       { handle: "treasury_summary", label: "Treasury summary" },
       { handle: "generate_pdf", label: "Generate shareable PDF report" }
     ],
-    allowedHandlers: []
+    allowedHandlers: ["generate_financial_activity_report"]
   },
   {
     chainAgentId: 5,
@@ -158,7 +172,7 @@ var STARDORM_CATALOG_SEED = [
       { handle: "treasury_verify", label: "Verify treasury movements" },
       { handle: "generate_pdf", label: "Generate audit PDF" }
     ],
-    allowedHandlers: []
+    allowedHandlers: ["generate_financial_activity_report"]
   },
   {
     chainAgentId: 7,
@@ -175,8 +189,11 @@ var STARDORM_CATALOG_SEED = [
       { handle: "vendor_settlement", label: "Vendor settlement draft" },
       { handle: "generate_pdf", label: "Generate settlement PDF" }
     ],
-    /** No backend handler yet; agent stays text-only until one is implemented. */
-    allowedHandlers: ["create_x402_payment"]
+    allowedHandlers: [
+      "create_x402_payment",
+      "generate_payment_invoice",
+      "generate_financial_activity_report"
+    ]
   },
   {
     chainAgentId: 8,
@@ -247,15 +264,16 @@ var STARDORM_CATALOG_SEED = [
     allowedHandlers: ["create_credit_card"]
   }
 ];
-function avatarUrl(agentKey) {
-  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(agentKey)}`;
+function catalogSeedAvatarPath(agentKey) {
+  const stem = agentKey === "beam-default" ? "beam" : agentKey;
+  return `/images/${stem}.png`;
 }
 function seedRowToAgent(row) {
   return {
     id: row.agentKey,
     name: row.name,
     handle: row.handle,
-    avatar: row.imageUrl ? row.imageUrl : avatarUrl(row.agentKey),
+    avatar: row.imageUrl ? row.imageUrl : catalogSeedAvatarPath(row.agentKey),
     category: row.category,
     tagline: row.tagline,
     description: row.description,
@@ -399,6 +417,8 @@ var stardormChatRichBlockSchema = z.discriminatedUnion("type", [
     type: z.literal("x402_checkout_form"),
     title: z.string().min(1).max(200),
     intro: z.string().max(2e3).optional(),
+    /** Paywalled HTTP resource URL for x402 clients (optional). */
+    resourceUrl: z.string().url().max(2048).optional(),
     supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
     networks: z.array(
       z.object({
@@ -613,6 +633,9 @@ var createConversationBodySchema = z.object({
   title: z.string().max(120).optional(),
   agentKey: z.string().min(1).optional()
 });
+var deleteConversationResponseSchema = z.object({
+  deleted: z.literal(true)
+});
 var agentOnchainFeedbackItemSchema = z.object({
   id: z.string(),
   agentId: z.number(),
@@ -695,6 +718,12 @@ var publicPaymentRequestSchema = z.object({
   txHash: z.string().optional(),
   paidByWallet: z.string().optional()
 });
+var mePaymentRequestsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20)
+});
+var paymentRequestsListResponseSchema = z.object({
+  items: z.array(publicPaymentRequestSchema)
+});
 var onRampFormNetworkOptionSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().min(1).max(120)
@@ -758,6 +787,12 @@ var onRampRecordSchema = z.object({
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional()
 });
+var meOnRampsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20)
+});
+var onRampsListResponseSchema = z.object({
+  items: z.array(onRampRecordSchema)
+});
 var userKycStatusSchema = z.enum([
   "not_started",
   "pending",
@@ -819,7 +854,136 @@ var creditCardFundBodySchema = z.object({
   amountCents: z.coerce.number().int().min(1).max(1e8)
 });
 var creditCardWithdrawBodySchema = creditCardFundBodySchema;
+var billingDatePartSchema = z.object({
+  year: z.number().int().min(2020).max(2036),
+  month: z.number().int().min(1).max(12),
+  day: z.number().int().min(1).max(31)
+});
+function billingDatePartToUtc(p) {
+  return new Date(Date.UTC(p.year, p.month - 1, p.day));
+}
+function billingRangeEndOfDay(p) {
+  const d = billingDatePartToUtc(p);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+}
+function billingPeriodBounds(input) {
+  return {
+    from: input.from ? billingDatePartToUtc(input.from) : void 0,
+    to: input.to ? billingRangeEndOfDay(input.to) : void 0
+  };
+}
+var generatePaymentInvoiceInputSchema = z.object({
+  from: billingDatePartSchema.optional(),
+  to: billingDatePartSchema.optional(),
+  invoiceTitle: z.string().trim().min(1).max(120).optional()
+}).superRefine((val, ctx) => {
+  if (!val.from || !val.to) return;
+  const a = billingDatePartToUtc(val.from);
+  const b = billingDatePartToUtc(val.to);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid calendar date"
+    });
+    return;
+  }
+  if (a > b) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "`from` must be on or before `to`",
+      path: ["from"]
+    });
+  }
+});
+var generateFinancialActivityReportInputSchema = z.object({
+  from: billingDatePartSchema.optional(),
+  to: billingDatePartSchema.optional(),
+  reportTitle: z.string().trim().min(1).max(120).optional()
+}).superRefine((val, ctx) => {
+  if (!val.from || !val.to) return;
+  const a = billingDatePartToUtc(val.from);
+  const b = billingDatePartToUtc(val.to);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid calendar date"
+    });
+    return;
+  }
+  if (a > b) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "`from` must be on or before `to`",
+      path: ["from"]
+    });
+  }
+});
 
-export { HANDLER_ACTION_IDS, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, getAllowedHandlersForAgentKey, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isOnRampFormCtaParams, mergeAllowedHandlersForAgentKeys, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveCatalogAgentKeyForHandler, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+// src/iso-3166-1-alpha2.ts
+var ISO_3166_1_ALPHA2_CODES_RAW = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW";
+var ISO_3166_1_ALPHA2_CODES = Object.freeze(
+  ISO_3166_1_ALPHA2_CODES_RAW.split(/\s+/)
+);
+var ISO_3166_1_ALPHA2_SET = new Set(ISO_3166_1_ALPHA2_CODES);
+function isIso3166Alpha2(code) {
+  const c = code.length === 2 ? code.toUpperCase() : "";
+  return ISO_3166_1_ALPHA2_SET.has(c);
+}
+function isoCountryDisplayName(code, locale = "en") {
+  const c = code.length === 2 ? code.toUpperCase() : code;
+  try {
+    const dn = new Intl.DisplayNames(locale, { type: "region" });
+    return dn.of(c) ?? c;
+  } catch {
+    return c;
+  }
+}
+
+// src/tax-rate-for-country.ts
+var EU27 = /* @__PURE__ */ new Set([
+  "AT",
+  "BE",
+  "BG",
+  "HR",
+  "CY",
+  "CZ",
+  "DK",
+  "EE",
+  "FI",
+  "FR",
+  "DE",
+  "GR",
+  "HU",
+  "IE",
+  "IT",
+  "LV",
+  "LT",
+  "LU",
+  "MT",
+  "NL",
+  "PL",
+  "PT",
+  "RO",
+  "SK",
+  "SI",
+  "ES",
+  "SE"
+]);
+var EEA_NON_EU = /* @__PURE__ */ new Set(["IS", "LI", "NO"]);
+var HIGH_TIER_OECD = /* @__PURE__ */ new Set(["AU", "CA", "JP", "KR", "NZ"]);
+function taxRateForCountry(country) {
+  const c = country.toUpperCase();
+  if (c === "US") return 0.22;
+  if (c === "GB" || c === "UK") return 0.2;
+  if (c === "DE" || c === "FR") return 0.25;
+  if (c === "SG") return 0.17;
+  if (EU27.has(c)) return 0.24;
+  if (EEA_NON_EU.has(c)) return 0.24;
+  if (HIGH_TIER_OECD.has(c)) return 0.25;
+  return 0.2;
+}
+
+export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, getAllowedHandlersForAgentKey, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, mergeAllowedHandlersForAgentKeys, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveCatalogAgentKeyForHandler, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

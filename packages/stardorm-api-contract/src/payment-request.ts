@@ -63,3 +63,18 @@ export const publicPaymentRequestSchema = z.object({
 });
 
 export type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;
+
+/** Query for GET `/users/me/payment-requests`. */
+export const mePaymentRequestsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type MePaymentRequestsQuery = z.infer<typeof mePaymentRequestsQuerySchema>;
+
+export const paymentRequestsListResponseSchema = z.object({
+  items: z.array(publicPaymentRequestSchema),
+});
+
+export type PaymentRequestsListResponse = z.infer<
+  typeof paymentRequestsListResponseSchema
+>;

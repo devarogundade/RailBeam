@@ -1,7 +1,8 @@
 import * as React from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAccount } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatUnits } from "viem";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
 import { ArrowUpRight, Zap, CreditCard } from "lucide-react";
@@ -21,14 +22,26 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchStardormCreditCards,
+  fetchStardormKycStatus,
+  fetchStardormOnRamps,
+  fetchStardormPaymentRequests,
   fundStardormCreditCard,
+  isStardormInferenceEnabled,
   withdrawStardormCreditCard,
 } from "@/lib/stardorm-api";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
-import type { CreditCardPublic } from "@beam/stardorm-api-contract";
+import { Badge } from "@/components/ui/badge";
+import type {
+  CreditCardPublic,
+  OnRampRecord,
+  PublicPaymentRequest,
+  UserKycStatus,
+} from "@beam/stardorm-api-contract";
 import { toast } from "sonner";
+import { parseAgentUriFromString } from "@/lib/agent-uri-metadata";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -53,6 +66,8 @@ function Dashboard() {
 
   const walletKey = address ? (address.toLowerCase() as `0x${string}`) : null;
   const myActiveIndexed = useMyActiveSubscribedChainAgentIds(walletKey);
+  const [dashTab, setDashTab] = React.useState("virtual-cards");
+  const stardormSession = isStardormInferenceEnabled();
 
   React.useEffect(() => {
     if (!address && subsScope === "mine") setSubsScope("all");
@@ -93,115 +108,368 @@ function Dashboard() {
           />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground lg:col-span-2">
-            <div className="font-medium text-foreground">Revenue</div>
-            <p className="mt-2">
-              No revenue feed is connected yet. When treasury or invoicing totals are available, they
-              can be charted here.
-            </p>
-          </div>
+        <Tabs value={dashTab} onValueChange={setDashTab} className="mt-6">
+          <TabsList className="h-auto min-h-9 w-full flex-wrap justify-start gap-1 bg-muted p-1">
+            <TabsTrigger value="virtual-cards">Virtual cards</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="kyc">KYC</TabsTrigger>
+            <TabsTrigger value="on-ramp">On Ramp</TabsTrigger>
+          </TabsList>
 
-          <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
-            <div className="font-medium text-foreground">Spend by category</div>
-            <p className="mt-2">
-              Category breakdown needs labeled spend from billing. The KPI row shows the sum of any
-              listed monthly fees for hired agents when prices are available.
-            </p>
-          </div>
-        </div>
+          <TabsContent value="virtual-cards" className="mt-4">
+            <CreditCardsPanel stardormSession={stardormSession} />
+          </TabsContent>
 
-        <div className="mt-6 rounded-xl border border-border bg-surface p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold">Paid subscriptions</div>
-              <p className="text-[11px] text-muted-foreground">
-                Recent paid subscriptions from the live registry.
-              </p>
-              {subgraphUrl && address ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Active subscriptions for this wallet:{" "}
-                  {myActiveIndexed.isPending
-                    ? "…"
-                    : String(myActiveIndexed.data?.length ?? 0)}
+          <TabsContent value="payments" className="mt-4 space-y-6">
+            <DashboardPaymentRequests enabled={stardormSession && dashTab === "payments"} />
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground lg:col-span-2">
+                <div className="font-medium text-foreground">Revenue</div>
+                <p className="mt-2">
+                  No revenue feed is connected yet. When treasury or invoicing totals are available, they
+                  can be charted here.
                 </p>
-              ) : null}
+              </div>
+
+              <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground">Spend by category</div>
+                <p className="mt-2">
+                  Category breakdown needs labeled spend from billing. The KPI row shows the sum of any
+                  listed monthly fees for hired agents when prices are available.
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {address ? (
-                <div className="flex rounded-md border border-border p-0.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setSubsScope("all")}
-                    className={cn(
-                      "rounded px-2 py-1 transition-colors",
-                      subsScope === "all"
-                        ? "bg-pill text-pill-foreground"
-                        : "text-muted-foreground hover:bg-(--bg-hover)",
-                    )}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSubsScope("mine")}
-                    className={cn(
-                      "rounded px-2 py-1 transition-colors",
-                      subsScope === "mine"
-                        ? "bg-pill text-pill-foreground"
-                        : "text-muted-foreground hover:bg-(--bg-hover)",
-                    )}
-                  >
-                    My wallet
-                  </button>
+
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Employees</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Recent employee payments.
+                  </p>
+                  {subgraphUrl && address ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Active hires for this wallet:{" "}
+                      {myActiveIndexed.isPending
+                        ? "…"
+                        : String(myActiveIndexed.data?.length ?? 0)}
+                    </p>
+                  ) : null}
                 </div>
-              ) : null}
-              <span className="text-sm text-muted-foreground">Live data</span>
-            </div>
-          </div>
-
-          {!subgraphUrl ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Subscription history is not available in this version of the app.
-            </p>
-          ) : subsError ? (
-            <p className="mt-3 text-sm text-destructive">
-              Could not load subscription history. Try again later.
-            </p>
-          ) : subsPending ? (
-            <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
-          ) : !subscriptions?.length ? (
-            <p className="mt-3 text-sm text-muted-foreground">No subscription activity yet.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-border text-sm">
-              {subscriptions.map((row) => {
-                const paid = formatCompactFromBaseUnits(row.paidAmount, tokenDecimals);
-                const rel = formatSubgraphRelativeTime(row.blockTimestamp);
-                const abs = formatSubgraphDateTime(row.blockTimestamp);
-                const agentLabel = `Agent #${row.agentId}`;
-                return (
-                  <li key={row.id} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="font-medium">Subscription · {agentLabel}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {shortenHex(row.user)} ·{" "}
-                        <span title={abs} className="cursor-default">
-                          {rel}
-                        </span>
-                      </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {address ? (
+                    <div className="flex rounded-md border border-border p-0.5 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setSubsScope("all")}
+                        className={cn(
+                          "rounded px-2 py-1 transition-colors",
+                          subsScope === "all"
+                            ? "bg-pill text-pill-foreground"
+                            : "text-muted-foreground hover:bg-(--bg-hover)",
+                        )}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubsScope("mine")}
+                        className={cn(
+                          "rounded px-2 py-1 transition-colors",
+                          subsScope === "mine"
+                            ? "bg-pill text-pill-foreground"
+                            : "text-muted-foreground hover:bg-(--bg-hover)",
+                        )}
+                      >
+                        My wallet
+                      </button>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 text-success sm:justify-end">
-                      <ArrowUpRight className="h-3 w-3" />
-                      <CoinIcon className="h-3.5 w-3.5" />+{paid} 0G
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                  ) : null}
+                </div>
+              </div>
 
-        <CreditCardsPanel address={walletKey} />
+              {!subgraphUrl ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Employee activity is not available in this version of the app.
+                </p>
+              ) : subsError ? (
+                <p className="mt-3 text-sm text-destructive">
+                  Could not load employee activity. Try again later.
+                </p>
+              ) : subsPending ? (
+                <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+              ) : !subscriptions?.length ? (
+                <p className="mt-3 text-sm text-muted-foreground">No employee activity yet.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-border text-sm">
+                  {subscriptions.map((row) => {
+                    const paid = formatCompactFromBaseUnits(row.paidAmount, tokenDecimals);
+                    const rel = formatSubgraphRelativeTime(row.blockTimestamp);
+                    const abs = formatSubgraphDateTime(row.blockTimestamp);
+                    const agentUri = parseAgentUriFromString(row.agent?.uri);
+                    return (
+                      <li key={row.id} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="font-medium">Employee · {agentUri?.name}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {shortenHex(row.user)} ·{" "}
+                            <span title={abs} className="cursor-default">
+                              {rel}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 text-success sm:justify-end">
+                          <ArrowUpRight className="h-3 w-3" />
+                          <CoinIcon className="h-3.5 w-3.5" />+{paid} 0G
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="kyc" className="mt-4">
+            <DashboardKyc enabled={stardormSession && dashTab === "kyc"} />
+          </TabsContent>
+
+          <TabsContent value="on-ramp" className="mt-4">
+            <DashboardOnRamps enabled={stardormSession && dashTab === "on-ramp"} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+const KYC_STATUS_LABEL: Record<UserKycStatus, string> = {
+  not_started: "Not started",
+  pending: "Pending",
+  processing: "Processing",
+  verified: "Verified",
+  requires_input: "Requires input",
+  canceled: "Canceled",
+};
+
+function formatTokenWeiHuman(wei: string, decimals: number): string {
+  try {
+    const s = formatUnits(BigInt(wei), decimals);
+    const n = Number.parseFloat(s);
+    if (!Number.isFinite(n)) return wei;
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) return n.toExponential(2);
+    if (abs >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    return n.toLocaleString(undefined, { maximumSignificantDigits: 6 });
+  } catch {
+    return wei;
+  }
+}
+
+function paymentBadgeVariant(
+  s: PublicPaymentRequest["status"],
+): "default" | "secondary" | "destructive" | "outline" {
+  if (s === "paid") return "default";
+  if (s === "pending") return "secondary";
+  if (s === "expired") return "outline";
+  return "destructive";
+}
+
+function onRampBadgeVariant(
+  s: OnRampRecord["status"],
+): "default" | "secondary" | "destructive" | "outline" {
+  if (s === "fulfilled") return "default";
+  if (s === "failed") return "destructive";
+  if (s === "canceled") return "outline";
+  return "secondary";
+}
+
+function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["paymentRequests", "me"],
+    queryFn: () => fetchStardormPaymentRequests({ limit: 25 }),
+    enabled,
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="text-sm font-semibold">Checkout and x402</div>
+      <p className="text-[11px] text-muted-foreground">
+        Payment requests you created or settled, stored by the Beam API.
+      </p>
+      {!enabled ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Sign in with your wallet (Beam API session) to load payment activity.
+        </p>
+      ) : isError ? (
+        <p className="mt-3 text-sm text-destructive">Could not load payment requests.</p>
+      ) : isPending ? (
+        <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+      ) : !data?.items.length ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          No saved checkouts yet. Use chat with an agent that offers x402 or payment links to create one.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border text-sm">
+          {data.items.map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{row.title}</span>
+                  <Badge variant={paymentBadgeVariant(row.status)} className="text-[10px] uppercase">
+                    {row.status}
+                  </Badge>
+                  <span className="text-[11px] text-muted-foreground">{row.type}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {row.network} · {shortenHex(row.payTo)} · amount {row.amount} ({row.asset}
+                  {row.decimals != null ? `, ${row.decimals} decimals` : ""})
+                </div>
+                {row.txHash ? (
+                  <div className="text-[11px] text-muted-foreground">Tx {shortenHex(row.txHash)}</div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                {row.status === "pending" ? (
+                  <Button type="button" size="sm" variant="outline" asChild>
+                    <Link to="/pay/$id" params={{ id: row.id }}>
+                      Open checkout
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function DashboardKyc({ enabled }: { enabled: boolean }) {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["kycStatus", "me"],
+    queryFn: () => fetchStardormKycStatus(),
+    enabled,
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+      <div className="font-medium text-foreground">Identity verification (KYC)</div>
+      <p className="mt-2">
+        Start verification from chat with the Passport agent (Stripe Identity). This panel reflects the
+        latest status stored for your Beam account.
+      </p>
+      {!enabled ? (
+        <p className="mt-3">Sign in with your wallet (Beam API session) to view KYC status.</p>
+      ) : isError ? (
+        <p className="mt-3 text-destructive">Could not load KYC status.</p>
+      ) : isPending ? (
+        <p className="mt-3">Loading…</p>
+      ) : data ? (
+        <div className="mt-4 space-y-2 rounded-lg border border-border bg-surface-elevated p-4 text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">Status</span>
+            <Badge variant="secondary" className="text-[10px] uppercase">
+              {KYC_STATUS_LABEL[data.status]}
+            </Badge>
+          </div>
+          {data.stripeVerificationSessionId ? (
+            <div className="text-[11px] text-muted-foreground">
+              Stripe session: <span className="font-mono">{data.stripeVerificationSessionId}</span>
+            </div>
+          ) : null}
+          {data.lastStripeEventType ? (
+            <div className="text-[11px] text-muted-foreground">Last event: {data.lastStripeEventType}</div>
+          ) : null}
+          {data.lastError ? (
+            <div className="text-[11px] text-destructive">Last error: {data.lastError}</div>
+          ) : null}
+          {data.updatedAt ? (
+            <div className="text-[11px] text-muted-foreground">
+              Updated {new Date(data.updatedAt).toLocaleString()}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DashboardOnRamps({ enabled }: { enabled: boolean }) {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["onRamps", "me"],
+    queryFn: () => fetchStardormOnRamps({ limit: 25 }),
+    enabled,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+        <div className="font-medium text-foreground">On Ramp</div>
+        <p className="mt-2">
+          Card-to-token checkouts you started from chat (Ramp agent). Status updates when Stripe and the
+          treasury transfer complete.
+        </p>
+      </div>
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <div className="text-sm font-semibold">Your on-ramps</div>
+        {!enabled ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Sign in with your wallet (Beam API session) to load on-ramp history.
+          </p>
+        ) : isError ? (
+          <p className="mt-3 text-sm text-destructive">Could not load on-ramps.</p>
+        ) : isPending ? (
+          <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+        ) : !data?.items.length ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No on-ramp orders yet. Open chat with the Ramp agent and create a Stripe checkout when you are
+            ready to buy tokens.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border text-sm">
+            {data.items.map((row) => (
+              <li key={row.id} className="flex flex-col gap-2 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={onRampBadgeVariant(row.status)} className="text-[10px] uppercase">
+                    {row.status.replaceAll("_", " ")}
+                  </Badge>
+                  <span className="font-medium">
+                    {row.tokenSymbol}{" "}
+                    <span className="text-muted-foreground">
+                      {formatTokenWeiHuman(row.tokenAmountWei, row.tokenDecimals)} to{" "}
+                      {shortenHex(row.recipientWallet)}
+                    </span>
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {(row.usdAmountCents / 100).toLocaleString(undefined, {
+                    style: "currency",
+                    currency: "USD",
+                  })}{" "}
+                  charged · {row.network}
+                </div>
+                {row.fulfillmentTxHash ? (
+                  <div className="text-[11px] text-muted-foreground">
+                    Fulfillment tx <span className="font-mono">{row.fulfillmentTxHash}</span>
+                  </div>
+                ) : null}
+                {row.errorMessage ? (
+                  <div className="text-[11px] text-destructive">{row.errorMessage}</div>
+                ) : null}
+                {row.createdAt ? (
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(row.createdAt).toLocaleString()}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -216,17 +484,17 @@ function dollarsToCents(raw: string): number | null {
   return cents > 0 ? cents : null;
 }
 
-function CreditCardsPanel({ address }: { address: `0x${string}` | null }) {
+function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
   const qc = useQueryClient();
   const api = Boolean(getStardormApiBase());
   const { data, isPending, isError } = useQuery({
-    queryKey: ["creditCards", address],
+    queryKey: ["creditCards", "me"],
     queryFn: () => fetchStardormCreditCards(),
-    enabled: Boolean(api && address),
+    enabled: Boolean(api && stardormSession),
   });
 
   const fundMut = useMutation({
-    mutationFn: async ({ id, dollars }: { id: string; dollars: string }) => {
+    mutationFn: async ({ id, dollars }: { id: string; dollars: string; }) => {
       const cents = dollarsToCents(dollars);
       if (cents == null) throw new Error("Enter a positive dollar amount.");
       const r = await fundStardormCreditCard(id, cents);
@@ -235,13 +503,13 @@ function CreditCardsPanel({ address }: { address: `0x${string}` | null }) {
     },
     onSuccess: () => {
       toast.success("Funds added to card");
-      void qc.invalidateQueries({ queryKey: ["creditCards", address] });
+      void qc.invalidateQueries({ queryKey: ["creditCards"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const withdrawMut = useMutation({
-    mutationFn: async ({ id, dollars }: { id: string; dollars: string }) => {
+    mutationFn: async ({ id, dollars }: { id: string; dollars: string; }) => {
       const cents = dollarsToCents(dollars);
       if (cents == null) throw new Error("Enter a positive dollar amount.");
       const r = await withdrawStardormCreditCard(id, cents);
@@ -250,7 +518,7 @@ function CreditCardsPanel({ address }: { address: `0x${string}` | null }) {
     },
     onSuccess: () => {
       toast.success("Funds removed from card");
-      void qc.invalidateQueries({ queryKey: ["creditCards", address] });
+      void qc.invalidateQueries({ queryKey: ["creditCards"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -271,8 +539,10 @@ function CreditCardsPanel({ address }: { address: `0x${string}` | null }) {
       </div>
       {!api ? (
         <p className="mt-3 text-sm text-muted-foreground">Connect the Stardorm API to manage cards.</p>
-      ) : !address ? (
-        <p className="mt-3 text-sm text-muted-foreground">Connect a wallet to load your cards.</p>
+      ) : !stardormSession ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Sign in with your wallet (Beam API session) to load and manage cards.
+        </p>
       ) : isError ? (
         <p className="mt-3 text-sm text-destructive">Could not load cards.</p>
       ) : isPending ? (

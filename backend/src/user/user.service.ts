@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { formatUnits } from 'ethers';
+import { formatUnits, toUtf8String } from 'ethers';
 import { Model, Types } from 'mongoose';
 import {
   ChatMessage as StardormChatBubble,
@@ -23,10 +23,12 @@ import {
   UserPreferences,
 } from 'src/mongo/schemas/user.schema';
 import { SubgraphService } from 'src/subgraph/subgraph.service';
+import type { Agent as SubgraphRegistryAgent } from 'src/subgraph/types';
 import { ChatMessage, OgComputeService } from 'src/og/og-compute.service';
 import type { OgComputeChatResult } from 'src/og/og-compute.service';
 import { OgStorageService } from 'src/og/og-storage.service';
 import {
+  STARDORM_AGENT_CAIP2_NETWORKS,
   buildAgentOutputContract,
   buildAgentToolCallingSystemPrompt,
   agentReplyFromChatCompletion,
@@ -34,7 +36,11 @@ import {
   type AgentRichCard,
 } from 'src/agent-reply/stardorm-agent-reply.schema';
 import { buildOpenAiHandlerTools } from 'src/agent-reply/stardorm-handler-tools';
-import { HandlerActionId, isHandlerActionId } from 'src/handlers/handler.types';
+import {
+  HandlerActionId,
+  HANDLER_ACTION_IDS,
+  isHandlerActionId,
+} from 'src/handlers/handler.types';
 import { HandlersService } from 'src/handlers/handlers.service';
 import {
   mergeAllowedHandlersForAgentKeys,
@@ -53,7 +59,9 @@ import {
   isX402CheckoutFormCtaParams,
 } from 'src/handlers/handler-inputs.schema';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
-import type { CreditCardDocument } from 'src/mongo/schemas/credit-card.schema';
+import { PaymentRequestsService } from 'src/payments/payment-requests.service';
+import { OnRampService } from 'src/stripe/on-ramp.service';
+import { KycStripeService } from 'src/stripe/kyc-stripe.service';
 import type { MulterIncomingFile } from './multer-file.types';
 
 export type UserUploadResult = {
@@ -145,6 +153,38 @@ export type ChatThreadSnapshot = {
 
 const CHAT_MAX_FILES = 2;
 
+function handlerCapabilitiesFromSubgraphAgent(
+  agent: SubgraphRegistryAgent | null,
+): HandlerActionId[] {
+  if (!agent?.metadata?.length) return [];
+  const row = agent.metadata.find((m) => m.key === 'handlerCapabilities');
+  if (!row?.value?.trim()) return [];
+  let s = row.value.trim();
+  if (/^0x[0-9a-fA-F]+$/.test(s) && s.length >= 4 && s.length % 2 === 0) {
+    try {
+      s = toUtf8String(s);
+    } catch {
+      return [];
+    }
+  }
+  return s
+    .split(',')
+    .map((x) => x.trim())
+    .filter((x): x is HandlerActionId => isHandlerActionId(x));
+}
+
+function mergeHandlersWithSubgraphExtras(
+  keys: readonly string[],
+  agent: SubgraphRegistryAgent | null,
+): HandlerActionId[] {
+  const base = mergeAllowedHandlersForAgentKeys(keys);
+  const extra = handlerCapabilitiesFromSubgraphAgent(agent);
+  if (!extra.length) return base;
+  const set = new Set<HandlerActionId>(base);
+  for (const h of extra) set.add(h);
+  return HANDLER_ACTION_IDS.filter((h) => set.has(h));
+}
+
 @Injectable()
 export class UserService {
   constructor(
@@ -158,6 +198,9 @@ export class UserService {
     private readonly ogStorage: OgStorageService,
     private readonly handlers: HandlersService,
     private readonly creditCards: CreditCardsService,
+    private readonly paymentRequests: PaymentRequestsService,
+    private readonly onRamp: OnRampService,
+    private readonly kycStripe: KycStripeService,
   ) {}
 
   private normalizeWallet(wallet: string): string {
@@ -548,35 +591,12 @@ export class UserService {
     };
   }
 
-  private creditCardDocToPublic(doc: CreditCardDocument): CreditCardPublic {
-    const o = doc.toObject({ versionKey: false }) as Record<string, unknown>;
-    return {
-      id: String(o._id),
-      firstName: String(o.firstName),
-      lastName: String(o.lastName),
-      cardLabel: typeof o.cardLabel === 'string' ? o.cardLabel : undefined,
-      line1: String(o.line1),
-      line2: typeof o.line2 === 'string' ? o.line2 : undefined,
-      city: String(o.city),
-      region: String(o.region),
-      postalCode: String(o.postalCode),
-      countryCode: String(o.countryCode),
-      currency: String(o.currency),
-      balanceCents: Number(o.balanceCents),
-      last4: String(o.last4),
-      networkBrand: String(o.networkBrand),
-      status: o.status === 'frozen' ? 'frozen' : 'active',
-      ...(o.createdAt instanceof Date ? { createdAt: o.createdAt } : {}),
-      ...(o.updatedAt instanceof Date ? { updatedAt: o.updatedAt } : {}),
-    };
-  }
-
   async listMyCreditCards(walletAddress: string): Promise<{
     cards: CreditCardPublic[];
   }> {
     const wallet = this.normalizeWallet(walletAddress);
     const rows = await this.creditCards.listForWallet(wallet);
-    return { cards: rows.map((r) => this.creditCardDocToPublic(r)) };
+    return { cards: rows.map((r) => this.creditCards.toPublic(r)) };
   }
 
   async fundMyCreditCard(
@@ -586,7 +606,7 @@ export class UserService {
   ): Promise<CreditCardPublic> {
     const wallet = this.normalizeWallet(walletAddress);
     const doc = await this.creditCards.fund(wallet, cardId, amountCents);
-    return this.creditCardDocToPublic(doc);
+    return this.creditCards.toPublic(doc);
   }
 
   async withdrawMyCreditCard(
@@ -596,7 +616,7 @@ export class UserService {
   ): Promise<CreditCardPublic> {
     const wallet = this.normalizeWallet(walletAddress);
     const doc = await this.creditCards.withdraw(wallet, cardId, amountCents);
-    return this.creditCardDocToPublic(doc);
+    return this.creditCards.toPublic(doc);
   }
 
   /** Idempotent: ensures a Mongo user row exists for the wallet (same defaults as auth login). */
@@ -637,6 +657,23 @@ export class UserService {
       return this.createUser(walletAddress);
     }
     return this.toPublic(doc);
+  }
+
+  async listMyPaymentRequests(walletAddress: string, limit: number) {
+    const wallet = this.normalizeWallet(walletAddress);
+    const items = await this.paymentRequests.listForWallet(wallet, limit);
+    return { items };
+  }
+
+  async listMyOnRamps(walletAddress: string, limit: number) {
+    const wallet = this.normalizeWallet(walletAddress);
+    const items = await this.onRamp.listForWallet(wallet, limit);
+    return { items };
+  }
+
+  async getMyKycStatus(walletAddress: string) {
+    const wallet = this.normalizeWallet(walletAddress);
+    return this.kycStripe.getStatusDocument(wallet);
   }
 
   async updateUser(
@@ -891,6 +928,41 @@ export class UserService {
     return this.toConversationSummary(created);
   }
 
+  async deleteConversation(
+    walletAddress: string,
+    conversationId: string,
+  ): Promise<void> {
+    const wallet = this.normalizeWallet(walletAddress);
+    const user = await this.userModel.findOne({ walletAddress: wallet }).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const tid = conversationId?.trim();
+    if (!tid || !Types.ObjectId.isValid(tid)) {
+      throw new BadRequestException('Invalid conversationId');
+    }
+    const oid = new Types.ObjectId(tid);
+    const conv = await this.conversationModel
+      .findOne({ _id: oid, userId: user._id })
+      .exec();
+    if (!conv) {
+      throw new NotFoundException('Conversation not found');
+    }
+    await this.chatMessageModel.deleteMany({ conversationId: oid }).exec();
+    await this.conversationModel.deleteOne({ _id: oid }).exec();
+
+    if (String(user.activeConversationId) === tid) {
+      const next = await this.conversationModel
+        .findOne({ userId: user._id })
+        .sort({ lastMessageAt: -1 })
+        .exec();
+      user.activeConversationId = next
+        ? (next._id as Types.ObjectId)
+        : undefined;
+      await user.save();
+    }
+  }
+
   private async resolveConversationForUser(
     user: UserDocument,
     explicitConversationId?: string | null,
@@ -1010,10 +1082,10 @@ export class UserService {
       ),
     ];
 
-    const allowedHandlers: HandlerActionId[] = mergeAllowedHandlersForAgentKeys([
-      agentKey,
-      ...subscribedCatalogAgentKeys,
-    ]);
+    const allowedHandlers: HandlerActionId[] = mergeHandlersWithSubgraphExtras(
+      [agentKey, ...subscribedCatalogAgentKeys],
+      onchainAgent,
+    );
 
     const attachments: Array<{
       id: string;
@@ -1084,6 +1156,7 @@ export class UserService {
         role: 'system',
         content: [
           'You are Stardorm chat: answer using the following on-chain agent record as context.',
+          STARDORM_AGENT_CAIP2_NETWORKS,
           JSON.stringify(agentContext),
         ].join('\n'),
       },
@@ -1427,10 +1500,21 @@ export class UserService {
           .filter((k): k is string => k != null),
       ),
     ];
-    const allowed = mergeAllowedHandlersForAgentKeys([
-      issuingAgentKey,
-      ...subscribedCatalogAgentKeys,
-    ]);
+    const issuingChainId = resolveStardormChainAgentId(
+      typeof issuingAgentKey === 'string' ? issuingAgentKey.trim() : String(issuingAgentKey),
+    );
+    let issuingOnchain: SubgraphRegistryAgent | null = null;
+    if (issuingChainId != null) {
+      try {
+        issuingOnchain = await this.subgraph.getAgentByChainAgentId(issuingChainId);
+      } catch {
+        issuingOnchain = null;
+      }
+    }
+    const allowed = mergeHandlersWithSubgraphExtras(
+      [issuingAgentKey, ...subscribedCatalogAgentKeys],
+      issuingOnchain,
+    );
     if (!allowed.includes(body.handler)) {
       throw new ForbiddenException(
         `This agent cannot run "${body.handler}". Hire the specialist from the marketplace and try again.`,

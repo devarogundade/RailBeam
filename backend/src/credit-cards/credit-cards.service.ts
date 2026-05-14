@@ -6,7 +6,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomInt } from 'node:crypto';
 import { Model, Types } from 'mongoose';
-import type { CreateCreditCardInput } from '@beam/stardorm-api-contract';
+import type {
+  CreateCreditCardInput,
+  CreditCardPublic,
+} from '@beam/stardorm-api-contract';
 import {
   CreditCard,
   CreditCardDocument,
@@ -51,6 +54,29 @@ export class CreditCardsService {
       ...(userId ? { userId } : {}),
     });
     return created;
+  }
+
+  toPublic(doc: CreditCardDocument): CreditCardPublic {
+    const o = doc.toObject({ versionKey: false }) as Record<string, unknown>;
+    return {
+      id: String(o._id),
+      firstName: String(o.firstName),
+      lastName: String(o.lastName),
+      cardLabel: typeof o.cardLabel === 'string' ? o.cardLabel : undefined,
+      line1: String(o.line1),
+      line2: typeof o.line2 === 'string' ? o.line2 : undefined,
+      city: String(o.city),
+      region: String(o.region),
+      postalCode: String(o.postalCode),
+      countryCode: String(o.countryCode),
+      currency: String(o.currency),
+      balanceCents: Number(o.balanceCents),
+      last4: String(o.last4),
+      networkBrand: String(o.networkBrand),
+      status: o.status === 'frozen' ? 'frozen' : 'active',
+      ...(o.createdAt instanceof Date ? { createdAt: o.createdAt } : {}),
+      ...(o.updatedAt instanceof Date ? { updatedAt: o.updatedAt } : {}),
+    };
   }
 
   async listForWallet(walletAddress: string): Promise<CreditCardDocument[]> {

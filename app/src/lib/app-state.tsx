@@ -49,6 +49,10 @@ interface AgentsState {
   fire: (id: string) => void;
   isHired: (id: string) => boolean;
   hired: Agent[];
+  /** Cloned registry tokens merged into the catalog for the connected wallet. */
+  ownedClones: Agent[];
+  /** Hired agents plus owned clones (for chat / agent picker). */
+  workspaceAgents: Agent[];
 }
 
 interface AppState extends WalletState, AgentsState {
@@ -344,6 +348,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return list.filter((a) => !(a.chainAgentId === 1 && a.id !== "beam-default"));
   }, [agents, hiredIds]);
 
+  const ownedClones = React.useMemo(
+    () => agents.filter((a) => a.isCloned === true),
+    [agents],
+  );
+
+  const workspaceAgents = React.useMemo(() => {
+    const ids = new Set(hired.map((h) => h.id));
+    return [...hired, ...ownedClones.filter((c) => !ids.has(c.id))];
+  }, [hired, ownedClones]);
+
   const value: AppState = {
     address,
     balance,
@@ -358,6 +372,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fire,
     isHired,
     hired,
+    ownedClones,
+    workspaceAgents,
     activeAgentId,
     setActiveAgentId,
   };

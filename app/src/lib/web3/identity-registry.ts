@@ -8,6 +8,15 @@ export const IDENTITY_REGISTRY_NATIVE_DECIMALS = 18;
 
 export const identityRegistryAbi = [
   {
+    type: "event",
+    name: "Cloned",
+    inputs: [
+      { name: "to", type: "address", indexed: true },
+      { name: "sourceTokenId", type: "uint256", indexed: true },
+      { name: "newTokenId", type: "uint256", indexed: true },
+    ],
+  },
+  {
     type: "function",
     name: "subscribe",
     stateMutability: "payable",
@@ -40,6 +49,28 @@ export const identityRegistryAbi = [
     stateMutability: "view",
     inputs: [{ name: "tokenId", type: "uint256" }],
     outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "clone",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "tokenId", type: "uint256" },
+      { name: "sealedKey", type: "bytes" },
+      { name: "proof", type: "bytes" },
+    ],
+    outputs: [{ name: "newTokenId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "setAgentURI",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "newURI", type: "string" },
+    ],
+    outputs: [],
   },
 ] as const;
 

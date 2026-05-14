@@ -44,8 +44,16 @@ export type BeamTokenConfig = {
   name?: string;
 };
 
+/** Canonical bridged USDC on 0G mainnet (chain id 16661). */
+const MAINNET_USDC_E: BeamTokenConfig = {
+  address: "0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E",
+  symbol: "USDC.e",
+  decimals: 6,
+  name: "Bridged USDC",
+};
+
 export const BEAM_TOKENS: { mainnet: BeamTokenConfig[]; testnet: BeamTokenConfig[] } = {
-  mainnet: [],
+  mainnet: [MAINNET_USDC_E],
   testnet: [],
 };
 

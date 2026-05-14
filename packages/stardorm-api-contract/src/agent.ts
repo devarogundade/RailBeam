@@ -14,11 +14,17 @@ export const skillHandleSchema = z.object({
   label: z.string().min(1),
 });
 
+/** Absolute http(s) URL or root-relative asset path (e.g. on-chain `/images/…`). */
+export const agentAvatarSchema = z.union([
+  z.string().url(),
+  z.string().regex(/^\/\S+/, "avatar must be a URL or a root-relative path"),
+]);
+
 export const agentSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   handle: z.string().min(1),
-  avatar: z.string().url(),
+  avatar: agentAvatarSchema,
   category: agentCategorySchema,
   tagline: z.string(),
   description: z.string(),
@@ -37,6 +43,12 @@ export const agentSchema = z.object({
   creator: z.string().min(1),
   skillHandles: z.array(skillHandleSchema).optional(),
   chainAgentId: z.number().int().positive().optional(),
+  /** From indexer when the token is an ERC-7857 clone of another agent. */
+  isCloned: z.boolean().optional(),
+  /** Lowercase `0x` registry owner (subgraph); used for “my clone” ownership checks. */
+  ownerAddress: z.string().regex(/^0x[a-f0-9]{40}$/).optional(),
+  /** Raw on-chain registration string (hex or JSON) for owner-only URI updates. */
+  registrationUriRaw: z.string().optional(),
 });
 
 export const agentsListSchema = z.array(agentSchema).nonempty();

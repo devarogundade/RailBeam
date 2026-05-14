@@ -7,6 +7,9 @@ import { TaxesService } from './taxes.service';
 import { X402Service } from './x402.service';
 import { CreditCardHandlerService } from './credit-card-handler.service';
 import { StripeModule } from '../stripe/stripe.module';
+import { BillingWalletDataService } from './billing-wallet-data.service';
+import { PaymentInvoiceService } from './payment-invoice.service';
+import { FinancialActivityReportService } from './financial-activity-report.service';
 
 @Module({
   imports: [PaymentsModule, StripeModule, CreditCardsModule],
@@ -16,6 +19,9 @@ import { StripeModule } from '../stripe/stripe.module';
     TaxesService,
     X402Service,
     CreditCardHandlerService,
+    BillingWalletDataService,
+    PaymentInvoiceService,
+    FinancialActivityReportService,
   ],
   exports: [HandlersService, TaxesService, X402Service],
 })

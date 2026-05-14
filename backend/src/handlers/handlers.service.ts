@@ -6,6 +6,8 @@ import { X402Service } from './x402.service';
 import { OnRampService } from '../stripe/on-ramp.service';
 import { KycStripeService } from '../stripe/kyc-stripe.service';
 import { CreditCardHandlerService } from './credit-card-handler.service';
+import { PaymentInvoiceService } from './payment-invoice.service';
+import { FinancialActivityReportService } from './financial-activity-report.service';
 
 @Injectable()
 export class HandlersService {
@@ -15,6 +17,8 @@ export class HandlersService {
     private readonly onRamp: OnRampService,
     private readonly kyc: KycStripeService,
     private readonly creditCard: CreditCardHandlerService,
+    private readonly paymentInvoice: PaymentInvoiceService,
+    private readonly financialActivityReport: FinancialActivityReportService,
   ) {}
 
   async dispatch(
@@ -36,6 +40,10 @@ export class HandlersService {
         return this.kyc.handle(body, ctx);
       case 'create_credit_card':
         return this.creditCard.handle(body, ctx);
+      case 'generate_payment_invoice':
+        return this.paymentInvoice.handle(body, ctx);
+      case 'generate_financial_activity_report':
+        return this.financialActivityReport.handle(body, ctx);
       default:
         throw new NotFoundException(`Unknown handler: ${handleId}`);
     }

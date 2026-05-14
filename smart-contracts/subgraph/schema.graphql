@@ -12,6 +12,7 @@ type Agent @entity(immutable: false) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
   metadata: [AgentMetadata!]! @derivedFrom(field: "agent")
+  isCloned: Boolean!
   subscriptions: [UserSubscription!]! @derivedFrom(field: "agent")
 }
 

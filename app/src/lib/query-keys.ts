@@ -11,7 +11,8 @@ export const queryKeys = {
   agents: {
     all: ["agents"] as const,
     list: () => [...queryKeys.agents.all, "list"] as const,
-    catalog: (beamChainId: number) => [...queryKeys.agents.all, "catalog", beamChainId] as const,
+    catalog: (beamChainId: number, viewer: `0x${string}` | null) =>
+      [...queryKeys.agents.all, "catalog", beamChainId, viewer] as const,
     detail: (id: string) => [...queryKeys.agents.all, "detail", id] as const,
   },
   subgraph: {

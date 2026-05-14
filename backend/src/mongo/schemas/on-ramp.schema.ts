@@ -57,6 +57,9 @@ export class OnRamp {
 
   @Prop()
   errorMessage?: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const OnRampSchema = SchemaFactory.createForClass(OnRamp);

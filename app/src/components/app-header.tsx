@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
+import { Menu } from "lucide-react";
 import { WalletButton } from "./wallet-button";
+import { Button } from "@/components/ui/button";
 import { useBeamNetwork } from "@/lib/beam-network-context";
+import { useMobileSidebar } from "@/lib/mobile-sidebar-context";
 import { cn } from "@/lib/utils";
 import type { BeamNetworkId } from "@/lib/beam-chain-config";
 
@@ -36,8 +39,21 @@ function NetworkToggle() {
 }
 
 export function AppHeader() {
+  const { open, setOpen } = useMobileSidebar();
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur md:px-6">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="shrink-0 md:hidden"
+        aria-label="Open menu"
+        aria-expanded={open}
+        aria-controls="mobile-app-sidebar"
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
       <nav className="hidden md:flex items-center gap-1 text-sm">
         {[
           { to: "/", label: "Home", exact: true },

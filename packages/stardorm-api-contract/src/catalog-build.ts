@@ -19,6 +19,8 @@ type SeedRow = {
   readonly skillHandles: readonly SeedSkillHandle[];
   /** Backend handler ids the agent may propose; subset of `HANDLER_ACTION_IDS`. */
   readonly allowedHandlers: readonly HandlerActionId[];
+  /** Optional catalog image override (URL or root-relative path). */
+  readonly imageUrl?: string;
 };
 
 /** Same registration order as `STARDORM_SEED_AGENT_URIS` in smart-contracts ignition. */
@@ -52,7 +54,7 @@ const STARDORM_CATALOG_SEED: readonly SeedRow[] = [
         label: "Create x402 payment resource link",
       },
     ],
-    allowedHandlers: ["create_x402_payment"],
+    allowedHandlers: ["create_x402_payment", "generate_payment_invoice"],
   },
   {
     chainAgentId: 3,
@@ -88,7 +90,7 @@ const STARDORM_CATALOG_SEED: readonly SeedRow[] = [
       { handle: "treasury_summary", label: "Treasury summary" },
       { handle: "generate_pdf", label: "Generate shareable PDF report" },
     ],
-    allowedHandlers: [],
+    allowedHandlers: ["generate_financial_activity_report"],
   },
   {
     chainAgentId: 5,
@@ -123,7 +125,7 @@ const STARDORM_CATALOG_SEED: readonly SeedRow[] = [
       { handle: "treasury_verify", label: "Verify treasury movements" },
       { handle: "generate_pdf", label: "Generate audit PDF" },
     ],
-    allowedHandlers: [],
+    allowedHandlers: ["generate_financial_activity_report"],
   },
   {
     chainAgentId: 7,
@@ -141,8 +143,11 @@ const STARDORM_CATALOG_SEED: readonly SeedRow[] = [
       { handle: "vendor_settlement", label: "Vendor settlement draft" },
       { handle: "generate_pdf", label: "Generate settlement PDF" },
     ],
-    /** No backend handler yet; agent stays text-only until one is implemented. */
-    allowedHandlers: ["create_x402_payment"],
+    allowedHandlers: [
+      "create_x402_payment",
+      "generate_payment_invoice",
+      "generate_financial_activity_report",
+    ],
   },
   {
     chainAgentId: 8,
@@ -218,8 +223,10 @@ const STARDORM_CATALOG_SEED: readonly SeedRow[] = [
   },
 ] as const;
 
-function avatarUrl(agentKey: string): string {
-  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(agentKey)}`;
+/** Root-relative PNG under `app/public/images` for catalog seed agents. */
+function catalogSeedAvatarPath(agentKey: string): string {
+  const stem = agentKey === "beam-default" ? "beam" : agentKey;
+  return `/images/${stem}.png`;
 }
 
 function seedRowToAgent(row: SeedRow): Agent {
@@ -227,7 +234,7 @@ function seedRowToAgent(row: SeedRow): Agent {
     id: row.agentKey,
     name: row.name,
     handle: row.handle,
-    avatar: row.imageUrl ? row.imageUrl : avatarUrl(row.agentKey),
+    avatar: row.imageUrl ? row.imageUrl : catalogSeedAvatarPath(row.agentKey),
     category: row.category,
     tagline: row.tagline,
     description: row.description,

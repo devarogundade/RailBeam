@@ -16,7 +16,7 @@ export const Route = createFileRoute("/marketplace")({
 });
 
 function marketplaceAgents(list: Agent[]) {
-  return list.filter((a) => a.id !== "beam-default");
+  return list.filter((a) => a.id !== "beam-default" && a.isCloned !== true);
 }
 
 function Marketplace() {
@@ -31,9 +31,9 @@ function Marketplace() {
     for (const a of listable) {
       set.add(a.category);
     }
-    const ordered = (["Payments", "Taxes", "Reports", "DeFi", "General"] as const).filter((c) =>
-      set.has(c),
-    );
+    const ordered = (
+      ["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"] as const
+    ).filter((c) => set.has(c));
     return ["All", ...ordered] as const;
   }, [listable]);
 
@@ -150,7 +150,7 @@ function Marketplace() {
             >
               <option value="reputation">Reputation</option>
               <option value="price">Price</option>
-              <option value="hires">Most hired</option>
+              <option value="hires">Most employers</option>
             </select>
           </div>
         </div>

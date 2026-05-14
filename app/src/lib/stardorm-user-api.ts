@@ -4,6 +4,7 @@ import {
   conversationSummarySchema,
   conversationsPageResponseSchema,
   createConversationBodySchema,
+  deleteConversationResponseSchema,
   type PublicUser,
   type UpdateUserBody,
   type ConversationSummary,
@@ -67,4 +68,20 @@ export async function createStardormConversation(
     parsed.data,
   );
   return conversationSummarySchema.parse(data);
+}
+
+export async function deleteStardormConversation(
+  conversationId: string,
+): Promise<void> {
+  if (!getStardormApiBase()) {
+    throw new Error("Beam API URL is not configured");
+  }
+  const id = conversationId.trim();
+  if (!id) {
+    throw new Error("conversationId required");
+  }
+  const { data } = await stardormAxios.delete<unknown>(
+    `/users/me/conversations/${encodeURIComponent(id)}`,
+  );
+  deleteConversationResponseSchema.parse(data);
 }

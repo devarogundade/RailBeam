@@ -5,6 +5,7 @@ import {
   onRampFormCtaParamsSchema,
   isOnRampFormCtaParams,
   createCreditCardInputSchema,
+  isIso3166Alpha2,
 } from '@beam/stardorm-api-contract';
 
 export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
@@ -28,7 +29,13 @@ export const TaxesInputSchema = z
     countryCode: z
       .string()
       .length(2)
-      .transform((c) => c.toUpperCase()),
+      .transform((c) => {
+        const u = c.toUpperCase();
+        return u === 'UK' ? 'GB' : u;
+      })
+      .refine(isIso3166Alpha2, {
+        message: 'countryCode must be ISO 3166-1 alpha-2 (e.g. US, DE, JP)',
+      }),
   })
   .superRefine((val, ctx) => {
     const from = toUtcTaxDate(val.from);
@@ -156,6 +163,7 @@ const x402CheckoutFormNetworksSchema = z
 export const offerX402CheckoutFormToolArgsSchema = z.object({
   formTitle: z.string().min(1).max(200).optional(),
   intro: z.string().max(2000).optional(),
+  resourceUrl: z.string().url().max(2048).optional(),
   supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
   networks: x402CheckoutFormNetworksSchema,
 });
@@ -170,6 +178,7 @@ export const x402CheckoutFormCtaParamsSchema = z.object({
   supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
   networks: x402CheckoutFormNetworksSchema,
   intro: z.string().max(2000).optional(),
+  resourceUrl: z.string().url().max(2048).optional(),
 });
 
 export type X402CheckoutFormCtaParams = z.infer<

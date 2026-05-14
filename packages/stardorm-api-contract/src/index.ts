@@ -1,4 +1,5 @@
 export {
+  agentAvatarSchema,
   agentCategorySchema,
   agentSchema,
   agentsListSchema,
@@ -87,6 +88,7 @@ export {
   conversationsPageResponseSchema,
   conversationsListResponseSchema,
   createConversationBodySchema,
+  deleteConversationResponseSchema,
   type ChatHistoryQuery,
   type ChatHistoryAttachment,
   type ChatFollowUp,
@@ -97,6 +99,7 @@ export {
   type ConversationsPageResponse,
   type ConversationsListResponse,
   type CreateConversationBody,
+  type DeleteConversationResponse,
 } from "./conversation.js";
 export {
   agentOnchainFeedbackItemSchema,
@@ -111,8 +114,12 @@ export {
   paymentRequestStatusSchema,
   paymentSettlementBodySchema,
   publicPaymentRequestSchema,
+  mePaymentRequestsQuerySchema,
+  paymentRequestsListResponseSchema,
   type PaymentSettlementBody,
   type PublicPaymentRequest,
+  type MePaymentRequestsQuery,
+  type PaymentRequestsListResponse,
 } from "./payment-request.js";
 export {
   onRampFormCtaParamsSchema,
@@ -120,11 +127,15 @@ export {
   onRampTokensInputSchema,
   onRampRecordSchema,
   onRampRecordStatusSchema,
+  meOnRampsQuerySchema,
+  onRampsListResponseSchema,
   isOnRampFormCtaParams,
   type OnRampFormCtaParams,
   type OnRampTokensInput,
   type OnRampRecord,
   type OnRampRecordStatus,
+  type MeOnRampsQuery,
+  type OnRampsListResponse,
 } from "./on-ramp.js";
 export {
   stripeKycInputSchema,
@@ -146,3 +157,20 @@ export {
   type CreditCardFundBody,
   type CreditCardWithdrawBody,
 } from "./credit-card.js";
+export {
+  billingDatePartSchema,
+  billingDatePartToUtc,
+  billingRangeEndOfDay,
+  billingPeriodBounds,
+  generatePaymentInvoiceInputSchema,
+  generateFinancialActivityReportInputSchema,
+  type BillingDatePart,
+  type GeneratePaymentInvoiceInput,
+  type GenerateFinancialActivityReportInput,
+} from "./billing-handlers.js";
+export {
+  ISO_3166_1_ALPHA2_CODES,
+  isIso3166Alpha2,
+  isoCountryDisplayName,
+} from "./iso-3166-1-alpha2.js";
+export { taxRateForCountry } from "./tax-rate-for-country.js";

@@ -6,7 +6,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { stripeKycInputSchema, type UserKycStatus } from '@beam/stardorm-api-contract';
+import {
+  stripeKycInputSchema,
+  userKycStatusDocumentSchema,
+  type UserKycStatus,
+  type UserKycStatusDocument,
+} from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
 import {
   KycStatus,
@@ -38,6 +43,26 @@ export class KycStripeService {
   ) {}
 
   readonly id = 'complete_stripe_kyc' as const;
+
+  async getStatusDocument(wallet: string): Promise<UserKycStatusDocument> {
+    const w = wallet.trim().toLowerCase();
+    const doc = await this.kycModel.findOne({ walletAddress: w }).exec();
+    if (!doc) {
+      return userKycStatusDocumentSchema.parse({
+        walletAddress: w,
+        status: 'not_started',
+      });
+    }
+    return userKycStatusDocumentSchema.parse({
+      walletAddress: doc.walletAddress,
+      status: doc.status,
+      stripeVerificationSessionId: doc.stripeVerificationSessionId,
+      lastStripeEventType: doc.lastStripeEventType,
+      lastError: doc.lastError,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    });
+  }
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
     const stripe = getStripe(this.config);

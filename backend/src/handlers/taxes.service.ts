@@ -1,55 +1,67 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { formatEther } from 'ethers';
 import { OgStorageService } from 'src/og/og-storage.service';
+import { activeChainscanApiUrl } from 'src/og/beam-og.config';
 import type { HandlerContext, HandlerMessage, HandlerService } from './handler.types';
+import { taxRateForCountry } from '@beam/stardorm-api-contract';
 import { TaxesInputSchema, toUtcTaxDate } from './handler-inputs.schema';
+import {
+  fetchChainscanLedger,
+  formatTokenHuman,
+  type ChainscanLedgerAggregate,
+} from './chainscan-ledger';
 import { buildLinesPdf } from './minimal-pdf';
-
-function fnv1a32(input: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-function defaultTaxRate(country: string): number {
-  const c = country.toUpperCase();
-  if (c === 'US') return 0.22;
-  if (c === 'GB' || c === 'UK') return 0.2;
-  if (c === 'DE' || c === 'FR') return 0.25;
-  if (c === 'SG') return 0.17;
-  return 0.2;
-}
 
 type TaxesOutput = {
   address: string;
-  expenses: number;
+  /** USD-ish totals when CHAINSCAN_TAX_USD_PER_NATIVE > 0; native leg only. */
   income: number;
+  expenses: number;
   taxes: number;
   netIncome: number;
   taxRate: number;
   fromDate: Date;
   toDate: Date;
   countryCode: string;
+  ledger: ChainscanLedgerAggregate;
 };
 
-function deriveStubLedger(
+function taxRangeBounds(fromDate: Date, toDate: Date): {
+  rangeStartSec: number;
+  rangeEndSec: number;
+} {
+  const rangeStartSec = Math.floor(fromDate.getTime() / 1000);
+  const rangeEndSec = Math.floor(toDate.getTime() / 1000) + 86400 - 1;
+  return { rangeStartSec, rangeEndSec };
+}
+
+function usdFromNativeWei(wei: bigint, usdPerNative: number): number {
+  if (usdPerNative <= 0) return 0;
+  const eth = Number(wei) / 1e18;
+  if (!Number.isFinite(eth)) return 0;
+  return eth * usdPerNative;
+}
+
+function buildTaxesOutput(
   wallet: string,
-  from: Date,
-  to: Date,
   countryCode: string,
+  fromDate: Date,
+  toDate: Date,
+  ledger: ChainscanLedgerAggregate,
+  usdPerNative: number,
 ): TaxesOutput {
-  const ms = Math.max(0, +to - +from);
-  const days = Math.max(1, Math.round(ms / 86400000));
-  const seed = fnv1a32(`${wallet}|${+from}|${+to}|${countryCode}`);
-  const scale = days / 365;
-  const income = Math.round((25000 + (seed % 75000)) * scale);
-  const expenseRatio = 0.08 + (seed % 17) / 100;
-  const expenses = Math.round(income * expenseRatio);
+  const taxRate = taxRateForCountry(countryCode);
+  const incomeNativeUsd = usdFromNativeWei(ledger.nativeReceivedWei, usdPerNative);
+  const expenseNativeUsd = usdFromNativeWei(ledger.nativeSentWei, usdPerNative);
+  let income = Math.round(incomeNativeUsd);
+  let expenses = Math.round(expenseNativeUsd);
   const taxable = Math.max(0, income - expenses);
-  const taxRate = defaultTaxRate(countryCode);
-  const taxes = Math.round(taxable * taxRate);
+  const taxes = usdPerNative > 0 ? Math.round(taxable * taxRate) : 0;
   const netIncome = income - expenses - taxes;
 
   return {
@@ -59,9 +71,10 @@ function deriveStubLedger(
     taxes,
     netIncome,
     taxRate,
-    fromDate: from,
-    toDate: to,
+    fromDate,
+    toDate,
     countryCode,
+    ledger,
   };
 }
 
@@ -69,12 +82,12 @@ function deriveStubLedger(
 export class TaxesService implements HandlerService {
   readonly id = 'generate_tax_report' as const;
 
-  constructor(private readonly ogStorage: OgStorageService) {}
+  constructor(
+    private readonly ogStorage: OgStorageService,
+    private readonly config: ConfigService,
+  ) {}
 
-  async handle(
-    raw: unknown,
-    ctx: HandlerContext,
-  ): Promise<HandlerMessage> {
+  async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
     const parsed = TaxesInputSchema.safeParse(raw);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -87,16 +100,41 @@ export class TaxesService implements HandlerService {
     }
 
     const wallet = ctx.walletAddress.trim().toLowerCase();
-    const output = deriveStubLedger(wallet, fromDate, toDate, data.countryCode);
+    const apiBase = activeChainscanApiUrl(this.config);
+    const usdPerNative = Number(
+      this.config.get<string>('CHAINSCAN_TAX_USD_PER_NATIVE')?.trim() || '0',
+    );
 
-    const pdf = this.buildPdf(output);
+    const { rangeStartSec, rangeEndSec } = taxRangeBounds(fromDate, toDate);
+    let ledger: ChainscanLedgerAggregate;
+    try {
+      ledger = await fetchChainscanLedger(apiBase, wallet, rangeStartSec, rangeEndSec);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      throw new ServiceUnavailableException(
+        `Could not load on-chain activity from Chainscan (${msg}).`,
+      );
+    }
+
+    const output = buildTaxesOutput(
+      wallet,
+      data.countryCode,
+      fromDate,
+      toDate,
+      ledger,
+      Number.isFinite(usdPerNative) && usdPerNative > 0 ? usdPerNative : 0,
+    );
+
+    const pdf = this.buildPdf(output, usdPerNative > 0 && Number.isFinite(usdPerNative));
     const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
 
     return {
       message:
-        'Here is a draft tax-style summary for your reporting period, based on your wallet ' +
-        'and the dates you chose. The amounts are sample numbers for demos only—they are not ' +
-        'real tax calculations and are not tax or legal advice. Download the PDF below when you are ready.',
+        'Tax-period summary built from your wallet activity on 0G via the public Chainscan API ' +
+        '(native transfers and ERC-20 `tokentx`). Figures are not legal or tax advice. ' +
+        (usdPerNative > 0 && Number.isFinite(usdPerNative)
+          ? `Estimated USD values use CHAINSCAN_TAX_USD_PER_NATIVE=${usdPerNative} on incoming/outgoing native gas token only; ERC-20 flows are listed in the PDF without fiat conversion.`
+          : 'Set CHAINSCAN_TAX_USD_PER_NATIVE in the backend to apply your jurisdiction rate to an approximate native-token USD leg; otherwise estimated tax is zero.'),
       data: {
         countryCode: output.countryCode,
         from: output.fromDate.toISOString(),
@@ -106,6 +144,24 @@ export class TaxesService implements HandlerService {
         taxes: output.taxes,
         netIncome: output.netIncome,
         taxRate: output.taxRate,
+        chainscan: {
+          apiBase,
+          nativeReceivedWei: output.ledger.nativeReceivedWei.toString(),
+          nativeSentWei: output.ledger.nativeSentWei.toString(),
+          nativeTxInCount: output.ledger.nativeTxInCount,
+          nativeTxOutCount: output.ledger.nativeTxOutCount,
+          tokenTxInCount: output.ledger.tokenTxInCount,
+          tokenTxOutCount: output.ledger.tokenTxOutCount,
+          tokenBuckets: output.ledger.tokenFlows.map((t) => ({
+            contract: t.contractAddress,
+            symbol: t.symbol,
+            decimals: t.decimals,
+            received: t.received.toString(),
+            sent: t.sent.toString(),
+            receivedHuman: formatTokenHuman(t.received, t.decimals),
+            sentHuman: formatTokenHuman(t.sent, t.decimals),
+          })),
+        },
       },
       attachments: [
         {
@@ -117,23 +173,58 @@ export class TaxesService implements HandlerService {
     };
   }
 
-  private buildPdf(output: TaxesOutput): Buffer {
+  private buildPdf(output: TaxesOutput, usdModelActive: boolean): Buffer {
     const fmt = (n: number) =>
       n.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    const lines = [
-      'Stardorm — crypto activity tax summary (demo)',
+    const fmtWei = (w: bigint) => {
+      try {
+        return `${formatEther(w)} native`;
+      } catch {
+        return `${w.toString()} wei`;
+      }
+    };
+    const lines: string[] = [
+      'Stardorm — on-chain tax summary (Chainscan)',
       `Wallet: ${output.address}`,
-      `Country: ${output.countryCode}`,
-      `Period: ${output.fromDate.toISOString().slice(0, 10)} → ${output.toDate.toISOString().slice(0, 10)}`,
+      `Country (rate hint): ${output.countryCode} (${(output.taxRate * 100).toFixed(2)}%)`,
+      `Period (UTC): ${output.fromDate.toISOString().slice(0, 10)} → ${output.toDate.toISOString().slice(0, 10)}`,
       '',
-      `Income (est.):     ${fmt(output.income)}`,
-      `Expenses (est.):   ${fmt(output.expenses)}`,
-      `Effective tax rate: ${(output.taxRate * 100).toFixed(2)}%`,
-      `Taxes (est.):      ${fmt(output.taxes)}`,
-      `Net after tax:     ${fmt(output.netIncome)}`,
+      'Native (gas token) — in period',
+      `  Received: ${fmtWei(output.ledger.nativeReceivedWei)} (${output.ledger.nativeTxInCount} txs in)`,
+      `  Sent:     ${fmtWei(output.ledger.nativeSentWei)} (${output.ledger.nativeTxOutCount} txs out)`,
       '',
-      'Disclaimer: illustrative numbers for product demos only.',
     ];
+    if (usdModelActive) {
+      lines.push(
+        'USD-style estimate (native leg only, CHAINSCAN_TAX_USD_PER_NATIVE)',
+        `  Income (est.):     $${fmt(output.income)}`,
+        `  Expenses (est.):   $${fmt(output.expenses)}`,
+        `  Taxes (est.):      $${fmt(output.taxes)}`,
+        `  Net after tax:     $${fmt(output.netIncome)}`,
+        '',
+      );
+    } else {
+      lines.push(
+        'USD / fiat tax estimate disabled (set CHAINSCAN_TAX_USD_PER_NATIVE to model native leg).',
+        '',
+      );
+    }
+    lines.push('ERC-20 (top flows by volume, human units)');
+    const top = output.ledger.tokenFlows.slice(0, 12);
+    if (top.length === 0) {
+      lines.push('  (no ERC-20 transfers in this period)', '');
+    } else {
+      for (const t of top) {
+        const rin = formatTokenHuman(t.received, t.decimals);
+        const sout = formatTokenHuman(t.sent, t.decimals);
+        lines.push(`  ${t.symbol}: +${rin} / -${sout}  (${t.contractAddress.slice(0, 10)}…)`);
+      }
+      lines.push('');
+    }
+    lines.push(
+      'Source: Chainscan account API (txlist + tokentx).',
+      'Disclaimer: not legal, accounting, or tax advice.',
+    );
     return buildLinesPdf(lines);
   }
 }

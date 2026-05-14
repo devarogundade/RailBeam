@@ -124,3 +124,9 @@ export type ConversationSummary = z.infer<typeof conversationSummarySchema>;
 export type ConversationsPageResponse = z.infer<typeof conversationsPageResponseSchema>;
 export type ConversationsListResponse = ConversationsPageResponse;
 export type CreateConversationBody = z.infer<typeof createConversationBodySchema>;
+
+export const deleteConversationResponseSchema = z.object({
+  deleted: z.literal(true),
+});
+
+export type DeleteConversationResponse = z.infer<typeof deleteConversationResponseSchema>;

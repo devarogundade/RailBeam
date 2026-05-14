@@ -7,18 +7,24 @@ import {
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
+  onRampsListResponseSchema,
+  paymentRequestsListResponseSchema,
   publicUserSchema,
   stardormChatSuccessSchema,
   updateUserBodySchema,
+  userKycStatusDocumentSchema,
   type ChatHistoryAttachment,
   type ChatHistoryMessage,
   type ChatHistoryResponse,
   type CreditCardPublic,
   type CreditCardsListResponse,
   type ExecuteHandlerBody,
+  type OnRampsListResponse,
+  type PaymentRequestsListResponse,
   type PublicUser,
   type StardormChatClientResult,
   type UpdateUserBody,
+  type UserKycStatusDocument,
 } from "@beam/stardorm-api-contract";
 import { getStardormAccessToken } from "./stardorm-auth";
 import { getStardormApiBase, stardormAxios } from "./stardorm-axios";
@@ -191,6 +197,46 @@ export async function fetchStardormCreditCards(): Promise<CreditCardsListRespons
   try {
     const { data } = await stardormAxios.get<unknown>("/users/me/credit-cards");
     return creditCardsListResponseSchema.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStardormPaymentRequests(params: {
+  limit?: number;
+} = {}): Promise<PaymentRequestsListResponse | null> {
+  if (!getStardormApiBase()) return null;
+  const { limit = 20 } = params;
+  try {
+    const { data } = await stardormAxios.get<unknown>("/users/me/payment-requests", {
+      params: { limit },
+    });
+    return paymentRequestsListResponseSchema.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStardormOnRamps(params: {
+  limit?: number;
+} = {}): Promise<OnRampsListResponse | null> {
+  if (!getStardormApiBase()) return null;
+  const { limit = 20 } = params;
+  try {
+    const { data } = await stardormAxios.get<unknown>("/users/me/on-ramps", {
+      params: { limit },
+    });
+    return onRampsListResponseSchema.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStardormKycStatus(): Promise<UserKycStatusDocument | null> {
+  if (!getStardormApiBase()) return null;
+  try {
+    const { data } = await stardormAxios.get<unknown>("/users/me/kyc-status");
+    return userKycStatusDocumentSchema.parse(data);
   } catch {
     return null;
   }

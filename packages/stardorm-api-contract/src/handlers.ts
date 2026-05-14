@@ -13,6 +13,10 @@ export const HANDLER_ACTION_IDS = [
   "complete_stripe_kyc",
   /** Issue a virtual payment card record with billing profile and spend balance. */
   "create_credit_card",
+  /** PDF + structured snapshot: payment requests, on-ramps, cards, KYC for this wallet. */
+  "generate_payment_invoice",
+  /** Summary report across payment requests, on-ramps, virtual cards, and KYC status. */
+  "generate_financial_activity_report",
 ] as const;
 
 export type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];

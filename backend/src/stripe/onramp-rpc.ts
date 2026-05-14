@@ -2,7 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import { OG_RPC } from '../og/beam-og.config';
 
 const MAINNET_IDS = new Set([16661]);
-const TESTNET_IDS = new Set([16602, 16601]);
+const TESTNET_IDS = new Set([16602]);
 
 export function chainIdFromCaip2(caip2: string): number | null {
   const m = /^eip155:(\d+)$/i.exec(caip2.trim());
@@ -23,7 +23,5 @@ export function rpcUrlForCaip2(caip2: string, config: ConfigService): string {
       config.get<string>('ONRAMP_RPC_URL_TESTNET')?.trim() || OG_RPC.testnet
     );
   }
-  const fallback =
-    config.get<string>('ONRAMP_RPC_URL')?.trim() || OG_RPC.testnet;
-  return fallback;
+  return config.get<string>('ONRAMP_RPC_URL_TESTNET')?.trim() || OG_RPC.testnet;
 }

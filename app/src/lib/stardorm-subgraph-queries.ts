@@ -130,6 +130,7 @@ export type SubgraphAgentMapped = {
   uri: string | null;
   agentWallet: string | null;
   feePerDay: string | null;
+  isCloned: boolean;
   blockNumber: number;
   blockTimestamp: number;
   transactionHash: string;
@@ -158,6 +159,7 @@ function mapAgentCore(
     uri: raw.uri ?? null,
     agentWallet: raw.agentWallet ?? null,
     feePerDay: raw.feePerDay ?? null,
+    isCloned: raw.isCloned ?? false,
     blockNumber: parseBigIntString(raw.blockNumber),
     blockTimestamp: parseBigIntString(raw.blockTimestamp),
     transactionHash: raw.transactionHash,
@@ -166,8 +168,9 @@ function mapAgentCore(
 }
 
 export function mapSubgraphAgentRow(raw: z.input<typeof subgraphAgentRowSchema>): SubgraphAgentMapped {
-  const subscriptions = raw.subscriptions ?? [];
-  const meta = raw.metadata.map((m) => ({
+  const row = subgraphAgentRowSchema.parse(raw);
+  const subscriptions = row.subscriptions ?? [];
+  const meta = row.metadata.map((m) => ({
     id: m.id,
     agentId: parseBigIntString(m.agentId),
     key: m.key,
@@ -178,7 +181,7 @@ export function mapSubgraphAgentRow(raw: z.input<typeof subgraphAgentRowSchema>)
     transactionHash: m.transactionHash,
   }));
   const subscriptionCount = subscriptions.length;
-  return { ...mapAgentCore(raw, subscriptionCount), metadata: meta };
+  return { ...mapAgentCore(row, subscriptionCount), metadata: meta };
 }
 
 const AGENT_DETAIL_FIELDS = /* GraphQL */ `
@@ -188,6 +191,7 @@ const AGENT_DETAIL_FIELDS = /* GraphQL */ `
   uri
   agentWallet
   feePerDay
+  isCloned
   blockNumber
   blockTimestamp
   transactionHash
@@ -214,13 +218,28 @@ const GET_AGENT = /* GraphQL */ `
   }
 `;
 
-const GET_AGENTS_PAGE = /* GraphQL */ `
-  query AgentsPage($first: Int!, $skip: Int!) {
+const GET_AGENTS_MARKETPLACE_PAGE = /* GraphQL */ `
+  query AgentsMarketplacePage($first: Int!, $skip: Int!) {
     agents(
       first: $first
       skip: $skip
       orderBy: blockTimestamp
       orderDirection: desc
+      where: { isCloned: false }
+    ) {
+      ${AGENT_DETAIL_FIELDS}
+    }
+  }
+`;
+
+const GET_AGENTS_CLONED_BY_OWNER_PAGE = /* GraphQL */ `
+  query AgentsClonedByOwnerPage($first: Int!, $skip: Int!, $owner: Bytes!) {
+    agents(
+      first: $first
+      skip: $skip
+      orderBy: blockTimestamp
+      orderDirection: desc
+      where: { isCloned: true, owner: $owner }
     ) {
       ${AGENT_DETAIL_FIELDS}
     }
@@ -449,8 +468,30 @@ export async function fetchSubgraphAgentsPage(
   const skip = Math.max(0, Math.floor(params.skip));
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
-    GET_AGENTS_PAGE,
+    GET_AGENTS_MARKETPLACE_PAGE,
     { first, skip },
+    agentsListDataSchema,
+    url,
+  );
+  return data.agents.map((a) => mapSubgraphAgentRow(a));
+}
+
+/** Paginated registry agents cloned to `owner` (lowercase `0x` address). */
+export async function fetchSubgraphAgentsClonedByOwnerPage(
+  params: {
+    first: number;
+    skip: number;
+    owner: `0x${string}`;
+  },
+  opts?: SubgraphRequestOpts,
+): Promise<SubgraphAgentMapped[]> {
+  const first = Math.min(Math.max(1, Math.floor(params.first)), 100);
+  const skip = Math.max(0, Math.floor(params.skip));
+  const owner = params.owner.toLowerCase() as `0x${string}`;
+  const url = subgraphUrlOrThrow(opts);
+  const data = await requestStardormSubgraph(
+    GET_AGENTS_CLONED_BY_OWNER_PAGE,
+    { first, skip, owner },
     agentsListDataSchema,
     url,
   );
@@ -459,13 +500,36 @@ export async function fetchSubgraphAgentsPage(
 
 const AGENTS_PAGE_SIZE = 100;
 
-/** Walks paginated `agents` until a short page (or safety cap). */
+/**
+ * Walks paginated `agents` with `where: { isCloned: false }` (marketplace / canonical listings)
+ * until a short page (or safety cap).
+ */
 export async function fetchAllSubgraphAgents(opts?: SubgraphRequestOpts): Promise<SubgraphAgentMapped[]> {
   const out: SubgraphAgentMapped[] = [];
   let skip = 0;
   const maxAgents = 10_000;
   for (;;) {
     const page = await fetchSubgraphAgentsPage({ first: AGENTS_PAGE_SIZE, skip }, opts);
+    out.push(...page);
+    if (page.length < AGENTS_PAGE_SIZE || out.length >= maxAgents) break;
+    skip += AGENTS_PAGE_SIZE;
+  }
+  return out;
+}
+
+/** All cloned agents owned by `owner` (for merging into the viewer’s catalog). */
+export async function fetchAllSubgraphAgentsClonedByOwner(
+  owner: `0x${string}`,
+  opts?: SubgraphRequestOpts,
+): Promise<SubgraphAgentMapped[]> {
+  const out: SubgraphAgentMapped[] = [];
+  let skip = 0;
+  const maxAgents = 500;
+  for (;;) {
+    const page = await fetchSubgraphAgentsClonedByOwnerPage(
+      { first: AGENTS_PAGE_SIZE, skip, owner },
+      opts,
+    );
     out.push(...page);
     if (page.length < AGENTS_PAGE_SIZE || out.length >= maxAgents) break;
     skip += AGENTS_PAGE_SIZE;

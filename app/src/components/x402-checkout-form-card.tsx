@@ -11,6 +11,7 @@ import { toast } from "sonner";
 type X402FormRich = Extract<StardormChatRichBlock, { type: "x402_checkout_form" }>;
 
 const DEFAULT_NETWORKS = [
+  { id: "eip155:16661", label: "0G Mainnet" },
   { id: "eip155:16602", label: "0G Galileo testnet" },
 ] as const;
 
@@ -93,6 +94,8 @@ export function X402CheckoutFormCard({
     };
     const t = title.trim();
     if (t) params.title = t;
+    const ru = rich.resourceUrl?.trim();
+    if (ru) params.resourceUrl = ru;
     void onCreateLink(params);
   };
 
@@ -111,6 +114,19 @@ export function X402CheckoutFormCard({
             Then create the link to share with your payer.
           </p>
         )}
+        {rich.resourceUrl ? (
+          <p className="mt-2 text-xs">
+            <span className="text-muted-foreground">Resource: </span>
+            <a
+              href={rich.resourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-primary underline-offset-2 hover:underline break-all"
+            >
+              {rich.resourceUrl}
+            </a>
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">

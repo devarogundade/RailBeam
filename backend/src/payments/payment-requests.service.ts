@@ -63,6 +63,85 @@ export class PaymentRequestsService {
     return this.toPublic(doc);
   }
 
+  private async refreshExpiredPending(): Promise<void> {
+    const now = new Date();
+    await this.model
+      .updateMany(
+        { status: 'pending', expiresAt: { $exists: true, $lt: now } },
+        { $set: { status: 'expired' } },
+      )
+      .exec();
+  }
+
+  private updatedAtRangeFilter(range?: {
+    from?: Date;
+    to?: Date;
+  }): { updatedAt: { $gte?: Date; $lte?: Date } } | undefined {
+    if (!range?.from && !range?.to) return undefined;
+    const bounds: { $gte?: Date; $lte?: Date } = {};
+    if (range.from) bounds.$gte = range.from;
+    if (range.to) bounds.$lte = range.to;
+    return { updatedAt: bounds };
+  }
+
+  /**
+   * Lists checkout rows where the wallet created the request or is recorded as payer.
+   */
+  async listForWallet(
+    wallet: string,
+    limit: number,
+    range?: { from?: Date; to?: Date },
+  ): Promise<PublicPaymentRequest[]> {
+    const w = wallet.trim().toLowerCase();
+    await this.refreshExpiredPending();
+
+    const r = this.updatedAtRangeFilter(range);
+    const docs = await this.model
+      .find({
+        $or: [{ createdByWallet: w }, { paidByWallet: w }],
+        ...(r ?? {}),
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .exec();
+
+    return docs.map((d) => this.toPublic(d));
+  }
+
+  /** Payment requests this wallet created (e.g. invoices / checkout links). */
+  async listCreatedByWallet(
+    wallet: string,
+    limit: number,
+    range?: { from?: Date; to?: Date },
+  ): Promise<PublicPaymentRequest[]> {
+    const w = wallet.trim().toLowerCase();
+    await this.refreshExpiredPending();
+    const r = this.updatedAtRangeFilter(range);
+    const docs = await this.model
+      .find({ createdByWallet: w, ...(r ?? {}) })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .exec();
+    return docs.map((d) => this.toPublic(d));
+  }
+
+  /** Payment requests this wallet settled as payer. */
+  async listPaidByWallet(
+    wallet: string,
+    limit: number,
+    range?: { from?: Date; to?: Date },
+  ): Promise<PublicPaymentRequest[]> {
+    const w = wallet.trim().toLowerCase();
+    await this.refreshExpiredPending();
+    const r = this.updatedAtRangeFilter(range);
+    const docs = await this.model
+      .find({ paidByWallet: w, ...(r ?? {}) })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .exec();
+    return docs.map((d) => this.toPublic(d));
+  }
+
   async createX402Payment(fields: {
     title: string;
     description?: string;

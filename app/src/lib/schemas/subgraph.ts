@@ -122,6 +122,7 @@ export const subgraphAgentCoreRowSchema = z.object({
   uri: z.string().nullable().optional(),
   agentWallet: z.string().nullable().optional(),
   feePerDay: z.string().nullable().optional(),
+  isCloned: z.boolean().default(false),
   blockNumber: z.string(),
   blockTimestamp: z.string(),
   transactionHash: z.string(),
@@ -144,7 +145,7 @@ export const agentsListDataSchema = z.object({
 });
 
 export type SubgraphAgentRow = z.output<typeof subgraphAgentRowSchema>;
-export type SubgraphAgentCoreRow = z.infer<typeof subgraphAgentCoreRowSchema>;
+export type SubgraphAgentCoreRow = z.output<typeof subgraphAgentCoreRowSchema>;
 export type SubgraphAgentMetadataRaw = z.infer<typeof subgraphAgentMetadataRawSchema>;
 
 export const userSubscriptionsPageDataSchema = z.object({

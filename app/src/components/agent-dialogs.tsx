@@ -11,9 +11,24 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
 import type { Agent } from "@/lib/types";
+import {
+  agentPortfolioAddCta,
+  agentPortfolioAddVerb,
+  agentPortfolioRemoveCta,
+  agentPortfolioRemoveDialogTitle,
+  isRegistryTokenIdOneAgent,
+  REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+} from "@/lib/registry-token-one-agent";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useWriteContract, useChainId } from "wagmi";
+import { useWriteContract, useChainId, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
+import { decodeEventLog } from "viem";
+import { waitForTransactionReceipt } from "viem/actions";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { useBeamNetwork } from "@/lib/beam-network-context";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getIdentityRegistryAddressForChain,
   identityRegistryAbi,
@@ -60,6 +75,10 @@ export function HireDialog({
 
   if (!agent) return null;
 
+  const tokenOne = isRegistryTokenIdOneAgent(agent);
+  const addVerb = agentPortfolioAddVerb(agent);
+  const addCtaTitle = agentPortfolioAddCta(agent, agent.name);
+
   const value = subscribeValueWei(agent);
   const canHire = Boolean(registry && agent.chainAgentId != null && value !== undefined);
   const costLabel =
@@ -72,12 +91,14 @@ export function HireDialog({
   const onHire = async () => {
     if (!address) {
       if (connect()) {
-        toast.info("Connect your wallet", { description: "Then tap Hire again to finish." });
+        toast.info("Connect your wallet", {
+          description: `Then tap ${addVerb} again to finish.`,
+        });
       }
       return;
     }
     if (!canHire || !registry || agent.chainAgentId == null || value === undefined) {
-      toast.error("Cannot subscribe yet", {
+      toast.error("Cannot hire yet", {
         description: "This agent does not have live pricing yet.",
       });
       return;
@@ -91,12 +112,15 @@ export function HireDialog({
         value,
       });
       hire(agent.id);
-      toast.success(`${agent.name} hired`, {
-        description: `${formatEther(value)} 0G · ${String(IDENTITY_SUBSCRIBE_NUM_DAYS)} days`,
-      });
+      toast.success(
+        tokenOne ? `${agent.name} is available in chat` : `${agent.name} hired`,
+        {
+          description: `${formatEther(value)} 0G · ${String(IDENTITY_SUBSCRIBE_NUM_DAYS)} days`,
+        },
+      );
       onOpenChange(false);
     } catch (e) {
-      toast.error("Subscription failed", { description: txError(e) });
+      toast.error("Hire failed", { description: txError(e) });
     }
   };
 
@@ -105,16 +129,25 @@ export function HireDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CoinIcon /> Hire {agent.name}
+            <CoinIcon /> {addCtaTitle}
           </DialogTitle>
           <DialogDescription>
-            Add this agent to your portfolio. You can fire it any time.
+            {tokenOne
+              ? "Use this agent in conversation. You can remove it later."
+              : "Add this agent to your portfolio. You can fire it any time."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="rounded-xl border border-border bg-surface-elevated p-4">
           <div className="flex items-center gap-3">
-            <img src={agent.avatar} alt="" className="h-12 w-12 rounded-full bg-pill" />
+            <img
+              src={agent.avatar}
+              alt=""
+              className={cn(
+                "h-12 w-12 rounded-full bg-pill",
+                isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+              )}
+            />
             <div>
               <div className="text-sm font-semibold">{agent.name}</div>
               <div className="text-sm text-muted-foreground">{agent.tagline}</div>
@@ -122,12 +155,12 @@ export function HireDialog({
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-md border border-border p-2">
-              <div className="text-muted-foreground">Subscription price</div>
+              <div className="text-muted-foreground">Employer payment</div>
               <div className="mt-0.5 flex items-center gap-1 text-base font-semibold">
                 <span className="break-all">{costLabel}</span>
               </div>
               <div className="mt-1 text-[11px] text-muted-foreground">
-                Subscription period · {String(IDENTITY_SUBSCRIBE_NUM_DAYS)} days
+                Hire period · {String(IDENTITY_SUBSCRIBE_NUM_DAYS)} days
               </div>
             </div>
             <div className="rounded-md border border-border p-2">
@@ -148,7 +181,7 @@ export function HireDialog({
               ? "Processing…"
               : !canHire
                 ? "Pricing unavailable"
-                : `Pay & subscribe (${String(IDENTITY_SUBSCRIBE_NUM_DAYS)}d)`}
+                : `Pay & hire (${String(IDENTITY_SUBSCRIBE_NUM_DAYS)}d)`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -172,6 +205,10 @@ export function FireDialog({
 
   if (!agent) return null;
 
+  const tokenOne = isRegistryTokenIdOneAgent(agent);
+  const removeCta = agentPortfolioRemoveCta(agent);
+  const removeTitle = agentPortfolioRemoveDialogTitle(agent, agent.name);
+
   const canUnsubscribe = Boolean(registry && agent.chainAgentId != null);
 
   const onFire = async () => {
@@ -184,12 +221,12 @@ export function FireDialog({
           args: [BigInt(agent.chainAgentId)],
         });
       } catch (e) {
-        toast.error("Could not end subscription", { description: txError(e) });
+        toast.error("Could not complete fire", { description: txError(e) });
         return;
       }
     }
     fire(agent.id);
-    toast(`${agent.name} fired`);
+    toast(tokenOne ? `${agent.name} removed from your workspace` : `${agent.name} fired`);
     onOpenChange(false);
   };
 
@@ -197,11 +234,13 @@ export function FireDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Fire {agent.name}?</DialogTitle>
+          <DialogTitle>{removeTitle}</DialogTitle>
           <DialogDescription>
-            {canUnsubscribe
-              ? "This ends your paid subscription. Your portfolio updates after the transaction completes."
-              : "This agent will be removed from your portfolio."}
+            {tokenOne
+              ? "This agent will be removed from your workspace."
+              : canUnsubscribe
+                ? "This ends your paid hire. Your portfolio updates after the transaction completes."
+                : "This agent will be removed from your portfolio."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -209,7 +248,139 @@ export function FireDialog({
             Keep
           </Button>
           <Button variant="destructive" disabled={isPending} onClick={() => void onFire()}>
-            {isPending ? "Processing…" : "Fire agent"}
+            {isPending ? "Processing…" : removeCta}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function CloneDialog({
+  agent,
+  open,
+  onOpenChange,
+}: {
+  agent: Agent | null;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const { address, connect } = useApp();
+  const chainId = useChainId();
+  const { effectiveChainId } = useBeamNetwork();
+  const publicClient = usePublicClient();
+  const qc = useQueryClient();
+  const { writeContractAsync, isPending } = useWriteContract();
+  const registry = getIdentityRegistryAddressForChain(chainId);
+  const [newTokenId, setNewTokenId] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!open) setNewTokenId(null);
+  }, [open]);
+
+  if (!agent) return null;
+
+  const registryReady = Boolean(registry && agent.chainAgentId != null && !agent.isCloned);
+
+  const onClone = async () => {
+    if (!address) {
+      if (connect()) {
+        toast.info("Connect your wallet", { description: "Then confirm clone again." });
+      }
+      return;
+    }
+    if (!registryReady || !registry || agent.chainAgentId == null || !publicClient) {
+      toast.error("Cannot clone", { description: "Check network and agent token id." });
+      return;
+    }
+    try {
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: identityRegistryAbi,
+        functionName: "clone",
+        args: [
+          address as `0x${string}`,
+          BigInt(agent.chainAgentId),
+          "0x" as `0x${string}`,
+          "0x" as `0x${string}`,
+        ],
+      });
+      const receipt = await waitForTransactionReceipt(publicClient, { hash });
+      let minted: number | null = null;
+      for (const log of receipt.logs) {
+        if (log.address.toLowerCase() !== registry.toLowerCase()) continue;
+        try {
+          const decoded = decodeEventLog({
+            abi: identityRegistryAbi,
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decoded.eventName === "Cloned") {
+            const args = decoded.args as { newTokenId: bigint };
+            minted = Number(args.newTokenId);
+            break;
+          }
+        } catch {
+          /* not this log */
+        }
+      }
+      if (minted != null) setNewTokenId(minted);
+      void qc.invalidateQueries({
+        queryKey: [...queryKeys.agents.all, "catalog", effectiveChainId],
+        exact: false,
+      });
+      toast.success("Clone minted", {
+        description:
+          minted != null
+            ? `New registry token #${minted}. It appears under My Agents → Cloned after indexing.`
+            : "Check My Agents → Cloned once the indexer catches up.",
+      });
+    } catch (e) {
+      toast.error("Clone failed", { description: txError(e) });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Clone {agent.name}</DialogTitle>
+          <DialogDescription>
+            Mint your own registry token with the same on-chain skills and capabilities as this
+            agent. You can rename and rebrand your copy, but it will{" "}
+            <span className="font-medium text-foreground">not</span> receive updates if the
+            creator changes the original listing. To always use the live version with ongoing
+            updates, hire the original agent instead.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground/90">
+          On-chain <code className="text-[11px]">clone</code> succeeds only when your wallet is
+          authorized to act for this token (owner or approved operator). If the transaction
+          reverts, use <span className="font-medium">Hire</span> to add the original agent to your
+          workspace.
+        </div>
+
+        {newTokenId != null ? (
+          <div className="text-sm">
+            <Button asChild variant="secondary" className="w-full">
+              <Link
+                to="/agents/$agentId"
+                params={{ agentId: `chain-${newTokenId}` }}
+                onClick={() => onOpenChange(false)}
+              >
+                Open your clone
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={isPending || !registryReady} onClick={() => void onClone()}>
+            {isPending ? "Confirm in wallet…" : "Clone on-chain"}
           </Button>
         </DialogFooter>
       </DialogContent>

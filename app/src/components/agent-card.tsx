@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import type { Agent } from "@/lib/types";
+import {
+  agentPortfolioAddedBadge,
+  agentPortfolioAddVerb,
+  isRegistryTokenIdOneAgent,
+  REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+} from "@/lib/registry-token-one-agent";
+import { cn } from "@/lib/utils";
 import { CoinIcon } from "./icons";
 import { Star, Users } from "lucide-react";
 import { Button } from "./ui/button";
@@ -36,7 +43,14 @@ export function AgentCard({
     <div className="group hover-lift relative flex h-full flex-col gap-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
-          <img src={agent.avatar} alt="" className="h-12 w-12 rounded-full bg-pill" />
+          <img
+            src={agent.avatar}
+            alt=""
+            className={cn(
+              "h-12 w-12 rounded-full bg-pill",
+              isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+            )}
+          />
           {agent.online === true && (
             <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-surface" />
           )}
@@ -113,11 +127,11 @@ export function AgentCard({
         </Button>
         {hired ? (
           <Button size="sm" variant="secondary" disabled className="flex-1">
-            Hired
+            {agentPortfolioAddedBadge(agent)}
           </Button>
         ) : (
           <Button size="sm" className="flex-1" onClick={() => onHire(agent)}>
-            Hire
+            {agentPortfolioAddVerb(agent)}
           </Button>
         )}
       </div>

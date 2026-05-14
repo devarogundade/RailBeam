@@ -5,22 +5,42 @@ import { CoinIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Star, Users, Zap, ArrowLeft, ShieldCheck } from "lucide-react";
 import { AgentOnchainFeedback } from "@/components/agent-onchain-feedback";
-import { HireDialog, FireDialog } from "@/components/agent-dialogs";
-import { fetchStardormCatalog } from "@/lib/stardorm-catalog";
-import { queryKeys } from "@/lib/query-keys";
+import { CloneDialog, HireDialog, FireDialog } from "@/components/agent-dialogs";
+import { resolveCatalogAgentByParamId } from "@/lib/resolve-catalog-agent";
 import { readStoredBeamPreferredChainId } from "@/lib/beam-network-storage";
 import { useBeamNetwork } from "@/lib/beam-network-context";
 import { getStardormSubgraphUrl, getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { useStardormValidationsForAgent } from "@/lib/hooks/use-stardorm-subgraph";
+import {
+  agentPortfolioAddCta,
+  agentPortfolioRemoveCta,
+  isRegistryTokenIdOneAgent,
+  REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+} from "@/lib/registry-token-one-agent";
+import { cn } from "@/lib/utils";
+import type { Agent } from "@/lib/types";
+import { useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  getIdentityRegistryAddressForChain,
+  identityRegistryAbi,
+} from "@/lib/web3/identity-registry";
+import {
+  mergeDisplayFieldsIntoRegistrationUri,
+  parseAgentUriFromString,
+} from "@/lib/agent-uri-metadata";
 
 export const Route = createFileRoute("/agents/$agentId")({
   loader: async ({ context, params }) => {
     const beamCh = readStoredBeamPreferredChainId();
-    const data = await context.queryClient.ensureQueryData({
-      queryKey: queryKeys.agents.catalog(beamCh),
-      queryFn: () => fetchStardormCatalog(beamCh),
-    });
-    const agent = data.agents.find((a) => a.id === params.agentId);
+    const agent = await resolveCatalogAgentByParamId(
+      context.queryClient,
+      beamCh,
+      params.agentId,
+    );
     if (!agent) throw notFound();
     return { agent };
   },
@@ -35,14 +55,29 @@ export const Route = createFileRoute("/agents/$agentId")({
 function AgentDetail() {
   const { agent } = Route.useLoaderData();
   const { effectiveChainId } = useBeamNetwork();
-  const { isHired, setActiveAgentId } = useApp();
+  const { address, isHired, setActiveAgentId } = useApp();
   const hired = isHired(agent.id);
   const [hireOpen, setHireOpen] = React.useState(false);
   const [fireOpen, setFireOpen] = React.useState(false);
+  const [cloneOpen, setCloneOpen] = React.useState(false);
+
+  const isOwnedClone = Boolean(
+    agent.isCloned &&
+      address &&
+      agent.ownerAddress &&
+      agent.ownerAddress === address.toLowerCase(),
+  );
+  const canUseChat = hired || isOwnedClone;
 
   const subgraphOn = Boolean(
     getStardormSubgraphUrl() && getStardormSubgraphUrlForChain(effectiveChainId),
   );
+  const showClone =
+    subgraphOn &&
+    !agent.isCloned &&
+    agent.chainAgentId != null &&
+    agent.id !== "beam-default" &&
+    !isRegistryTokenIdOneAgent(agent);
   const validations = useStardormValidationsForAgent(agent.chainAgentId, { first: 12, skip: 0 });
   const hasValidations =
     !validations.isPending && !validations.isError && (validations.data?.length ?? 0) > 0;
@@ -62,7 +97,7 @@ function AgentDetail() {
     if (agent.hires != null) {
       rows.push({
         icon: <Users className="h-3.5 w-3.5 text-muted-foreground" />,
-        label: "Subscriptions",
+        label: "Employers",
         value: agent.hires.toLocaleString(),
       });
     }
@@ -95,7 +130,14 @@ function AgentDetail() {
 
         <div className="mt-4 flex flex-col gap-6 rounded-2xl border border-border bg-surface p-6 md:flex-row">
           <div className="relative">
-            <img src={agent.avatar} alt="" className="h-24 w-24 rounded-2xl bg-pill" />
+            <img
+              src={agent.avatar}
+              alt=""
+              className={cn(
+                "h-24 w-24 rounded-2xl bg-pill",
+                isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+              )}
+            />
             {agent.online === true && (
               <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-success ring-2 ring-surface">
                 <span className="h-1.5 w-1.5 rounded-full bg-success-foreground" />
@@ -108,6 +150,11 @@ function AgentDetail() {
               <span className="rounded-full bg-pill px-2 py-0.5 text-[11px] text-pill-foreground">
                 {agent.category}
               </span>
+              {agent.isCloned ? (
+                <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                  Clone
+                </span>
+              ) : null}
               {subgraphOn && agent.chainAgentId != null && hasValidations ? (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                   <ShieldCheck className="h-3 w-3 text-primary" /> Verified
@@ -162,20 +209,40 @@ function AgentDetail() {
             )}
 
             <div className="mt-6 flex flex-wrap gap-2">
-              {hired ? (
+              {canUseChat ? (
                 <>
                   <Button asChild onClick={() => setActiveAgentId(agent.id)}>
                     <Link to="/">Chat with {agent.name}</Link>
                   </Button>
-                  {agent.id !== "beam-default" && (
+                  {hired && !isRegistryTokenIdOneAgent(agent) ? (
                     <Button variant="outline" onClick={() => setFireOpen(true)}>
-                      Fire agent
+                      {agentPortfolioRemoveCta(agent)}
                     </Button>
-                  )}
+                  ) : null}
+                  {!hired && !agent.isCloned ? (
+                    <Button onClick={() => setHireOpen(true)}>
+                      {agentPortfolioAddCta(agent, agent.name)}
+                    </Button>
+                  ) : null}
+                  {showClone ? (
+                    <Button variant="outline" onClick={() => setCloneOpen(true)}>
+                      Clone to my wallet
+                    </Button>
+                  ) : null}
+                  <Button asChild variant="outline">
+                    <Link to="/marketplace">Browse marketplace</Link>
+                  </Button>
                 </>
               ) : (
                 <>
-                  <Button onClick={() => setHireOpen(true)}>Hire {agent.name}</Button>
+                  <Button onClick={() => setHireOpen(true)}>
+                    {agentPortfolioAddCta(agent, agent.name)}
+                  </Button>
+                  {showClone ? (
+                    <Button variant="outline" onClick={() => setCloneOpen(true)}>
+                      Clone to my wallet
+                    </Button>
+                  ) : null}
                   <Button asChild variant="outline">
                     <Link to="/marketplace">Browse marketplace</Link>
                   </Button>
@@ -184,6 +251,8 @@ function AgentDetail() {
             </div>
           </div>
         </div>
+
+        {isOwnedClone ? <CloneOwnerUriPanel agent={agent} beamChainId={effectiveChainId} /> : null}
 
         {subgraphOn && agent.chainAgentId != null ? (
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -235,6 +304,105 @@ function AgentDetail() {
 
       <HireDialog agent={agent} open={hireOpen} onOpenChange={setHireOpen} />
       <FireDialog agent={agent} open={fireOpen} onOpenChange={setFireOpen} />
+      <CloneDialog agent={agent} open={cloneOpen} onOpenChange={setCloneOpen} />
+    </div>
+  );
+}
+
+function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId: number }) {
+  const parsed = React.useMemo(
+    () => parseAgentUriFromString(agent.registrationUriRaw ?? null),
+    [agent.registrationUriRaw],
+  );
+  const [name, setName] = React.useState(agent.name);
+  const [description, setDescription] = React.useState(agent.description);
+  const [imageUrl, setImageUrl] = React.useState(
+    () => (parsed?.imageUrl?.trim() ? parsed.imageUrl.trim() : agent.avatar),
+  );
+
+  React.useEffect(() => {
+    setName(agent.name);
+    setDescription(agent.description);
+    setImageUrl(parsed?.imageUrl?.trim() ? parsed.imageUrl.trim() : agent.avatar);
+  }, [agent.id, agent.name, agent.description, agent.avatar, parsed?.imageUrl]);
+
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
+  const qc = useQueryClient();
+  const { writeContractAsync, isPending } = useWriteContract();
+  const registry = getIdentityRegistryAddressForChain(chainId);
+
+  const onSave = async () => {
+    if (!registry || agent.chainAgentId == null) {
+      toast.error("Registry not available on this network");
+      return;
+    }
+    const nextUri = mergeDisplayFieldsIntoRegistrationUri(agent.registrationUriRaw, {
+      name,
+      description,
+      imageUrl,
+    });
+    try {
+      await writeContractAsync({
+        address: registry,
+        abi: identityRegistryAbi,
+        functionName: "setAgentURI",
+        args: [BigInt(agent.chainAgentId), nextUri],
+      });
+      toast.success("Listing updated", {
+        description: "Name, description, and image are saved on-chain.",
+      });
+      void qc.invalidateQueries({
+        queryKey: ["agents", "catalog", beamChainId],
+        exact: false,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Could not update listing", { description: msg });
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-xl border border-border bg-surface p-4">
+      <h2 className="text-sm font-semibold">Your clone listing</h2>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Update how this agent appears on-chain (name, description, image). Callable skills and
+        services stay tied to the original registration and cannot be edited here.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="clone-uri-name">Display name</Label>
+          <Input
+            id="clone-uri-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="clone-uri-image">Image URL</Label>
+          <Input
+            id="clone-uri-image"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+      </div>
+      <div className="mt-3 space-y-2">
+        <Label htmlFor="clone-uri-desc">Description</Label>
+        <textarea
+          id="clone-uri-desc"
+          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[88px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button type="button" disabled={isPending || !publicClient} onClick={() => void onSave()}>
+          {isPending ? "Saving…" : "Save on-chain"}
+        </Button>
+      </div>
     </div>
   );
 }

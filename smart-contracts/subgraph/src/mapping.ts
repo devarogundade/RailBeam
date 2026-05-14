@@ -17,7 +17,14 @@ import {
   ValidationRequest as ValidationRequestEvent,
   ValidationResponse as ValidationResponseEvent,
 } from "../generated/ValidationRegistry/ValidationRegistry";
-import { Agent, AgentMetadata, Feedback, FeedbackResponse, UserSubscription, Validation } from "../generated/schema";
+import {
+  Agent,
+  AgentMetadata,
+  Feedback,
+  FeedbackResponse,
+  UserSubscription,
+  Validation,
+} from "../generated/schema";
 import { BigInt, ByteArray, Bytes, crypto } from "@graphprotocol/graph-ts";
 
 const SECONDS_PER_DAY = BigInt.fromI32(86400);
@@ -42,16 +49,26 @@ function agentMetadataId(agentId: BigInt, key: string): Bytes {
   return Bytes.fromByteArray(crypto.keccak256(agentBytes.concat(keyHash)));
 }
 
-function feedbackId(agentId: BigInt, client: Bytes, feedbackIndex: BigInt): Bytes {
+function feedbackId(
+  agentId: BigInt,
+  client: Bytes,
+  feedbackIndex: BigInt,
+): Bytes {
   let payload = Bytes.fromUTF8(
-    agentId.toString() + "-" + client.toHexString() + "-" + feedbackIndex.toString()
+    agentId.toString() +
+      "-" +
+      client.toHexString() +
+      "-" +
+      feedbackIndex.toString(),
   );
   return Bytes.fromByteArray(crypto.keccak256(payload));
 }
 
 function userSubscriptionId(user: Bytes, agentId: BigInt): Bytes {
   return Bytes.fromByteArray(
-    crypto.keccak256(user.concat(Bytes.fromByteArray(ByteArray.fromBigInt(agentId))))
+    crypto.keccak256(
+      user.concat(Bytes.fromByteArray(ByteArray.fromBigInt(agentId))),
+    ),
   );
 }
 
@@ -68,7 +85,7 @@ export function handleAgentRegistered(event: AgentRegisteredEvent): void {
   if (agent.agentWallet === null) {
     agent.agentWallet = event.params.owner;
   }
-
+  agent.isCloned = false;
   agent.blockNumber = event.block.number;
   agent.blockTimestamp = event.block.timestamp;
   agent.transactionHash = event.transaction.hash;
@@ -85,6 +102,7 @@ export function handleAgentURIUpdated(event: AgentURIUpdatedEvent): void {
     agent.owner = Bytes.empty();
     agent.agentWallet = null;
     agent.uri = null;
+    agent.isCloned = false;
   }
 
   agent.uri = event.params.newURI;
@@ -104,6 +122,7 @@ export function handleAgentMetadataSet(event: AgentMetadataSetEvent): void {
     agent.owner = Bytes.empty();
     agent.uri = null;
     agent.agentWallet = null;
+    agent.isCloned = false;
   }
 
   let metaId = agentMetadataId(event.params.agentId, event.params.metadataKey);
@@ -140,6 +159,7 @@ export function handleAgentTransfer(event: AgentTransferEvent): void {
     agent.agentId = event.params.tokenId;
     agent.uri = null;
     agent.agentWallet = null;
+    agent.isCloned = false;
   }
 
   agent.owner = event.params.to;
@@ -160,7 +180,7 @@ export function handleAgentCloned(event: AgentClonedEvent): void {
 
   agent.agentId = event.params.newTokenId;
   agent.owner = event.params.to;
-
+  agent.isCloned = true;
   let src = Agent.load(srcId);
   if (src == null) {
     agent.uri = null;
@@ -173,6 +193,27 @@ export function handleAgentCloned(event: AgentClonedEvent): void {
   agent.blockTimestamp = event.block.timestamp;
   agent.transactionHash = event.transaction.hash;
   agent.save();
+
+  /** Re-attach handler capability metadata so backends can resolve tools for cloned ids. */
+  let capsKey = "handlerCapabilities";
+  let srcCapsId = agentMetadataId(event.params.sourceTokenId, capsKey);
+  let srcCaps = AgentMetadata.load(srcCapsId);
+  if (srcCaps != null) {
+    let newCapsId = agentMetadataId(event.params.newTokenId, capsKey);
+    let newCaps = AgentMetadata.load(newCapsId);
+    if (newCaps == null) {
+      newCaps = new AgentMetadata(newCapsId);
+      newCaps.agent = newId;
+      newCaps.agentId = event.params.newTokenId;
+      newCaps.key = capsKey;
+    }
+    newCaps.value = srcCaps.value;
+    newCaps.updatedBy = event.transaction.from;
+    newCaps.blockNumber = event.block.number;
+    newCaps.blockTimestamp = event.block.timestamp;
+    newCaps.transactionHash = event.transaction.hash;
+    newCaps.save();
+  }
 }
 
 export function handleSubscribed(event: SubscribedEvent): void {
@@ -184,6 +225,7 @@ export function handleSubscribed(event: SubscribedEvent): void {
     agent.owner = Bytes.empty();
     agent.uri = null;
     agent.agentWallet = null;
+    agent.isCloned = false;
   }
 
   agent.blockNumber = event.block.number;
@@ -247,6 +289,7 @@ export function handleFeesSet(event: FeesSetEvent): void {
     agent.owner = Bytes.empty();
     agent.uri = null;
     agent.agentWallet = null;
+    agent.isCloned = false;
   }
 
   agent.feePerDay = event.params.feePerDay;
@@ -260,7 +303,7 @@ export function handleNewFeedback(event: NewFeedbackEvent): void {
   let id = feedbackId(
     event.params.agentId,
     event.params.clientAddress,
-    event.params.feedbackIndex
+    event.params.feedbackIndex,
   );
 
   let fb = new Feedback(id);
@@ -286,7 +329,7 @@ export function handleFeedbackRevoked(event: FeedbackRevokedEvent): void {
   let id = feedbackId(
     event.params.agentId,
     event.params.clientAddress,
-    event.params.feedbackIndex
+    event.params.feedbackIndex,
   );
   let fb = Feedback.load(id);
   if (fb == null) {
@@ -304,7 +347,7 @@ export function handleResponseAppended(event: ResponseAppendedEvent): void {
   let fbId = feedbackId(
     event.params.agentId,
     event.params.clientAddress,
-    event.params.feedbackIndex
+    event.params.feedbackIndex,
   );
 
   let fb = Feedback.load(fbId);
@@ -328,7 +371,7 @@ export function handleResponseAppended(event: ResponseAppendedEvent): void {
   }
 
   let response = new FeedbackResponse(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   );
   response.feedback = fbId;
   response.agentId = event.params.agentId;

@@ -33,8 +33,9 @@ export class PaymentRequestAttachment {
   size?: string;
 }
 
-const PaymentRequestAttachmentSchema =
-  SchemaFactory.createForClass(PaymentRequestAttachment);
+const PaymentRequestAttachmentSchema = SchemaFactory.createForClass(
+  PaymentRequestAttachment,
+);
 
 /**
  * Checkout row for x402 or plain on-chain settlement.
@@ -73,7 +74,7 @@ export class PaymentRequest {
   @Prop({ required: true, lowercase: true, trim: true })
   payTo: string;
 
-  /** Chain id as string (e.g. `16601`) or a short network slug from the client. */
+  /** Chain id as string (e.g. `16602`) or a short network slug from the client. */
   @Prop({ required: true })
   network: string;
 

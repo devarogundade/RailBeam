@@ -38,6 +38,7 @@ export function mapAgentRow(raw: Record<string, unknown>): Agent {
     uri: raw.uri == null ? null : String(raw.uri),
     agentWallet: raw.agentWallet == null ? null : String(raw.agentWallet),
     feePerDay: raw.feePerDay == null ? null : String(raw.feePerDay),
+    isCloned: Boolean(raw.isCloned),
     blockNumber: parseBigIntString(String(raw.blockNumber)),
     blockTimestamp: parseBigIntString(String(raw.blockTimestamp)),
     transactionHash: String(raw.transactionHash),

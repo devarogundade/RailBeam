@@ -71,7 +71,8 @@ const generateTaxReportTool: OpenAiChatTool = {
           type: 'string',
           minLength: 2,
           maxLength: 2,
-          description: 'ISO 3166-1 alpha-2 (e.g. US).',
+          description:
+            'ISO 3166-1 alpha-2 territory code (any officially assigned two-letter code, e.g. US, DE, JP, BR). UK is normalized to GB server-side.',
         },
         reportCard: taxReportCardJsonSchema,
       },
@@ -181,7 +182,7 @@ const offerX402CheckoutFormTool: OpenAiChatTool = {
   function: {
     name: 'offer_x402_checkout_form',
     description:
-      'Show the checkout form when the user wants a shareable /pay link but their message does NOT already spell out every required field (wei `amount`, `payTo` 0x…40, `currency`/token, `network`, and a stable `id`). Pass only `supportedAssets` (and optional `networks`); the user fills missing fields in the UI. Never invent wei, payTo, or token addresses.',
+      'Show the checkout form when the user wants a shareable /pay link but their message does NOT already spell out every required field (wei `amount`, `payTo` 0x…40, `currency`/token, `network`, and a stable `id`). Pass only `supportedAssets` (and optional `networks`, optional `resourceUrl` for the paywalled HTTPS resource); the user fills missing fields in the UI. Never invent wei, payTo, or token addresses.',
     parameters: {
       type: 'object',
       properties: {
@@ -195,6 +196,13 @@ const offerX402CheckoutFormTool: OpenAiChatTool = {
           type: 'string',
           maxLength: 2000,
           description: 'Short instructions shown under the title.',
+        },
+        resourceUrl: {
+          type: 'string',
+          maxLength: 2048,
+          format: 'uri',
+          description:
+            'Optional HTTPS URL of the paywalled resource; echoed on the checkout card and included when the user creates the payment link.',
         },
         supportedAssets: {
           type: 'array',
@@ -380,6 +388,62 @@ const createCreditCardTool: OpenAiChatTool = {
   },
 };
 
+const generatePaymentInvoiceTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'generate_payment_invoice',
+    description:
+      'Offer a one-tap PDF summary of this wallet’s Beam payment requests, Stripe on-ramp sessions, virtual cards, and KYC status. Optional UTC date range filters rows.',
+    parameters: {
+      type: 'object',
+      properties: {
+        from: {
+          ...taxDatePartJsonSchema,
+          description: 'Optional range start (UTC calendar date).',
+        },
+        to: {
+          ...taxDatePartJsonSchema,
+          description: 'Optional range end (UTC calendar date).',
+        },
+        invoiceTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 120,
+          description: 'Optional PDF title override.',
+        },
+      },
+    },
+  },
+};
+
+const generateFinancialActivityReportTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'generate_financial_activity_report',
+    description:
+      'Offer a one-tap activity snapshot (PDF + JSON) with counts across payment requests, on-ramp, virtual cards, and KYC. Optional UTC date range filters rows.',
+    parameters: {
+      type: 'object',
+      properties: {
+        from: {
+          ...taxDatePartJsonSchema,
+          description: 'Optional range start (UTC calendar date).',
+        },
+        to: {
+          ...taxDatePartJsonSchema,
+          description: 'Optional range end (UTC calendar date).',
+        },
+        reportTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 120,
+          description: 'Optional PDF title override.',
+        },
+      },
+    },
+  },
+};
+
 export function buildOpenAiHandlerTools(
   allowed: readonly HandlerActionId[],
 ): OpenAiChatTool[] {
@@ -400,6 +464,12 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('create_credit_card')) {
     out.push(createCreditCardTool);
+  }
+  if (allowed.includes('generate_payment_invoice')) {
+    out.push(generatePaymentInvoiceTool);
+  }
+  if (allowed.includes('generate_financial_activity_report')) {
+    out.push(generateFinancialActivityReportTool);
   }
   return out;
 }

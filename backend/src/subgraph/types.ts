@@ -6,6 +6,7 @@ export type Agent = {
   agentWallet: string | null;
   /** Raw wei string from subgraph BigInt */
   feePerDay: string | null;
+  isCloned: boolean;
   blockNumber: number;
   blockTimestamp: number;
   transactionHash: string;

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { isRegistryTokenIdOneAgent } from "@/lib/registry-token-one-agent";
 import { Loader2 } from "lucide-react";
 
 function txToastDescription(err: unknown): string {
@@ -130,7 +131,7 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
           0,
           "beam",
           `stars:${stars}`,
-          typeof window !== "undefined" ? window.location.origin : "https://beam.app",
+          typeof window !== "undefined" ? window.location.origin : "https://railbeam.xyz",
           payload.feedbackURI,
           payload.feedbackHash,
         ],
@@ -181,8 +182,9 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
       <div>
         <h2 className="text-lg font-semibold">Reviews</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ratings and comments from people who hired this agent. New reviews may take a short time
-          to appear.
+          {isRegistryTokenIdOneAgent(agent)
+            ? "Ratings and comments from people who use this agent. New reviews may take a short time to appear."
+            : "Ratings and comments from people who hired this agent. New reviews may take a short time to appear."}
         </p>
       </div>
 

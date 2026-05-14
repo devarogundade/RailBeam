@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -31,15 +32,21 @@ import {
   conversationsPageResponseSchema,
   conversationsQuerySchema,
   createConversationBodySchema,
+  deleteConversationResponseSchema,
   creditCardFundBodySchema,
   creditCardPublicSchema,
   creditCardsListResponseSchema,
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
+  meOnRampsQuerySchema,
+  mePaymentRequestsQuerySchema,
+  onRampsListResponseSchema,
+  paymentRequestsListResponseSchema,
   publicUserSchema,
   updateUserBodySchema,
   userUploadResultSchema,
+  userKycStatusDocumentSchema,
 } from '@beam/stardorm-api-contract';
 
 const USER_UPLOAD_MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -123,6 +130,19 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Delete('me/conversations/:conversationId')
+  async deleteConversation(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Param('conversationId') conversationId: string,
+  ) {
+    await this.users.deleteConversation(
+      wallet.walletAddress,
+      conversationId.trim(),
+    );
+    return deleteConversationResponseSchema.parse({ deleted: true });
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me/chat/messages')
   async chatMessages(
     @CurrentWallet() wallet: AuthedWallet,
@@ -144,6 +164,41 @@ export class UserController {
   async listCreditCards(@CurrentWallet() wallet: AuthedWallet) {
     return creditCardsListResponseSchema.parse(
       await this.users.listMyCreditCards(wallet.walletAddress),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/payment-requests')
+  async listMyPaymentRequests(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Query() query: Record<string, string | string[] | undefined>,
+  ) {
+    const q = parseQuery(
+      mePaymentRequestsQuerySchema,
+      parseQueryRecord(query),
+    );
+    return paymentRequestsListResponseSchema.parse(
+      await this.users.listMyPaymentRequests(wallet.walletAddress, q.limit),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/on-ramps')
+  async listMyOnRamps(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Query() query: Record<string, string | string[] | undefined>,
+  ) {
+    const q = parseQuery(meOnRampsQuerySchema, parseQueryRecord(query));
+    return onRampsListResponseSchema.parse(
+      await this.users.listMyOnRamps(wallet.walletAddress, q.limit),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/kyc-status')
+  async getMyKycStatus(@CurrentWallet() wallet: AuthedWallet) {
+    return userKycStatusDocumentSchema.parse(
+      await this.users.getMyKycStatus(wallet.walletAddress),
     );
   }
 
