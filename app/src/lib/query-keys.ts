@@ -1,5 +1,16 @@
 /** Typed TanStack Query key segments for consistent cache identity. */
 export const queryKeys = {
+  /**
+   * Stardorm HTTP / dashboard fetches (must match existing `useQuery` roots exactly).
+   */
+  beamHttp: {
+    publicPayment: (id: string) => ["public-payment", id] as const,
+    paymentRequests: () => ["paymentRequests", "me"] as const,
+    kycStatus: () => ["kycStatus", "me"] as const,
+    onRamps: () => ["onRamps", "me"] as const,
+    creditCards: () => ["creditCards", "me"] as const,
+    creditCardSensitive: (cardId: string) => ["creditCardSensitive", cardId] as const,
+  },
   user: {
     all: ["stardorm", "user"] as const,
     me: (wallet: `0x${string}` | null) => [...queryKeys.user.all, "me", wallet] as const,
@@ -17,6 +28,8 @@ export const queryKeys = {
   },
   subgraph: {
     all: ["subgraph"] as const,
+    /** Prefix for every subgraph query scoped to one Beam catalog / EVM chain id. */
+    chainScope: (beamChainId: number) => [...queryKeys.subgraph.all, beamChainId] as const,
     recentSubscriptions: (beamChainId: number, user: `0x${string}` | null, limit: number) =>
       [...queryKeys.subgraph.all, beamChainId, "userSubscriptions", "recent", user, limit] as const,
     /** Active `userSubscriptions` (endDate after now) for portfolio / hire state. */

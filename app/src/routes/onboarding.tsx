@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   Database,
   Link2,
+  Loader2,
   Rocket,
   Shield,
   Sparkles,
@@ -135,6 +136,7 @@ const STEPS = [
 function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = React.useState(0);
+  const [leaving, setLeaving] = React.useState(false);
   const total = STEPS.length;
   const current = STEPS[step];
   const progress = ((step + 1) / total) * 100;
@@ -150,7 +152,10 @@ function OnboardingPage() {
 
   const finish = React.useCallback(() => {
     setOnboardingComplete();
-    void navigate({ to: "/", replace: true });
+    setLeaving(true);
+    void Promise.resolve(navigate({ to: "/", replace: true })).finally(() => {
+      setLeaving(false);
+    });
   }, [navigate]);
 
   const Icon = current.icon;
@@ -178,9 +183,13 @@ function OnboardingPage() {
         </div>
         <button
           type="button"
+          disabled={leaving}
           onClick={finish}
-          className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60"
         >
+          {leaving ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+          ) : null}
           Skip and go to app
         </button>
       </header>
@@ -349,8 +358,14 @@ function OnboardingPage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="button" className="w-full sm:w-auto" onClick={finish}>
-                    <Rocket className="h-4 w-4" />
+                  <Button
+                    type="button"
+                    className="w-full sm:w-auto"
+                    loading={leaving}
+                    disabled={leaving}
+                    onClick={finish}
+                  >
+                    {!leaving ? <Rocket className="h-4 w-4" /> : null}
                     Enter Beam
                   </Button>
                 )}

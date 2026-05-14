@@ -215,6 +215,7 @@ function Settings() {
                     <Button
                       size="sm"
                       onClick={saveProfile}
+                      loading={updateMutation.isPending}
                       disabled={syncDisabled || meQuery.isPending || updateMutation.isPending}
                     >
                       Save profile

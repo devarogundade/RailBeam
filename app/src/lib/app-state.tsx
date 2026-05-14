@@ -24,6 +24,7 @@ import { useBeamNetwork } from "@/lib/beam-network-context";
 import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { queryKeys } from "@/lib/query-keys";
+import { invalidateAfterIdentityRegistryWrite } from "@/lib/query-invalidation";
 
 /** Prevents overlapping auto sign-in (e.g. React Strict Mode double mount). */
 const pendingAutoStardormSignIn = new Set<string>();
@@ -171,24 +172,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return ids;
   }, [subgraphHires.data, agents]);
 
+  /** Catalog `defaultHiredIds` (e.g. `beam-default`) — always in portfolio without an on-chain subscription row. */
+  const catalogDefaultHiredIds = React.useMemo(() => {
+    const raw = catalog.data?.defaultHiredIds ?? [];
+    return raw.filter((id) => {
+      const a = agents.find((ag) => ag.id === id);
+      return Boolean(a && a.isCloned !== true);
+    });
+  }, [catalog.data?.defaultHiredIds, agents]);
+
   const hiredIds = React.useMemo(() => {
-    /** No wallet ⇒ no hires. With a wallet, only indexer subscriptions (+ optimistic post-tx), never catalog seed defaults. */
-    if (!address) return [];
     const fromChain =
-      getStardormSubgraphUrlForChain(effectiveChainId) && isBeamConfiguredChainId(effectiveChainId)
+      address &&
+      getStardormSubgraphUrlForChain(effectiveChainId) &&
+      isBeamConfiguredChainId(effectiveChainId)
         ? subgraphCatalogHiredIds
         : [];
-    const merged = [...new Set([...fromChain, ...optimisticHiredIds])];
+    const opt = address ? optimisticHiredIds : [];
+    const merged = [...new Set([...catalogDefaultHiredIds, ...fromChain, ...opt])];
     return merged.filter((id) => {
       const a = agents.find((ag) => ag.id === id);
       if (a?.isCloned === true) return false;
       return true;
     });
-  }, [address, subgraphCatalogHiredIds, optimisticHiredIds, effectiveChainId, agents]);
+  }, [
+    address,
+    catalogDefaultHiredIds,
+    subgraphCatalogHiredIds,
+    optimisticHiredIds,
+    effectiveChainId,
+    agents,
+  ]);
 
-  const invalidateSubgraphHires = React.useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.subgraph.all });
-  }, [queryClient]);
+  const refreshChainPortfolioCaches = React.useCallback(() => {
+    invalidateAfterIdentityRegistryWrite(queryClient, effectiveChainId);
+  }, [queryClient, effectiveChainId]);
 
   const skipAutoStardormSignInRef = React.useRef(false);
 
@@ -310,9 +328,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const hire = React.useCallback(
     (id: string) => {
       setOptimisticHiredIds((p) => (p.includes(id) ? p : [...p, id]));
-      invalidateSubgraphHires();
+      refreshChainPortfolioCaches();
     },
-    [invalidateSubgraphHires],
+    [refreshChainPortfolioCaches],
   );
 
   const fire = React.useCallback(
@@ -338,9 +356,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         );
       }
-      invalidateSubgraphHires();
+      refreshChainPortfolioCaches();
     },
-    [invalidateSubgraphHires, patchUserMutation, queryClient, stardormAccessToken, userKey],
+    [refreshChainPortfolioCaches, patchUserMutation, queryClient, stardormAccessToken, userKey],
   );
 
   const isHired = (id: string) => hiredIds.includes(id);

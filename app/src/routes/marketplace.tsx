@@ -12,14 +12,16 @@ import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { EmptyState } from "@/components/empty-state";
 import { AgentCardGridSkeleton, PageRoutePending } from "@/components/page-shimmer";
+import { isRegistryTokenIdOneAgent } from "@/lib/registry-token-one-agent";
 
 export const Route = createFileRoute("/marketplace")({
   component: Marketplace,
   pendingComponent: () => <PageRoutePending variant="marketplace" />,
 });
 
+/** Registry token #1 is the default Beam agent (`beam-default`, subgraph `chain-1`); not hireable on marketplace. */
 function marketplaceAgents(list: Agent[]) {
-  return list.filter((a) => a.id !== "beam-default" && a.isCloned !== true);
+  return list.filter((a) => !isRegistryTokenIdOneAgent(a) && a.isCloned !== true);
 }
 
 function Marketplace() {

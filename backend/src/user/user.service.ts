@@ -50,6 +50,7 @@ import {
   resolveStardormChainAgentId,
   stardormChatRichBlockSchema,
   isOnRampFormCtaParams,
+  isCreditCardFormCtaParams,
   onRampTokensInputSchema,
   stripeKycInputSchema,
   createCreditCardInputSchema,
@@ -1789,6 +1790,8 @@ export class UserService {
       isX402CheckoutFormCtaParams(storedParams);
     const onRampFormCta =
       body.handler === 'on_ramp_tokens' && isOnRampFormCtaParams(storedParams);
+    const creditCardFormCta =
+      body.handler === 'create_credit_card' && isCreditCardFormCtaParams(storedParams);
     let execParams: unknown = body.params ?? {};
     if (checkoutFormCta) {
       const parsed = X402InputSchema.safeParse(execParams);
@@ -1813,6 +1816,12 @@ export class UserService {
       if (!UserService.jsonParamsEqual(storedParams, execParams)) {
         throw new BadRequestException('Params do not match this chat action');
       }
+    } else if (creditCardFormCta) {
+      const parsed = createCreditCardInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
     } else if (body.handler === 'create_credit_card') {
       const parsed = createCreditCardInputSchema.safeParse(execParams);
       if (!parsed.success) {

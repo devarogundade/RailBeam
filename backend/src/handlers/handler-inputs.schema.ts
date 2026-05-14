@@ -5,10 +5,17 @@ import {
   onRampFormCtaParamsSchema,
   isOnRampFormCtaParams,
   createCreditCardInputSchema,
+  creditCardFormCtaParamsSchema,
+  isCreditCardFormCtaParams,
   isIso3166Alpha2,
 } from '@beam/stardorm-api-contract';
 
-export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
+export {
+  onRampFormCtaParamsSchema,
+  isOnRampFormCtaParams,
+  creditCardFormCtaParamsSchema,
+  isCreditCardFormCtaParams,
+};
 
 export const taxDatePartSchema = z.object({
   year: z.number().int().min(2020).max(2030),
@@ -243,4 +250,20 @@ export const offerOnRampCheckoutFormToolArgsSchema =
 
 export type OfferOnRampCheckoutFormToolArgs = z.infer<
   typeof offerOnRampCheckoutFormToolArgsSchema
+>;
+
+/** OpenAI tool `offer_credit_card_checkout_form` arguments (no PII invented by the model). */
+export const offerCreditCardCheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  defaultCurrency: z
+    .string()
+    .trim()
+    .length(3)
+    .transform((c) => c.toUpperCase())
+    .optional(),
+});
+
+export type OfferCreditCardCheckoutFormToolArgs = z.infer<
+  typeof offerCreditCardCheckoutFormToolArgsSchema
 >;

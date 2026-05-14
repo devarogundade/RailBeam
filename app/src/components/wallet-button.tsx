@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CoinIcon } from "./icons";
-import { Copy, KeyRound, LogOut, Wallet } from "lucide-react";
+import { Copy, KeyRound, Loader2, LogOut, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export function WalletButton() {
@@ -30,6 +30,7 @@ export function WalletButton() {
     return (
       <Button
         size="sm"
+        loading={loading}
         onClick={() => {
           setLoading(true);
           try {
@@ -46,7 +47,7 @@ export function WalletButton() {
         disabled={loading}
         className="font-semibold"
       >
-        <Wallet className="h-4 w-4" />
+        {!loading ? <Wallet className="h-4 w-4" /> : null}
         {loading ? "Opening…" : "Connect Wallet"}
       </Button>
     );
@@ -88,7 +89,11 @@ export function WalletButton() {
                   void stardormSignIn().finally(() => setSigningIn(false));
                 }}
               >
-                <KeyRound className="h-4 w-4" />{" "}
+                {signingIn ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}{" "}
                 {signingIn ? "Signing…" : "Sign in to Stardorm"}
               </DropdownMenuItem>
             ) : (

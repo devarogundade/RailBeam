@@ -48,6 +48,7 @@ import type {
 import { toast } from "sonner";
 import { parseAgentUriFromString } from "@/lib/agent-uri-metadata";
 import { EmptyState } from "@/components/empty-state";
+import { queryKeys } from "@/lib/query-keys";
 import {
   DashboardListSkeleton,
   PageRoutePending,
@@ -305,7 +306,7 @@ function onRampBadgeVariant(
 
 function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
   const { data, isPending, isError } = useQuery({
-    queryKey: ["paymentRequests", "me"],
+    queryKey: queryKeys.beamHttp.paymentRequests(),
     queryFn: () => fetchStardormPaymentRequests({ limit: 25 }),
     enabled,
   });
@@ -374,7 +375,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
 
 function DashboardKyc({ enabled }: { enabled: boolean }) {
   const { data, isPending, isError } = useQuery({
-    queryKey: ["kycStatus", "me"],
+    queryKey: queryKeys.beamHttp.kycStatus(),
     queryFn: () => fetchStardormKycStatus(),
     enabled,
   });
@@ -428,7 +429,7 @@ function DashboardKyc({ enabled }: { enabled: boolean }) {
 
 function DashboardOnRamps({ enabled }: { enabled: boolean }) {
   const { data, isPending, isError } = useQuery({
-    queryKey: ["onRamps", "me"],
+    queryKey: queryKeys.beamHttp.onRamps(),
     queryFn: () => fetchStardormOnRamps({ limit: 25 }),
     enabled,
   });
@@ -534,7 +535,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
   const mainnetVirtualCardFundsDisabled =
     beamNetworkFromChainId(effectiveChainId) === "mainnet";
   const { data, isPending, isError } = useQuery({
-    queryKey: ["creditCards", "me"],
+    queryKey: queryKeys.beamHttp.creditCards(),
     queryFn: () => fetchStardormCreditCards(),
     enabled: Boolean(api && stardormSession),
   });
@@ -576,9 +577,12 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
       if ("error" in r) throw new Error(r.error);
       return r;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       toast.success("Funds added to card");
-      void qc.invalidateQueries({ queryKey: ["creditCards"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.creditCards() });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.beamHttp.creditCardSensitive(vars.id),
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -591,8 +595,11 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
       if ("error" in r) throw new Error(r.error);
       return r;
     },
-    onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: ["creditCards"] });
+    onSuccess: (data, vars) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.creditCards() });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.beamHttp.creditCardSensitive(vars.id),
+      });
       if (data.lastWithdrawTxHash) {
         toast.success("Native 0G sent to your wallet", {
           description: shortenHex(data.lastWithdrawTxHash),
@@ -692,7 +699,7 @@ function CreditCardRow({
   const qc = useQueryClient();
   const [cardDetailsRevealed, setCardDetailsRevealed] = React.useState(false);
   const sensitiveQ = useQuery({
-    queryKey: ["creditCardSensitive", card.id],
+    queryKey: queryKeys.beamHttp.creditCardSensitive(card.id),
     queryFn: async () => {
       const r = await fetchStardormCreditCardSensitiveDetails(card.id);
       if ("error" in r) throw new Error(r.error);
@@ -730,7 +737,7 @@ function CreditCardRow({
             onClick={() => {
               if (cardDetailsRevealed) {
                 setCardDetailsRevealed(false);
-                void qc.removeQueries({ queryKey: ["creditCardSensitive", card.id] });
+                void qc.removeQueries({ queryKey: queryKeys.beamHttp.creditCardSensitive(card.id) });
               } else {
                 setCardDetailsRevealed(true);
               }
@@ -798,13 +805,14 @@ function CreditCardRow({
             <Button
               type="button"
               size="sm"
+              loading={funding}
               disabled={funding || mainnetFundsDisabled}
               onClick={() => {
                 onFund(fundAmt);
                 setFundAmt("");
               }}
             >
-              {funding ? "…" : "Fund"}
+              Fund
             </Button>
           </div>
         </div>
@@ -822,13 +830,14 @@ function CreditCardRow({
               type="button"
               size="sm"
               variant="outline"
+              loading={withdrawing}
               disabled={withdrawing || mainnetFundsDisabled}
               onClick={() => {
                 onWithdraw(wdAmt);
                 setWdAmt("");
               }}
             >
-              {withdrawing ? "…" : "Remove"}
+              Remove
             </Button>
           </div>
         </div>

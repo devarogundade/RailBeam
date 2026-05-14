@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
 import { PageRoutePending, PayCheckoutCardSkeleton } from "@/components/page-shimmer";
+import { queryKeys } from "@/lib/query-keys";
+import { invalidateBeamHttpDashboardLists } from "@/lib/query-invalidation";
 
 type PayOutcome =
   | { kind: "success"; txHash: string; resourceUrl?: string }
@@ -208,9 +210,10 @@ function PayCheckoutPage() {
   const { writeContractAsync, isPending: sendingErc20 } = useWriteContract();
 
   const [payOutcome, setPayOutcome] = useState<PayOutcome | null>(null);
+  const [postSubmitSettling, setPostSubmitSettling] = useState(false);
 
   const q = useQuery({
-    queryKey: ["public-payment", id],
+    queryKey: queryKeys.beamHttp.publicPayment(id),
     queryFn: () => fetchPublicPayment(id),
     retry: 1,
   });
@@ -219,7 +222,8 @@ function PayCheckoutPage() {
     mutationFn: (vars: { txHash: string; payerAddress?: string }) =>
       postPaymentSettlement(id, vars),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["public-payment", id] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.beamHttp.publicPayment(id) });
+      invalidateBeamHttpDashboardLists(queryClient);
     },
   });
 
@@ -234,7 +238,11 @@ function PayCheckoutPage() {
     !address ||
     targetChainId == null ||
     q.isPending ||
-    confirmPay.isPending;
+    confirmPay.isPending ||
+    postSubmitSettling;
+
+  const walletPayBusy =
+    switching || sendingNative || sendingErc20 || postSubmitSettling;
 
   const amountPresentation =
     payment != null
@@ -280,18 +288,23 @@ function PayCheckoutPage() {
           args: [to, value],
         });
       }
-      await waitForWriteContractReceipt(publicClient, hash);
-      const updated = await confirmPay.mutateAsync({
-        txHash: hash,
-        payerAddress: address,
-      });
-      const resourceUrl =
-        updated.resourceUrl?.trim() || payment.resourceUrl?.trim() || undefined;
-      setPayOutcome({
-        kind: "success",
-        txHash: hash,
-        ...(resourceUrl ? { resourceUrl } : {}),
-      });
+      setPostSubmitSettling(true);
+      try {
+        await waitForWriteContractReceipt(publicClient, hash);
+        const updated = await confirmPay.mutateAsync({
+          txHash: hash,
+          payerAddress: address,
+        });
+        const resourceUrl =
+          updated.resourceUrl?.trim() || payment.resourceUrl?.trim() || undefined;
+        setPayOutcome({
+          kind: "success",
+          txHash: hash,
+          ...(resourceUrl ? { resourceUrl } : {}),
+        });
+      } finally {
+        setPostSubmitSettling(false);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Payment failed";
       setPayOutcome({ kind: "error", message: msg });
@@ -591,16 +604,19 @@ function PayCheckoutPage() {
               ) : (
                 <Button
                   className="mt-8 w-full font-semibold"
+                  loading={walletPayBusy}
                   disabled={payDisabled || switching || sendingNative || sendingErc20}
                   onClick={() => void onPay()}
                 >
                   {confirmPay.isPending
                     ? "Recording payment…"
-                    : switching || sendingNative || sendingErc20
-                      ? "Confirm in wallet…"
-                      : isNativeAsset(payment.asset)
-                        ? "Send native token"
-                        : "Send ERC-20"}
+                    : postSubmitSettling
+                      ? "Confirming on-chain…"
+                      : switching || sendingNative || sendingErc20
+                        ? "Confirm in wallet…"
+                        : isNativeAsset(payment.asset)
+                          ? "Send native token"
+                          : "Send ERC-20"}
                 </Button>
               )}
 

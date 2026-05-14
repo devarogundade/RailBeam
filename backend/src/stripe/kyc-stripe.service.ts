@@ -81,7 +81,7 @@ export class KycStripeService {
     const appUrl =
       this.config.get<string>('APP_PUBLIC_URL')?.trim().replace(/\/$/, '') ||
       'http://localhost:5173';
-    const returnPath = parsed.data.returnPath?.trim() || '/chat';
+    const returnPath = parsed.data.returnPath?.trim() || '/';
     const returnUrl = `${appUrl}${returnPath.startsWith('/') ? returnPath : `/${returnPath}`}`;
 
     const session = await stripe.identity.verificationSessions.create({

@@ -28,10 +28,11 @@ import { useWriteContract, useChainId, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { decodeEventLog } from "viem";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
+import { useChainConfirmationLoading } from "@/lib/use-chain-confirmation-loading";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateAfterIdentityRegistryWrite } from "@/lib/query-invalidation";
 import {
   getIdentityRegistryAddressForChain,
   identityRegistryAbi,
@@ -75,6 +76,8 @@ export function HireDialog({
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { busy: hireBusy, awaitingReceiptOnly: hireAwaitingReceipt, withReceiptWait: withHireReceiptWait } =
+    useChainConfirmationLoading(isPending);
   const registry = getIdentityRegistryAddressForChain(chainId);
 
   const ownedCloneIds = React.useMemo(
@@ -128,14 +131,16 @@ export function HireDialog({
       return;
     }
     try {
-      const hash = await writeContractAsync({
-        address: registry,
-        abi: identityRegistryAbi,
-        functionName: "subscribe",
-        args: [BigInt(agent.chainAgentId), IDENTITY_SUBSCRIBE_NUM_DAYS],
-        value,
+      await withHireReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: "subscribe",
+          args: [BigInt(agent.chainAgentId), IDENTITY_SUBSCRIBE_NUM_DAYS],
+          value,
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
       });
-      await waitForWriteContractReceipt(publicClient, hash);
       hire(agent.id);
       toast.success(
         tokenOne ? `${agent.name} is available in chat` : `${agent.name} hired`,
@@ -202,9 +207,15 @@ export function HireDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={isPending || !canHire} onClick={() => void onHire()}>
-            {isPending
-              ? "Processing…"
+          <Button
+            loading={hireBusy}
+            disabled={hireBusy || !canHire}
+            onClick={() => void onHire()}
+          >
+            {hireBusy
+              ? hireAwaitingReceipt
+                ? "Confirming on-chain…"
+                : "Processing…"
               : isOwnClone
                 ? "You own this clone"
                 : !canHire
@@ -230,6 +241,8 @@ export function FireDialog({
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { busy: fireBusy, awaitingReceiptOnly: fireAwaitingReceipt, withReceiptWait: withFireReceiptWait } =
+    useChainConfirmationLoading(isPending);
   const registry = getIdentityRegistryAddressForChain(chainId);
 
   if (!agent) return null;
@@ -249,13 +262,15 @@ export function FireDialog({
           });
           return;
         }
-        const hash = await writeContractAsync({
-          address: registry,
-          abi: identityRegistryAbi,
-          functionName: "unsubscribe",
-          args: [BigInt(agent.chainAgentId)],
+        await withFireReceiptWait(async () => {
+          const hash = await writeContractAsync({
+            address: registry,
+            abi: identityRegistryAbi,
+            functionName: "unsubscribe",
+            args: [BigInt(agent.chainAgentId)],
+          });
+          await waitForWriteContractReceipt(publicClient, hash);
         });
-        await waitForWriteContractReceipt(publicClient, hash);
       } catch (e) {
         toast.error("Could not complete fire", { description: txError(e) });
         return;
@@ -283,8 +298,13 @@ export function FireDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Keep
           </Button>
-          <Button variant="destructive" disabled={isPending} onClick={() => void onFire()}>
-            {isPending ? "Processing…" : removeCta}
+          <Button
+            variant="destructive"
+            loading={fireBusy}
+            disabled={fireBusy}
+            onClick={() => void onFire()}
+          >
+            {fireBusy ? (fireAwaitingReceipt ? "Confirming on-chain…" : "Processing…") : removeCta}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -307,6 +327,8 @@ export function CloneDialog({
   const publicClient = usePublicClient();
   const qc = useQueryClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { busy: cloneBusy, awaitingReceiptOnly: cloneAwaitingReceipt, withReceiptWait: withCloneReceiptWait } =
+    useChainConfirmationLoading(isPending);
   const registry = getIdentityRegistryAddressForChain(chainId);
   const [newTokenId, setNewTokenId] = React.useState<number | null>(null);
 
@@ -346,18 +368,20 @@ export function CloneDialog({
     const chainAgentId = agent.chainAgentId;
     if (chainAgentId == null) return;
     try {
-      const hash = await writeContractAsync({
-        address: registry,
-        abi: identityRegistryAbi,
-        functionName: "clone",
-        args: [
-          address as `0x${string}`,
-          BigInt(chainAgentId),
-          "0x" as `0x${string}`,
-          "0x" as `0x${string}`,
-        ],
+      const receipt = await withCloneReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: "clone",
+          args: [
+            address as `0x${string}`,
+            BigInt(chainAgentId),
+            "0x" as `0x${string}`,
+            "0x" as `0x${string}`,
+          ],
+        });
+        return waitForWriteContractReceipt(publicClient, hash);
       });
-      const receipt = await waitForWriteContractReceipt(publicClient, hash);
       let minted: number | null = null;
       for (const log of receipt.logs) {
         if (log.address.toLowerCase() !== registry.toLowerCase()) continue;
@@ -377,10 +401,7 @@ export function CloneDialog({
         }
       }
       if (minted != null) setNewTokenId(minted);
-      void qc.invalidateQueries({
-        queryKey: [...queryKeys.agents.all, "catalog", effectiveChainId],
-        exact: false,
-      });
+      invalidateAfterIdentityRegistryWrite(qc, effectiveChainId);
       toast.success("Clone minted", {
         description:
           minted != null
@@ -431,8 +452,16 @@ export function CloneDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={isPending || !registryReady} onClick={() => void onClone()}>
-            {isPending ? "Confirm in wallet…" : "Clone on-chain"}
+          <Button
+            loading={cloneBusy}
+            disabled={cloneBusy || !registryReady}
+            onClick={() => void onClone()}
+          >
+            {cloneBusy
+              ? cloneAwaitingReceipt
+                ? "Confirming on-chain…"
+                : "Confirm in wallet…"
+              : "Clone on-chain"}
           </Button>
         </DialogFooter>
       </DialogContent>

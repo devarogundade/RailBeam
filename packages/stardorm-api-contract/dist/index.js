@@ -226,6 +226,13 @@ var stardormChatRichBlockSchema = zod.z.discriminatedUnion("type", [
     ).max(16).optional()
   }),
   zod.z.object({
+    type: zod.z.literal("credit_card_checkout_form"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+    defaultCurrency: zod.z.string().length(3).optional()
+  }),
+  zod.z.object({
     type: zod.z.literal("credit_card"),
     title: zod.z.string().min(1),
     rows: stardormChatRichRows
@@ -595,7 +602,7 @@ var userKycStatusSchema = zod.z.enum([
   "canceled"
 ]);
 var stripeKycInputSchema = zod.z.object({
-  /** App path only (e.g. `/chat`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
+  /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
   returnPath: zod.z.string().min(1).max(512).optional()
 }).strict();
 var userKycStatusDocumentSchema = zod.z.object({
@@ -621,6 +628,14 @@ var createCreditCardInputSchema = zod.z.object({
   /** Opening balance in minor units (e.g. USD cents). */
   initialBalanceCents: zod.z.coerce.number().int().min(0).max(1e8).optional()
 });
+var creditCardFormCtaParamsSchema = zod.z.object({
+  _creditCardForm: zod.z.literal(true),
+  intro: zod.z.string().max(2e3).optional(),
+  defaultCurrency: zod.z.string().trim().length(3).transform((c) => c.toUpperCase()).optional()
+});
+function isCreditCardFormCtaParams(v) {
+  return creditCardFormCtaParamsSchema.safeParse(v).success;
+}
 var creditCardPublicSchema = zod.z.object({
   id: zod.z.string().min(1),
   firstName: zod.z.string(),
@@ -902,6 +917,7 @@ exports.conversationsPageResponseSchema = conversationsPageResponseSchema;
 exports.conversationsQuerySchema = conversationsQuerySchema;
 exports.createConversationBodySchema = createConversationBodySchema;
 exports.createCreditCardInputSchema = createCreditCardInputSchema;
+exports.creditCardFormCtaParamsSchema = creditCardFormCtaParamsSchema;
 exports.creditCardFundBodySchema = creditCardFundBodySchema;
 exports.creditCardFundQuoteOffChainSchema = creditCardFundQuoteOffChainSchema;
 exports.creditCardFundQuoteOnChainSchema = creditCardFundQuoteOnChainSchema;
@@ -921,6 +937,7 @@ exports.generateFinancialActivityReportInputSchema = generateFinancialActivityRe
 exports.generatePaymentInvoiceInputSchema = generatePaymentInvoiceInputSchema;
 exports.handlerActionIdSchema = handlerActionIdSchema;
 exports.handlersListResponseSchema = handlersListResponseSchema;
+exports.isCreditCardFormCtaParams = isCreditCardFormCtaParams;
 exports.isHandlerActionId = isHandlerActionId;
 exports.isIso3166Alpha2 = isIso3166Alpha2;
 exports.isOnRampFormCtaParams = isOnRampFormCtaParams;

@@ -880,6 +880,21 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        defaultCurrency: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }>, z.ZodObject<{
         type: z.ZodLiteral<"credit_card">;
         title: z.ZodString;
         rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -964,6 +979,11 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
         type: "credit_card";
         title: string;
         rows?: {
@@ -1033,6 +1053,11 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             label: string;
             id: string;
         }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
     } | {
         type: "credit_card";
         title: string;
@@ -1310,6 +1335,22 @@ declare const stardormChatRichBlockSchema: z.ZodDiscriminatedUnion<"type", [z.Zo
         label: string;
         id: string;
     }[] | undefined;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"credit_card_checkout_form">;
+    title: z.ZodString;
+    intro: z.ZodOptional<z.ZodString>;
+    /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+    defaultCurrency: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    type: "credit_card_checkout_form";
+    title: string;
+    intro?: string | undefined;
+    defaultCurrency?: string | undefined;
+}, {
+    type: "credit_card_checkout_form";
+    title: string;
+    intro?: string | undefined;
+    defaultCurrency?: string | undefined;
 }>, z.ZodObject<{
     type: z.ZodLiteral<"credit_card">;
     title: z.ZodString;
@@ -1638,6 +1679,22 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+        defaultCurrency: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }>, z.ZodObject<{
         type: z.ZodLiteral<"credit_card">;
         title: z.ZodString;
         rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -1774,6 +1831,11 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
         type: "credit_card";
         title: string;
         rows?: {
@@ -1857,6 +1919,11 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             label: string;
             id: string;
         }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
     } | {
         type: "credit_card";
         title: string;
@@ -2120,6 +2187,22 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             id: string;
         }[] | undefined;
     }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+        defaultCurrency: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }>, z.ZodObject<{
         type: z.ZodLiteral<"credit_card">;
         title: z.ZodString;
         rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -2256,6 +2339,11 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             id: string;
         }[] | undefined;
     } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
         type: "credit_card";
         title: string;
         rows?: {
@@ -2339,6 +2427,11 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             label: string;
             id: string;
         }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
     } | {
         type: "credit_card";
         title: string;
@@ -2721,6 +2814,21 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        defaultCurrency: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }>, z.ZodObject<{
         type: z.ZodLiteral<"credit_card">;
         title: z.ZodString;
         rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -2890,6 +2998,11 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
     } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
         type: "credit_card";
         title: string;
         rows?: {
@@ -2993,6 +3106,11 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             label: string;
             id: string;
         }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
     } | {
         type: "credit_card";
         title: string;
@@ -3283,6 +3401,21 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
         }>, z.ZodObject<{
+            type: z.ZodLiteral<"credit_card_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            defaultCurrency: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }>, z.ZodObject<{
             type: z.ZodLiteral<"credit_card">;
             title: z.ZodString;
             rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -3452,6 +3585,11 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
         } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
             type: "credit_card";
             title: string;
             rows?: {
@@ -3555,6 +3693,11 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 label: string;
                 id: string;
             }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
         } | {
             type: "credit_card";
             title: string;
@@ -3668,6 +3811,11 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
         } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
             type: "credit_card";
             title: string;
             rows?: {
@@ -3777,6 +3925,11 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 label: string;
                 id: string;
             }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
         } | {
             type: "credit_card";
             title: string;
@@ -4690,7 +4843,7 @@ type OnRampsListResponse = z.infer<typeof onRampsListResponseSchema>;
 declare const userKycStatusSchema: z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>;
 type UserKycStatus = z.infer<typeof userKycStatusSchema>;
 declare const stripeKycInputSchema: z.ZodObject<{
-    /** App path only (e.g. `/chat`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
+    /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
     returnPath: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     returnPath?: string | undefined;
@@ -4764,6 +4917,22 @@ declare const createCreditCardInputSchema: z.ZodObject<{
     initialBalanceCents?: number | undefined;
 }>;
 type CreateCreditCardInput = z.infer<typeof createCreditCardInputSchema>;
+/** Persisted on the chat CTA row until the user submits the virtual-card billing form. */
+declare const creditCardFormCtaParamsSchema: z.ZodObject<{
+    _creditCardForm: z.ZodLiteral<true>;
+    intro: z.ZodOptional<z.ZodString>;
+    defaultCurrency: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
+}, "strip", z.ZodTypeAny, {
+    _creditCardForm: true;
+    intro?: string | undefined;
+    defaultCurrency?: string | undefined;
+}, {
+    _creditCardForm: true;
+    intro?: string | undefined;
+    defaultCurrency?: string | undefined;
+}>;
+type CreditCardFormCtaParams = z.infer<typeof creditCardFormCtaParamsSchema>;
+declare function isCreditCardFormCtaParams(v: unknown): v is CreditCardFormCtaParams;
 declare const creditCardPublicSchema: z.ZodObject<{
     id: z.ZodString;
     firstName: z.ZodString;
@@ -5332,4 +5501,4 @@ declare const draftNftTransferInputSchema: z.ZodEffects<z.ZodObject<{
 }>;
 type DraftNftTransferInput = z.infer<typeof draftNftTransferInputSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

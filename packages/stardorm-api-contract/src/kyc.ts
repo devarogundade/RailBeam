@@ -14,7 +14,7 @@ export type UserKycStatus = z.infer<typeof userKycStatusSchema>;
 
 export const stripeKycInputSchema = z
   .object({
-    /** App path only (e.g. `/chat`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
+    /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
     returnPath: z.string().min(1).max(512).optional(),
   })
   .strict();

@@ -69,6 +69,13 @@ export const stardormChatRichBlockSchema = z.discriminatedUnion("type", [
       .optional(),
   }),
   z.object({
+    type: z.literal("credit_card_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+    defaultCurrency: z.string().length(3).optional(),
+  }),
+  z.object({
     type: z.literal("credit_card"),
     title: z.string().min(1),
     rows: stardormChatRichRows,

@@ -19,7 +19,9 @@ import {
   createCreditCardToolArgsSchema,
   offerX402CheckoutFormToolArgsSchema,
   offerOnRampCheckoutFormToolArgsSchema,
+  offerCreditCardCheckoutFormToolArgsSchema,
   x402CheckoutFormCtaParamsSchema,
+  creditCardFormCtaParamsSchema,
   type GenerateTaxReportToolArgs,
   type CreateX402PaymentToolArgs,
   type CreateOnRampTokensToolArgs,
@@ -93,6 +95,7 @@ const handlerEnum = z.enum(HANDLER_ACTION_IDS);
 
 const OFFER_X402_CHECKOUT_FORM = 'offer_x402_checkout_form' as const;
 const OFFER_ON_RAMP_CHECKOUT_FORM = 'offer_on_ramp_checkout_form' as const;
+const OFFER_CREDIT_CARD_CHECKOUT_FORM = 'offer_credit_card_checkout_form' as const;
 
 function handlerIdsForJsonContract(): string {
   return HANDLER_ACTION_IDS.map((h) => `"${h}"`).join('|');
@@ -193,11 +196,14 @@ export const agentComputeReplySchema = z
       }
     }
     if (handler === 'create_credit_card') {
+      const form = creditCardFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
       const r = createCreditCardInputSchema.safeParse(params);
       if (!r.success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Invalid params for create_credit_card',
+          message:
+            'Invalid params for create_credit_card (need full billing fields or a credit card checkout form payload)',
           path: ['params'],
         });
       }
@@ -270,6 +276,9 @@ type X402HandlerParams = z.infer<typeof X402InputSchema> | X402CheckoutFormCtaPa
 type OnRampHandlerParams =
   | z.infer<typeof onRampTokensInputSchema>
   | z.infer<typeof onRampFormCtaParamsSchema>;
+type CreditCardHandlerParams =
+  | z.infer<typeof createCreditCardInputSchema>
+  | z.infer<typeof creditCardFormCtaParamsSchema>;
 
 /** After validation: either text-only, or text + handler + params (no nulls). */
 export type AgentComputeReplyWithParams =
@@ -301,7 +310,7 @@ export type AgentComputeReplyWithParams =
   | {
       text: string;
       handler: 'create_credit_card';
-      params: z.infer<typeof createCreditCardInputSchema>;
+      params: CreditCardHandlerParams;
       rich?: AgentRichCard;
     }
   | {
@@ -399,6 +408,23 @@ export function asTypedAgentReply(
     return { text: r.text, handler: 'complete_stripe_kyc', params: p, rich };
   }
   if (r.handler === 'create_credit_card') {
+    const formTry = creditCardFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'credit_card_checkout_form',
+          title: 'Virtual payment card',
+          intro: formTry.data.intro,
+          defaultCurrency: formTry.data.defaultCurrency,
+        } as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'create_credit_card',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
     const p = createCreditCardInputSchema.parse(r.params);
     return { text: r.text, handler: 'create_credit_card', params: p, rich };
   }
@@ -522,7 +548,10 @@ export function buildAgentOutputContract(
       ? '- complete_stripe_kyc params: optional `returnPath` (app path for Stripe return_url); may be `{}`.'
       : '',
     allowed.includes('create_credit_card')
-      ? '- create_credit_card params: `firstName`, `lastName`, `line1`, optional `line2`, `city`, `region`, `postalCode`, `countryCode` (ISO 3166-1 alpha-2), optional `cardLabel`, optional `currency` (3-letter ISO, default USD), optional `initialBalanceCents` (non-negative integer). Optional matching `rich` type `credit_card` with title + rows for the same fields. Never invent the user\'s legal name or address.'
+      ? [
+          '- create_credit_card (JSON-only): use only when the user message already states `firstName`, `lastName`, `line1`, optional `line2`, `city`, `region`, `postalCode`, `countryCode` (ISO 3166-1 alpha-2), optional `cardLabel`, optional `currency` (3-letter ISO), optional `initialBalanceCents`. Never invent PII.',
+          '- Virtual card billing form: params `{"_creditCardForm":true}` (optional `intro`, optional `defaultCurrency`) and matching `rich` type `credit_card_checkout_form` when any required field is missing or ambiguous.',
+        ].join('\n')
       : '',
     allowed.includes('generate_payment_invoice')
       ? '- generate_payment_invoice params: optional `from`/`to` each `{"year","month","day"}` (UTC), optional `invoiceTitle`; may be `{}` for all recent rows.'
@@ -1000,6 +1029,42 @@ export function agentReplyFromChatCompletion(
         'Pick a supported token and network, enter the amount to receive and the USD card charge, then tap **Create Stripe checkout** to pay with Stripe and receive tokens after settlement.';
       return { text, handler: 'on_ramp_tokens', params, rich };
     }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_CREDIT_CARD_CHECKOUT_FORM ||
+        !allowedHandlers.includes('create_credit_card')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerCreditCardCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const params = creditCardFormCtaParamsSchema.parse({
+        _creditCardForm: true as const,
+        intro: parsed.data.intro,
+        defaultCurrency: parsed.data.defaultCurrency,
+      });
+      const rich = {
+        type: 'credit_card_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Virtual payment card',
+        intro: parsed.data.intro,
+        defaultCurrency: parsed.data.defaultCurrency,
+      } as AgentRichCard;
+      const text =
+        content.trim() ||
+        'Enter your legal name and billing address in the form below, then tap **Create virtual card** to issue the card.';
+      return { text, handler: 'create_credit_card', params, rich };
+    }
   }
   return structuredReplyFromModelContent(content, allowedHandlers);
 }
@@ -1020,7 +1085,9 @@ export function buildAgentToolCallingSystemPrompt(
       ? ['on_ramp_tokens', 'offer_on_ramp_checkout_form']
       : []),
     ...(allowed.includes('complete_stripe_kyc') ? ['complete_stripe_kyc'] : []),
-    ...(allowed.includes('create_credit_card') ? ['create_credit_card'] : []),
+    ...(allowed.includes('create_credit_card')
+      ? ['create_credit_card', 'offer_credit_card_checkout_form']
+      : []),
     ...(allowed.includes('generate_payment_invoice')
       ? ['generate_payment_invoice']
       : []),
@@ -1058,7 +1125,11 @@ export function buildAgentToolCallingSystemPrompt(
       ? 'For KYC: call **complete_stripe_kyc** with optional `returnPath` or `{}`. Remind the user to tap **Start Identity verification** to open Stripe Identity.'
       : '',
     allowed.includes('create_credit_card')
-      ? 'For virtual payment cards: call **create_credit_card** only after the user message states the cardholder legal name, street line(s), city, region/state, postal code, and ISO country code. Optional `initialBalanceCents` when they specify an opening amount. Remind them to tap **Create virtual card** to mint the card and manage funds on the dashboard.'
+      ? [
+          'For virtual payment cards: if the user message already states legal first/last name, street line 1, city, region/state, postal code, and ISO country, call **create_credit_card** with those exact arguments (optional `initialBalanceCents`, optional `cardPreview`).',
+          'If any required billing field is missing or ambiguous, call **offer_credit_card_checkout_form** with optional `formTitle`, `intro`, and optional `defaultCurrency`; never invent names or addresses.',
+          'After proposing create_credit_card or the billing form, remind the user to tap **Create virtual card** to mint the card.',
+        ].join(' ')
       : '',
     allowed.includes('generate_tax_report')
       ? 'After proposing generate_tax_report, remind the user they must tap **Generate tax PDF** to run the server job and attach the PDF to the thread.'

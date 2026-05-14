@@ -144,6 +144,8 @@ export {
 } from "./kyc.js";
 export {
   createCreditCardInputSchema,
+  creditCardFormCtaParamsSchema,
+  isCreditCardFormCtaParams,
   creditCardPublicSchema,
   creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
@@ -154,6 +156,7 @@ export {
   creditCardFundQuoteResponseSchema,
   creditCardWithdrawBodySchema,
   type CreateCreditCardInput,
+  type CreditCardFormCtaParams,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
   type CreditCardsListResponse,

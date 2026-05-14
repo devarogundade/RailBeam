@@ -59,6 +59,7 @@ export class ChatRichBlock {
       'tx',
       'x402_checkout_form',
       'on_ramp_checkout_form',
+      'credit_card_checkout_form',
       'credit_card',
     ],
   })

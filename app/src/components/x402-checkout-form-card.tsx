@@ -227,7 +227,7 @@ export function X402CheckoutFormCard({
         />
       </div>
 
-      <Button type="submit" size="sm" className="w-full font-semibold" disabled={disabled}>
+      <Button type="submit" size="sm" className="w-full font-semibold" loading={disabled} disabled={disabled}>
         {disabled ? "Creating…" : "Create payment link"}
       </Button>
     </form>

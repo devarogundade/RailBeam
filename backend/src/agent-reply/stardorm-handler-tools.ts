@@ -338,12 +338,43 @@ const creditCardToolPreviewJsonSchema: Record<string, unknown> = {
   },
 };
 
+const offerCreditCardCheckoutFormTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'offer_credit_card_checkout_form',
+    description:
+      'Show the virtual-card billing form when the user wants a Beam virtual payment card but their message does NOT already state legal first/last name, street line 1, city, region/state, postal code, and ISO country (2 letters). Never invent names or addresses. Optional `defaultCurrency` (3-letter ISO, e.g. USD) pre-fills the form.',
+    parameters: {
+      type: 'object',
+      properties: {
+        formTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+          description: 'Card title shown above the form.',
+        },
+        intro: {
+          type: 'string',
+          maxLength: 2000,
+          description: 'Short instructions shown under the title.',
+        },
+        defaultCurrency: {
+          type: 'string',
+          minLength: 3,
+          maxLength: 3,
+          description: 'Optional ISO 4217 code to pre-fill (e.g. USD).',
+        },
+      },
+    },
+  },
+};
+
 const createCreditCardTool: OpenAiChatTool = {
   type: 'function',
   function: {
     name: 'create_credit_card',
     description:
-      'Issue a virtual payment card for this wallet when the user has explicitly confirmed legal first and last name, full billing street address, city, region/state, postal code, ISO country (2 letters), and optional opening balance in cents. Never invent personal data. Optional `cardPreview` adds invoice-style rows for the chat card.',
+      'Issue a virtual payment card for this wallet when the user has explicitly confirmed legal first and last name, full billing street address, city, region/state, postal code, ISO country (2 letters), and optional opening balance in cents. Never invent personal data. If any required field is missing or ambiguous, use offer_credit_card_checkout_form instead. Optional `cardPreview` adds invoice-style rows for the chat card.',
     parameters: {
       type: 'object',
       properties: {
@@ -568,6 +599,7 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('create_credit_card')) {
     out.push(createCreditCardTool);
+    out.push(offerCreditCardCheckoutFormTool);
   }
   if (allowed.includes('generate_payment_invoice')) {
     out.push(generatePaymentInvoiceTool);

@@ -225,7 +225,7 @@ export function OnRampCheckoutFormCard({
         />
       </div>
 
-      <Button type="submit" size="sm" className="w-full font-semibold" disabled={disabled}>
+      <Button type="submit" size="sm" className="w-full font-semibold" loading={disabled} disabled={disabled}>
         {disabled ? "Creating…" : "Create Stripe checkout"}
       </Button>
     </form>

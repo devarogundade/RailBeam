@@ -20,6 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  TransferDraftHandlerCtaRow,
+  isTransferDraftHandler,
+} from "@/components/transfer-draft-handler-cta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -61,9 +65,10 @@ import {
   Inbox,
   Wallet,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
   fetchStardormChatMessages,
   isStardormInferenceEnabled,
@@ -77,6 +82,7 @@ import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { useUserAvatarPreset } from "@/lib/hooks/use-user-avatar-preset";
 import { USER_AVATAR_URLS } from "@/lib/user-avatar-assets";
 import { queryKeys } from "@/lib/query-keys";
+import { invalidateBeamHttpDashboardLists } from "@/lib/query-invalidation";
 import { resolveCatalogAgentForChatBubble } from "@/lib/resolve-catalog-agent";
 import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
@@ -110,9 +116,19 @@ import {
   X402CheckoutFormCard,
 } from "@/components/x402-checkout-form-card";
 import { OnRampCheckoutFormCard } from "@/components/on-ramp-checkout-form-card";
+import { CreditCardCheckoutFormCard } from "@/components/credit-card-checkout-form-card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EmptyState } from "@/components/empty-state";
 import { ChatHistorySkeleton, ConversationListSkeleton } from "@/components/page-shimmer";
+
+const indexRouteApi = getRouteApi("/");
+
+function buildStripeIdentityReturnPath(openConversationId: string | null): string {
+  if (openConversationId) {
+    return `/?${new URLSearchParams({ conversation: openConversationId }).toString()}`;
+  }
+  return "/";
+}
 
 /** UI-only attachment row that also keeps the raw `File` for upload. */
 type DraftAttachment = ChatAttachment & { file: File; };
@@ -361,6 +377,7 @@ export function Chat() {
     onSuccess: (summary) => {
       setOpenConversationId(summary.id);
       if (userKey) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.user.chatMessages(userKey, summary.id) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
       }
@@ -378,6 +395,7 @@ export function Chat() {
     onSuccess: (_data, id) => {
       setOpenConversationId(id);
       if (userKey) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.user.chatMessages(userKey, id) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
       }
@@ -388,6 +406,27 @@ export function Chat() {
       toast.error("Could not switch conversation", { description: msg });
     },
   });
+
+  const navigate = useNavigate();
+  const { conversation: conversationFromSearch } = indexRouteApi.useSearch();
+
+  React.useEffect(() => {
+    const id = conversationFromSearch;
+    if (!id || !apiOn || !userKey || !stardormAccessToken) return;
+    if (openConversationId === id) {
+      void navigate({ to: "/", search: () => ({}), replace: true });
+      return;
+    }
+    selectConvMutation.mutate(id);
+  }, [
+    apiOn,
+    conversationFromSearch,
+    navigate,
+    openConversationId,
+    selectConvMutation,
+    stardormAccessToken,
+    userKey,
+  ]);
 
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const deleteConvMutation = useMutation({
@@ -450,9 +489,17 @@ export function Chat() {
       if (!m.handlerCta || !activeAgentId_) return;
       setExecutingHandlerForId(m.id);
       try {
+        const base = (overrideParams ?? m.handlerCta.params) as Record<string, unknown>;
+        const params =
+          m.handlerCta.handler === "complete_stripe_kyc"
+            ? {
+                ...base,
+                returnPath: buildStripeIdentityReturnPath(openConversationId),
+              }
+            : base;
         const res = await stardormExecuteHandler({
           handler: m.handlerCta.handler,
-          params: overrideParams ?? m.handlerCta.params,
+          params,
           ctaMessageId: m.id,
         });
         if ("error" in res && res.error) {
@@ -460,6 +507,7 @@ export function Chat() {
           return;
         }
         if (!("message" in res)) return;
+        invalidateBeamHttpDashboardLists(queryClient);
         if (userKey && openConversationId) {
           await queryClient.invalidateQueries({
             queryKey: queryKeys.user.chatMessages(userKey, openConversationId),
@@ -637,6 +685,7 @@ export function Chat() {
             <Button
               type="button"
               variant="destructive"
+              loading={deleteConvMutation.isPending}
               disabled={deleteConvMutation.isPending || !deleteTargetId}
               onClick={() => {
                 if (deleteTargetId) deleteConvMutation.mutate(deleteTargetId);
@@ -753,10 +802,11 @@ export function Chat() {
               <Button
                 type="button"
                 className="w-full gap-2 font-semibold"
+                loading={createConvMutation.isPending}
                 disabled={!apiOn || createConvMutation.isPending}
                 onClick={() => createConvMutation.mutate()}
               >
-                <Plus className="h-4 w-4" />
+                {!createConvMutation.isPending ? <Plus className="h-4 w-4" /> : null}
                 New conversation
               </Button>
             </div>
@@ -840,7 +890,7 @@ export function Chat() {
                   activeAgent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
                 )}
               />
-              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-2.5">
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border bg-card px-3 py-2.5 text-card-foreground ring-1 ring-border/40">
                 <span className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                 <span className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                 <span className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
@@ -864,8 +914,9 @@ export function Chat() {
                     type="button"
                     disabled={typing}
                     onClick={() => void send(s)}
-                    className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
+                    {typing ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden /> : null}
                     {s}
                   </button>
                 ))}
@@ -984,9 +1035,11 @@ export function Chat() {
                 onClick={() => void send()}
                 size="sm"
                 className="shrink-0 touch-manipulation font-semibold max-md:min-h-10 max-md:px-3"
+                loading={typing}
                 disabled={!apiOn || typing}
               >
-                <Send className="h-3.5 w-3.5" /> Send
+                {!typing ? <Send className="h-3.5 w-3.5" /> : null}
+                {typing ? "Sending…" : "Send"}
               </Button>
             </div>
           </div>
@@ -1202,6 +1255,7 @@ function TaxReportHandlerCtaRow({
         type="button"
         size="sm"
         variant="secondary"
+        loading={disabled}
         disabled={disabled}
         onClick={() =>
           void onRunHandlerCta(m, {
@@ -1226,18 +1280,20 @@ function handlerCtaLabel(handler: string) {
     return "Download payment summary";
   if (handler === "generate_financial_activity_report")
     return "Download activity report";
-  if (handler === "draft_native_transfer") return "Confirm native transfer draft";
-  if (handler === "draft_erc20_transfer") return "Confirm token transfer draft";
-  if (handler === "draft_nft_transfer") return "Confirm NFT transfer draft";
+  if (handler === "draft_native_transfer") return "Send native transfer";
+  if (handler === "draft_erc20_transfer") return "Send token transfer";
+  if (handler === "draft_nft_transfer") return "Send NFT transfer";
   return handler.replace(/_/g, " ");
 }
 
 type CheckoutFormRich = Extract<
   StardormChatRichBlock,
-  { type: "x402_checkout_form" } | { type: "on_ramp_checkout_form" }
+  | { type: "x402_checkout_form" }
+  | { type: "on_ramp_checkout_form" }
+  | { type: "credit_card_checkout_form" }
 >;
 
-/** Checkout rich blocks need `handlerCta` to run `create_x402_payment` / `on_ramp_tokens`; show context if it is missing. */
+/** Rich form blocks need `handlerCta` to run the server handler; show context if it is missing. */
 function CheckoutRichUnavailableNotice({ rich }: { rich: CheckoutFormRich }) {
   return (
     <div
@@ -1258,9 +1314,9 @@ function CheckoutRichUnavailableNotice({ rich }: { rich: CheckoutFormRich }) {
           <p className="whitespace-pre-wrap text-foreground/90">{rich.intro}</p>
         ) : null}
         <p>
-          This checkout cannot be submitted because the server did not attach an action for this
+          This form cannot be submitted because the server did not attach an action for this
           message (for example, older history or a partial sync). Reload the chat or ask the agent
-          to offer checkout again.
+          to offer it again.
         </p>
       </div>
     </div>
@@ -1491,18 +1547,22 @@ function Bubble({
         />
       )}
       <div className={cn("flex max-w-[78%] flex-col gap-1.5", isUser && "items-end")}>
-        {!isUser && agent && (
-          <div className="px-1 text-[11px] text-muted-foreground">
-            {agent.name} · {timeAgo(m.createdAt)}
-          </div>
+        {isUser ? (
+          <div className="px-1 text-[11px] font-medium text-muted-foreground">You</div>
+        ) : (
+          agent && (
+            <div className="px-1 text-[11px] text-muted-foreground">
+              {agent.name} · {timeAgo(m.createdAt)}
+            </div>
+          )
         )}
         {m.content && (
           <div
             className={cn(
               "rounded-2xl border px-3.5 py-2.5 text-sm leading-relaxed",
               isUser
-                ? "rounded-br-sm border-(--border-medium) bg-(--btn-item-active) text-foreground"
-                : "rounded-bl-sm border-border bg-surface",
+                ? "rounded-br-sm border-primary/25 bg-primary text-primary-foreground shadow-sm"
+                : "rounded-bl-sm border-border bg-card text-card-foreground ring-1 ring-border/40",
             )}
           >
             {!isUser && hasOgInferenceMeta(m) ? (
@@ -1524,8 +1584,10 @@ function Bubble({
           <div
             key={a.id}
             className={cn(
-              "overflow-hidden rounded-xl border border-border bg-surface text-sm",
-              isUser ? "rounded-br-sm" : "rounded-bl-sm",
+              "overflow-hidden rounded-xl border text-sm",
+              isUser
+                ? "rounded-br-sm border-primary/30 bg-primary/10"
+                : "rounded-bl-sm border-border bg-card ring-1 ring-border/40",
             )}
           >
             {a.type === "image" && (a.url || a.rootHash) ? (
@@ -1577,9 +1639,20 @@ function Bubble({
         {m.rich?.type === "on_ramp_checkout_form" && !isUser && !m.handlerCta && (
           <CheckoutRichUnavailableNotice rich={m.rich} />
         )}
+        {m.rich?.type === "credit_card_checkout_form" && !isUser && m.handlerCta && (
+          <CreditCardCheckoutFormCard
+            rich={m.rich}
+            disabled={executingHandlerForId === m.id}
+            onSubmitCard={(params) => void onRunHandlerCta(m, params)}
+          />
+        )}
+        {m.rich?.type === "credit_card_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
         {m.rich &&
           m.rich.type !== "x402_checkout_form" &&
-          m.rich.type !== "on_ramp_checkout_form" && (
+          m.rich.type !== "on_ramp_checkout_form" &&
+          m.rich.type !== "credit_card_checkout_form" && (
           <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface-elevated">
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1626,11 +1699,19 @@ function Bubble({
           !isUser &&
           m.rich?.type !== "x402_checkout_form" &&
           m.rich?.type !== "on_ramp_checkout_form" &&
+          m.rich?.type !== "credit_card_checkout_form" &&
           (m.handlerCta.handler === "generate_tax_report" ? (
             <TaxReportHandlerCtaRow
               m={m}
               disabled={executingHandlerForId === m.id}
               onRunHandlerCta={onRunHandlerCta}
+            />
+          ) : isTransferDraftHandler(m.handlerCta.handler) ? (
+            <TransferDraftHandlerCtaRow
+              messageId={m.id}
+              handler={m.handlerCta.handler}
+              params={m.handlerCta.params as Record<string, unknown>}
+              label={handlerCtaLabel(m.handlerCta.handler)}
             />
           ) : (
             <div className="flex flex-wrap gap-2 px-0.5">
@@ -1638,6 +1719,7 @@ function Bubble({
                 type="button"
                 size="sm"
                 variant="secondary"
+                loading={executingHandlerForId === m.id}
                 disabled={executingHandlerForId === m.id}
                 onClick={() => void onRunHandlerCta(m)}
               >

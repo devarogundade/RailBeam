@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import type { Agent } from "@/lib/types";
 import type { AgentOnchainFeedbackItem } from "@beam/stardorm-api-contract";
 import { useAgentFeedbacksInfinite } from "@/lib/hooks/use-agent-feedbacks";
-import { queryKeys } from "@/lib/query-keys";
 import { useBeamNetwork } from "@/lib/beam-network-context";
 import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
@@ -29,6 +28,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
+import { invalidateSubgraphChain } from "@/lib/query-invalidation";
+import { useChainConfirmationLoading } from "@/lib/use-chain-confirmation-loading";
 import { isRegistryTokenIdOneAgent } from "@/lib/registry-token-one-agent";
 import { Loader2, MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
@@ -114,7 +115,12 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
     address!.toLowerCase() === (tokenOwner as `0x${string}`).toLowerCase();
 
   const publicClient = usePublicClient();
-  const { writeContractAsync, isPending: txPending } = useWriteContract();
+  const { writeContractAsync, isPending: wagmiWritePending } = useWriteContract();
+  const {
+    busy: feedbackTxBusy,
+    awaitingReceiptOnly: feedbackAwaitingReceipt,
+    withReceiptWait: withFeedbackReceiptWait,
+  } = useChainConfirmationLoading(wagmiWritePending);
   const [stars, setStars] = React.useState(5);
   const [comment, setComment] = React.useState("");
 
@@ -137,27 +143,27 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
         });
         return;
       }
-      const hash = await writeContractAsync({
-        address: reputation,
-        abi: reputationRegistryAbi,
-        functionName: "giveFeedback",
-        args: [
-          BigInt(chainAgentId),
-          BigInt(stars),
-          0,
-          "beam",
-          `stars:${stars}`,
-          typeof window !== "undefined" ? window.location.origin : "https://railbeam.xyz",
-          payload.feedbackURI,
-          payload.feedbackHash,
-        ],
+      await withFeedbackReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: reputation,
+          abi: reputationRegistryAbi,
+          functionName: "giveFeedback",
+          args: [
+            BigInt(chainAgentId),
+            BigInt(stars),
+            0,
+            "beam",
+            `stars:${stars}`,
+            typeof window !== "undefined" ? window.location.origin : "https://railbeam.xyz",
+            payload.feedbackURI,
+            payload.feedbackHash,
+          ],
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
       });
-      await waitForWriteContractReceipt(publicClient, hash);
       toast.success("Review submitted");
       setComment("");
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.subgraph.agentFeedbacks(effectiveChainId, agent.id),
-      });
+      void invalidateSubgraphChain(queryClient, effectiveChainId);
     } catch (e) {
       toast.error("Transaction failed", { description: txToastDescription(e) });
     }
@@ -258,10 +264,15 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
               </div>
               <Button
                 className="mt-4"
-                disabled={!canSubmitOnchain || txPending}
+                loading={feedbackTxBusy}
+                disabled={!canSubmitOnchain || feedbackTxBusy}
                 onClick={() => void onSubmitFeedback()}
               >
-                {txPending ? "Confirm in wallet…" : "Submit review"}
+                {feedbackTxBusy
+                  ? feedbackAwaitingReceipt
+                    ? "Confirming on-chain…"
+                    : "Confirm in wallet…"
+                  : "Submit review"}
               </Button>
             </>
           )}

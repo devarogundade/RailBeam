@@ -27,6 +27,7 @@ import type { Agent } from "@/lib/types";
 import { useChainId, useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { getAddress, isAddress } from "viem";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
+import { useChainConfirmationLoading } from "@/lib/use-chain-confirmation-loading";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateAfterIdentityRegistryWrite } from "@/lib/query-invalidation";
 import {
   getIdentityRegistryAddressForChain,
   identityRegistryAbi,
@@ -348,6 +349,11 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
   const registry = getIdentityRegistryAddressForChain(chainId);
   const qc = useQueryClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const {
+    busy: tokenActionsBusy,
+    awaitingReceiptOnly: tokenActionsAwaitingReceipt,
+    withReceiptWait: withTokenActionsReceiptWait,
+  } = useChainConfirmationLoading(isPending);
   const [newOwnerRaw, setNewOwnerRaw] = React.useState("");
   const [burnDialogOpen, setBurnDialogOpen] = React.useState(false);
 
@@ -362,10 +368,7 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
     ) && tokenId != null;
 
   const invalidateCatalog = () => {
-    void qc.invalidateQueries({
-      queryKey: [...queryKeys.agents.all, "catalog", beamChainId],
-      exact: false,
-    });
+    invalidateAfterIdentityRegistryWrite(qc, beamChainId);
   };
 
   const onTransferOwnership = async () => {
@@ -400,13 +403,15 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
         });
         return;
       }
-      const hash = await writeContractAsync({
-        address: registry,
-        abi: identityRegistryAbi,
-        functionName: "transferFrom",
-        args: [address, recipient, BigInt(tokenId)],
+      await withTokenActionsReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: "transferFrom",
+          args: [address, recipient, BigInt(tokenId)],
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
       });
-      await waitForWriteContractReceipt(publicClient, hash);
       setNewOwnerRaw("");
       invalidateCatalog();
       toast.success("Ownership transferred", {
@@ -431,13 +436,15 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
         });
         return;
       }
-      const hash = await writeContractAsync({
-        address: registry,
-        abi: identityRegistryAbi,
-        functionName: "transferFrom",
-        args: [address, REGISTRY_ZERO_ADDRESS, BigInt(tokenId)],
+      await withTokenActionsReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: "transferFrom",
+          args: [address, REGISTRY_ZERO_ADDRESS, BigInt(tokenId)],
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
       });
-      await waitForWriteContractReceipt(publicClient, hash);
       setBurnDialogOpen(false);
       invalidateCatalog();
       toast.success("Clone burned", {
@@ -485,10 +492,15 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
             <Button
               type="button"
               variant="secondary"
-              disabled={isPending || !newOwnerRaw.trim()}
+              loading={tokenActionsBusy}
+              disabled={tokenActionsBusy || !newOwnerRaw.trim()}
               onClick={() => void onTransferOwnership()}
             >
-              {isPending ? "Waiting…" : "Transfer ownership"}
+              {tokenActionsBusy
+                ? tokenActionsAwaitingReceipt
+                  ? "Confirming on-chain…"
+                  : "Waiting…"
+                : "Transfer ownership"}
             </Button>
           </div>
         </div>
@@ -497,7 +509,7 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
           <Button
             type="button"
             variant="destructive"
-            disabled={isPending}
+            disabled={tokenActionsBusy}
             onClick={() => setBurnDialogOpen(true)}
           >
             Burn this clone
@@ -515,16 +527,21 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel type="button" disabled={isPending}>
+            <AlertDialogCancel type="button" disabled={tokenActionsBusy}>
               Cancel
             </AlertDialogCancel>
             <Button
               type="button"
               variant="destructive"
-              disabled={isPending}
+              loading={tokenActionsBusy}
+              disabled={tokenActionsBusy}
               onClick={() => void onBurnToken()}
             >
-              {isPending ? "Confirm in wallet…" : "Burn permanently"}
+              {tokenActionsBusy
+                ? tokenActionsAwaitingReceipt
+                  ? "Confirming on-chain…"
+                  : "Confirm in wallet…"
+                : "Burn permanently"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -554,6 +571,8 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
   const publicClient = usePublicClient();
   const qc = useQueryClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { busy: uriSaveBusy, awaitingReceiptOnly: uriSaveAwaitingReceipt, withReceiptWait: withUriSaveReceiptWait } =
+    useChainConfirmationLoading(isPending);
   const registry = getIdentityRegistryAddressForChain(chainId);
 
   const onSave = async () => {
@@ -573,20 +592,19 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
         });
         return;
       }
-      const hash = await writeContractAsync({
-        address: registry,
-        abi: identityRegistryAbi,
-        functionName: "setAgentURI",
-        args: [BigInt(agent.chainAgentId), nextUri],
+      await withUriSaveReceiptWait(async () => {
+        const hash = await writeContractAsync({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: "setAgentURI",
+          args: [BigInt(agent.chainAgentId), nextUri],
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
       });
-      await waitForWriteContractReceipt(publicClient, hash);
       toast.success("Listing updated", {
         description: "Name, description, and image are saved on-chain.",
       });
-      void qc.invalidateQueries({
-        queryKey: [...queryKeys.agents.all, "catalog", beamChainId],
-        exact: false,
-      });
+      invalidateAfterIdentityRegistryWrite(qc, beamChainId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error("Could not update listing", { description: msg });
@@ -630,8 +648,13 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
         />
       </div>
       <div className="mt-4 flex justify-end">
-        <Button type="button" disabled={isPending || !publicClient} onClick={() => void onSave()}>
-          {isPending ? "Saving…" : "Save on-chain"}
+        <Button
+          type="button"
+          loading={uriSaveBusy}
+          disabled={uriSaveBusy || !publicClient}
+          onClick={() => void onSave()}
+        >
+          {uriSaveBusy ? (uriSaveAwaitingReceipt ? "Confirming on-chain…" : "Saving…") : "Save on-chain"}
         </Button>
       </div>
     </div>
