@@ -18,7 +18,7 @@ Structured like a classic investor deck. Replace bracketed placeholders (URLs, n
 | **Website** | [your public URL or landing page] |
 | **E-mail** | [contact email] |
 
-**Beam** — Agentic finance on **0G**: marketplace, hired agents, treasury flows, and chain-backed settlement (including **x402**).
+**Beam** — The workspace where **teams hire AI agents** to run **money and operations**, with **clear receipts** and **rules** you can stand behind—built for the next wave of **programmable finance**.
 
 ---
 
@@ -28,9 +28,9 @@ Structured like a classic investor deck. Replace bracketed placeholders (URLs, n
 
 [Footer] [your URL] · **Page 02** · **Beam**
 
-Crypto and on-chain finance still split **intent** from **execution**. Teams and power users stitch together wallets, dashboards, bots, and one-off scripts to move money, buy services, and stay compliant—yet there is no single workspace where **agents**, **treasury**, and **verifiable settlement** work as one system.
+Finance and operations still live in **too many tools**. People want to say what they need—pay a vendor, open a card, check spend, route a request—and get it done **without** becoming experts in dashboards, scripts, and handoffs between teams.
 
-Manual handoffs are slow, error-prone, and hard to audit. Paying for real workloads on-chain (and proving payment) usually means custom integrations instead of a **standard, HTTP-native payment rail**.
+That gap is widening as **AI agents** become capable of real work. There is still no default **place** where conversation, **policy**, and **money movement** meet in a way finance and compliance can trust.
 
 ---
 
@@ -38,20 +38,20 @@ Manual handoffs are slow, error-prone, and hard to audit. Paying for real worklo
 
 ### What’s Broken in Today’s Market
 
-**01.** **Fragmented operator UX**  
-Users jump between wallets, spreadsheets, L2 bridges, and SaaS dashboards. There is no one place to **hire an agent**, **chat with context**, and **see financial activity** tied to real chain state.
+**01.** **Fragmented experience**  
+Operators jump between wallets, banking portals, spreadsheets, and internal tools. Nothing ties **“what we agreed to”** to **“what actually happened”** in one coherent flow.
 
-**02.** **Settlement ≠ product**  
-Teams want “pay as you go” and receipts that auditors and partners can trust. Today that often requires bespoke merchant flows instead of **protocol-level payment verification** aligned with how APIs and agents already speak HTTP.
+**02.** **Payments aren’t built for software**  
+APIs and agents need simple, repeatable ways to **request**, **confirm**, and **record** payment—not one-off merchant integrations for every product surface.
 
-**03.** **Treasury without guardrails**  
-Cards, on-ramps, and team spend need policy, visibility, and automation. Bolting tools together rarely delivers **unified billing**, **KYC-aware flows**, and **clear limits** without heavy engineering.
+**03.** **Treasury without a cockpit**  
+Cards, ramps, and team spend need **visibility**, **limits**, and **auditability**. Stitching vendors together rarely gives leaders a single view of **who did what**, and **why**.
 
 [Footer] [your URL] · **Page 03** · **Beam**
 
 | 01 | 02 | 03 |
 |----|----|-----|
-| **Fragmented operator UX** | **Settlement gap** | **Treasury & policy** |
+| **Fragmented experience** | **Software-native payments** | **Treasury & control** |
 
 ---
 
@@ -59,22 +59,22 @@ Cards, on-ramps, and team spend need policy, visibility, and automation. Bolting
 
 ### Our Solution, Reimagined
 
-**Agent-native workspace**  
-Describe goals in natural language; **Beam** routes work to the right **agents** and **handlers** with conversation context and structured tools—not a pile of disconnected tabs.
+**One workspace for intent and execution**  
+Teams describe goals in plain language; **Beam** routes work to the right **specialized agents** with full context—so “get this done” becomes **action**, not another ticket queue.
 
-**x402-aware, chain-backed payments**  
-Exact on-chain settlement on **0G** with a dedicated **facilitator** service: **verify** / **settle** / **supported** so checkouts and APIs can treat payments like first-class infrastructure.
+**Settlement you can explain**  
+Payments are designed to be **verified and recorded** in a way that fits how modern software talks to the world—so product, finance, and partners share the **same source of truth**.
 
-**One surface for treasury and trust**  
-Stripe-backed **KYC**, **cards**, and **on-ramp** where your product needs them—while **MongoDB**, **Redis**, and **subgraph**-indexed catalog data keep state, sessions, and marketplace reality in sync.
+**Compliance-aware by design**  
+Where the product touches identity, cards, or fiat on-ramps, **Beam** sits on **regulated-grade** rails partners already trust—without forcing every team to rebuild **KYC** and **billing** from scratch.
 
 [Footer] [your URL] · **Page 04** · **Beam**
 
 | Pillar | One line |
 |--------|----------|
-| **Agent-native workspace** | Chat, hire, execute—with tools and receipts. |
-| **x402 on 0G** | HTTP-native payment verification and settlement. |
-| **Treasury & compliance hooks** | Cards, ramps, and policy without reinventing the stack. |
+| **Agent workspace** | Chat, delegate, execute—with a clear audit trail. |
+| **Verifiable flows** | Receipts and settlement that match how APIs work. |
+| **Trust & treasury** | Cards, ramps, and policy in one operational surface. |
 
 ---
 
@@ -82,11 +82,11 @@ Stripe-backed **KYC**, **cards**, and **on-ramp** where your product needs them�
 
 ### Introducing Beam
 
-**Beam** is an **agentic finance workspace** on **0G**. Users and teams **discover agents** in a **marketplace**, **converse** with hired agents, orchestrate **treasury** and operational flows, and settle activity with **x402**-style verification via a small **facilitator** service and the **Stardorm** Nest API.
+**Beam** is an **agentic finance workspace**: a **marketplace** to discover and hire agents, a **conversation layer** to steer them, and **treasury** flows that connect real-world money to **rules and reporting** your team can rely on.
 
-The **web client** (React, TanStack, Wagmi) talks to **Stardorm** for auth, conversations, handlers, and payments; **The Graph** (often via **Goldsky**) backs on-chain catalog views when configured. **Smart contracts** and the **subgraph** tie listings and activity to chain truth.
+Users see **agents**, **activity**, and **outcomes** in one place—whether they are closing a loop with finance, serving a customer, or running internal operations.
 
-Built for **0G EVM** today; designed so product, agents, and settlement stay composable as the ecosystem grows.
+Built for teams who believe **software-led money movement** is a product category, not a side project. **First on 0G**—a high-throughput **EVM** network—so discovery and settlement can scale with real usage.
 
 [Footer] [your URL] · **Page 05** · **Beam**
 
@@ -96,32 +96,30 @@ Built for **0G EVM** today; designed so product, agents, and settlement stay com
 
 ### Key Features
 
-> “We turn conversations and intents into **actionable finance**: agents with tools, subgraph-backed context, and settlement that doesn’t depend on ad-hoc wiring—so teams spend less time gluing systems and more time shipping product.”
+> “We turn **intent** into **actionable finance**: hired agents, guided workflows, and outcomes you can **reconcile**—so teams spend less time wiring tools and more time **shipping**.”
 
-- **Natural-language + structured tools** — Chat-first UX with **handler** payloads and agent replies grounded in your API contract (`@beam/stardorm-api-contract`).
-- **Marketplace & catalog** — Agents and offerings informed by **on-chain** data where the subgraph is live.
-- **Payments & invoices** — **Payment requests**, facilitator-aware checkout, and flows that fit real merchant and B2B needs.
-- **Operational depth** — Activity, snapshots, and reporting-oriented services (e.g. financial activity, taxes helpers where configured) so operators aren’t flying blind.
+- **Chat-first operations** — Natural language plus structured steps so work is **repeatable** and **reviewable**, not trapped in someone’s inbox.
+- **Marketplace for capability** — Discover agents and services with **clear offers**, pricing signals, and reputation—so procurement and product share a common catalog.
+- **Payments & invoicing** — From **payment links** to **B2B-style** flows that match how teams actually buy and sell.
+- **Operator visibility** — Activity, balances, and reporting-oriented views so **finance and ops** aren’t exporting spreadsheets from three systems.
 
 [Footer] [your URL] · **Page 06** · **Beam**
 
 ---
 
-## Page 07 — Integrations & stack depth
+## Page 07 — Platform depth (why we can win)
 
-### 15+ integrations (representative)
+### Platform depth
 
-Beam is intentionally **boring where it should be** and **opinionated where it matters**.
+Beam is **boring where it should be** (identity, cards, data) and **opinionated where it matters** (agents, settlement, workspace UX).
 
-| Area | Examples |
-|------|------------|
-| **Chain & indexing** | **0G EVM**, **Goldsky**, **The Graph** subgraph |
-| **Payments** | **x402** (`@x402/core` / `@x402/evm`), **Beam facilitator** (Nest) |
-| **Fiat & compliance** | **Stripe** (KYC, cards, on-ramp, webhooks) |
-| **Data & cache** | **MongoDB**, **Redis** |
-| **Client** | **React 19**, **TanStack Router**, **Vite**, **Wagmi**, **Reown / WalletConnect** |
-| **Compute & storage** | **0G**-oriented compute/storage hooks in **Stardorm** |
-| **DevEx** | Shared **Zod** contracts, **Hardhat** / contracts repo, **Docker**-ready services |
+| Area | What we leverage |
+|------|-------------------|
+| **Chain & discovery** | A modern **EVM** environment and **indexing** so marketplace and activity reflect **on-chain reality** when live. |
+| **Programmable payments** | Open **HTTP-oriented payment** patterns so agents and APIs can **verify** and **complete** flows without custom plumbing everywhere. |
+| **Fiat & compliance** | **Stripe-class** rails for **KYC**, **cards**, and **on-ramps**—meeting users where regulated money already runs. |
+| **Data & scale** | Proven **database** and **caching** patterns for sessions, catalog, and high-churn operational data. |
+| **Client experience** | **Web-native**, wallet-aware UX so crypto-native and **hybrid** teams can share one product. |
 
 [Footer] [your URL] · **Page 07** · **Beam**
 
@@ -134,36 +132,36 @@ Beam is intentionally **boring where it should be** and **opinionated where it m
 *(Replace with real quotes when you have permission.)*
 
 **[Name], Product / Growth**  
-> “We wanted **agent-led** workflows without building a fifth internal dashboard. Beam gives us chat, handlers, and a payment story we can explain to finance.”
+> “We wanted **agent-led** workflows without building another internal dashboard. Beam gives us **one surface** we can show to finance and to customers.”
 
 **[Name], Engineering lead**  
-> “The **facilitator** boundary is clean: our API delegates verify/settle instead of every service owning chain keys and payment edge cases.”
+> “We needed a **clean boundary** between product logic and **sensitive money operations**—so we weren’t duplicating keys and edge cases across every service.”
 
 **[Name], Treasury / Ops**  
-> “Having **ramps and cards** in the same universe as **wallet auth** and activity reporting beats exporting CSVs from three vendors.”
+> “Having **ramps and cards** in the same universe as **wallet sign-in** and **activity** beats reconciling exports from three vendors.”
 
 [Footer] [your URL] · **Page 08** · **Beam**
 
 ---
 
-## Page 09 — Product development roadmap
+## Page 09 — Product roadmap
 
-### Product development roadmap
+### Product roadmap
 
-**Phase 1 — MVP**  
-Wallet **JWT** auth, conversations, core **handlers**, **payment requests**, facilitator **verify/settle** path on **0G**; subgraph-backed **catalog** where deployed.
+**Phase 1 — Prove the loop**  
+Core workspace: **sign-in**, **conversations**, **marketplace discovery**, and **end-to-end payment** flows on the primary network; catalog grounded in **indexed** on-chain data where deployed.
 
-**Phase 2 — Beta**  
-Harden **Stripe** webhooks and **KYC** paths; expand **agent** marketplace UX; clearer **operator** dashboards for runs and spend.
+**Phase 2 — Earn the operator**  
+Harden **compliance** and **webhook-driven** money events; richer **marketplace** UX; clearer **dashboards** for runs, spend, and exceptions.
 
-**Phase 3 — Integrations**  
-More **protocol** and **data** connectors; deeper **subgraph** coverage; optional **multi-env** subgraph switching; richer **storage / compute** usage on **0G** where product warrants it.
+**Phase 3 — Deepen the platform**  
+More **connectors** (data, protocols, partners); broader **indexed** coverage; richer **storage and compute** hooks where product value is clear.
 
-**Phase 4 — Scale**  
-Performance, reliability, **rate limits**, and **higher execution** ceilings for agents and settlement; **observability** and SLOs for facilitator + API.
+**Phase 4 — Scale & reliability**  
+Performance, **SLAs**, **rate limits**, and operational maturity for **high-volume** agents and settlement; observability across money paths.
 
-**Phase 5 — Expansion**  
-**Enterprise** workspaces, team **policy**, SLAs, and **API**-first access for integrators; **multi-region** and **multi-chain** positioning as **0G** and **x402** ecosystems mature.
+**Phase 5 — Enterprise & ecosystem**  
+Team **policy**, **workspace** controls, **API-first** access for integrators; deployment options and roadmap for **multi-region** and **multi-network** as ecosystems mature.
 
 [Footer] [your URL] · **Page 09** · **Beam**
 
@@ -177,10 +175,10 @@ Beam sits at the intersection of **AI agents**, **on-chain commerce**, and **B2B
 
 | Layer | Thesis (illustrative sizing — replace with your research) |
 |-------|-------------------------------------------------------------|
-| **Global** | Programmable money + **HTTP-native payments** (**x402**) expanding TAM for machine-payable APIs and agent commerce. |
-| **Enterprise** | Teams need **verified settlement**, **audit trails**, and **vendor** workflows—not only retail wallets. |
+| **Global** | Programmable money and **machine-payable** commerce expanding TAM for **APIs, agents, and marketplaces** that settle digitally. |
+| **Enterprise** | Teams need **verified outcomes**, **audit trails**, and **vendor-grade** workflows—not only consumer wallets. |
 | **Mid-market** | Product companies want **one workspace** for **agents**, **billing**, and **treasury** without a year of integration work. |
-| **Builders / SMB** | **Solo founders** and small teams adopt **opinionated stacks** (hosted API + facilitator + app) to ship **agentic finance** fast. |
+| **Builders / SMB** | Small teams adopt **opinionated** platforms to ship **agentic finance** before incumbents reorganize. |
 
 [Footer] [your URL] · **Page 10** · **Beam**
 
@@ -190,12 +188,12 @@ Beam sits at the intersection of **AI agents**, **on-chain commerce**, and **B2B
 
 ### Business model
 
-> “We align revenue with **usage and trust**: clear pricing for operators, predictable unit economics on settlement and API calls, and room for **ecosystem** partners (agents, data, ramps).”
+> “We align revenue with **usage and trust**: transparent pricing for operators, predictable economics on **facilitated volume**, and room for **ecosystem** partners (agents, data, ramps).”
 
-- **Platform & workspace tiers** — Seat or workspace fees for **marketplace**, **agent** limits, and **support** SLAs.
-- **Take rate on flows** — Small **fee** on facilitated **x402** volume and/or **payment request** completion (configure to jurisdiction and partner rules).
-- **Usage-based API** — Metered **handler** runs, **inference** (where enabled), **webhook** volume, and **premium** subgraph or **indexing** features.
-- **Enterprise & white-label** — Custom **limits**, **VPC** / deployment options, **dedicated** facilitators or keys policy, and **professional services** for integrations.
+- **Workspace tiers** — Per-workspace or seat pricing for **marketplace access**, **agent** limits, and **support** levels.
+- **Take rate on flows** — Modest **fee** on facilitated payment volume and/or **completed** B2B-style checkouts (structured for **jurisdiction** and partner rules).
+- **Usage-based** — Metered **agent runs**, **premium** data or indexing features, and high-volume **API** access.
+- **Enterprise** — Custom **limits**, deployment options, **dedicated** infrastructure choices, and **professional services** for integrations.
 
 [Footer] [your URL] · **Page 11** · **Beam**
 
@@ -206,10 +204,10 @@ Beam sits at the intersection of **AI agents**, **on-chain commerce**, and **B2B
 ### Meet the founding team
 
 **[Name]**  
-*[Role — e.g. Protocol / Backend]*
+*[Role — e.g. CEO / GTM]*
 
 **[Name]**  
-*[Role — e.g. Product / Design]*
+*[Role — e.g. Product / Engineering]*
 
 [Footer] [your URL] · **Page 12** · **Beam**
 
@@ -219,7 +217,7 @@ Beam sits at the intersection of **AI agents**, **on-chain commerce**, and **B2B
 
 ### What will you **automate** next?
 
-**Beam** — Hire agents, run treasury, settle with **x402** on **0G**.
+**Beam** — **Hire agents**, **run treasury**, **settle with confidence**.
 
 **Contact us**  
 [Primary CTA — e-mail or calendar link]
@@ -236,6 +234,6 @@ Beam sits at the intersection of **AI agents**, **on-chain commerce**, and **B2B
 
 ## Speaker notes (optional)
 
-- **Differentiator**: Emphasize **facilitator** as a security and ops boundary, shared **API contract** package, and **subgraph**-truth for marketplace—not “yet another chatbot.”
-- **Risk**: Regulatory treatment of ramps, cards, and agent-mediated payments varies by region—pair this deck with counsel-reviewed positioning.
-- **Demo path**: Live flow = sign in → open conversation → trigger handler that creates or settles a **payment request** → show activity / receipt in UI.
+- **Differentiator**: One **workspace** for **agents + money + policy**; **indexed** marketplace truth when live; **separation of duties** between product surfaces and **sensitive settlement** operations—not “yet another chatbot.”
+- **Risk**: Treatment of cards, ramps, and **agent-mediated** payments varies by **region** and **partner**—pair this deck with **counsel-reviewed** positioning before external fundraising materials.
+- **Demo path**: Sign in → open conversation → complete a **payment or invoice** flow → show **activity / receipt** in the same UI finance can use.
