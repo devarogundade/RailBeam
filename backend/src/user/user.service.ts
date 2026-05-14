@@ -43,8 +43,6 @@ import {
 } from 'src/handlers/handler.types';
 import { HandlersService } from 'src/handlers/handlers.service';
 import {
-  mergeAllowedHandlersForAgentKeys,
-  resolveCatalogAgentKeyForHandler,
   resolveStardormAgentKey,
   resolveStardormChainAgentId,
   stardormChatRichBlockSchema,
@@ -173,15 +171,11 @@ function handlerCapabilitiesFromSubgraphAgent(
     .filter((x): x is HandlerActionId => isHandlerActionId(x));
 }
 
-function mergeHandlersWithSubgraphExtras(
-  keys: readonly string[],
-  agent: SubgraphRegistryAgent | null,
-): HandlerActionId[] {
-  const base = mergeAllowedHandlersForAgentKeys(keys);
-  const extra = handlerCapabilitiesFromSubgraphAgent(agent);
-  if (!extra.length) return base;
-  const set = new Set<HandlerActionId>(base);
-  for (const h of extra) set.add(h);
+function mergeHandlerSets(sets: Iterable<HandlerActionId[]>): HandlerActionId[] {
+  const set = new Set<HandlerActionId>();
+  for (const arr of sets) {
+    for (const h of arr) set.add(h);
+  }
   return HANDLER_ACTION_IDS.filter((h) => set.has(h));
 }
 
@@ -209,6 +203,65 @@ export class UserService {
       throw new BadRequestException('Invalid wallet address');
     }
     return w;
+  }
+
+  private async handlerCapabilitiesForCatalogKeys(
+    keys: readonly string[],
+    clientEvmChainId?: number,
+  ): Promise<HandlerActionId[][]> {
+    const out: HandlerActionId[][] = [];
+    for (const raw of keys) {
+      const id = resolveStardormChainAgentId(raw.trim());
+      if (id == null) {
+        out.push([]);
+        continue;
+      }
+      let agent: SubgraphRegistryAgent | null = null;
+      try {
+        agent = await this.subgraph.getAgentByChainAgentId(
+          id,
+          clientEvmChainId,
+        );
+      } catch {
+        agent = null;
+      }
+      out.push(handlerCapabilitiesFromSubgraphAgent(agent));
+    }
+    return out;
+  }
+
+  private async mergeHandlersForChatKeys(
+    keys: readonly string[],
+    clientEvmChainId?: number,
+  ): Promise<HandlerActionId[]> {
+    const perAgent = await this.handlerCapabilitiesForCatalogKeys(
+      keys,
+      clientEvmChainId,
+    );
+    return mergeHandlerSets(perAgent);
+  }
+
+  private async resolveCatalogAgentKeyForHandlerFromSubgraph(
+    handler: HandlerActionId,
+    candidateAgentKeys: readonly string[],
+    clientEvmChainId?: number,
+  ): Promise<string | null> {
+    for (const key of candidateAgentKeys) {
+      const id = resolveStardormChainAgentId(key.trim());
+      if (id == null) continue;
+      let agent: SubgraphRegistryAgent | null = null;
+      try {
+        agent = await this.subgraph.getAgentByChainAgentId(
+          id,
+          clientEvmChainId,
+        );
+      } catch {
+        agent = null;
+      }
+      if (handlerCapabilitiesFromSubgraphAgent(agent).includes(handler))
+        return key;
+    }
+    return null;
   }
 
   private richFromTaxData(
@@ -1020,6 +1073,7 @@ export class UserService {
     userMessage: string,
     files: MulterIncomingFile[] = [],
     conversationId?: string | null,
+    clientEvmChainId?: number,
   ): Promise<ChatTurnResult> {
     const wallet = this.normalizeWallet(walletAddress);
     const msg = userMessage?.trim() ?? '';
@@ -1058,22 +1112,27 @@ export class UserService {
 
     /**
      * Subgraph lookup is best-effort: if the indexer is down or the agent
-     * has not been indexed yet we still want chat to work using the
-     * deterministic catalog seed that ships with the contract package.
+     * has not been indexed yet, handler tools are unavailable until metadata syncs.
      */
     let onchainAgent: Awaited<
       ReturnType<SubgraphService['getAgentByChainAgentId']>
     > = null;
     if (chainId != null) {
       try {
-        onchainAgent = await this.subgraph.getAgentByChainAgentId(chainId);
+        onchainAgent = await this.subgraph.getAgentByChainAgentId(
+          chainId,
+          clientEvmChainId,
+        );
       } catch {
         onchainAgent = null;
       }
     }
 
     const activeSubscribedChainAgentIds =
-      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(wallet);
+      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(
+        wallet,
+        clientEvmChainId,
+      );
     const subscribedCatalogAgentKeys = [
       ...new Set(
         activeSubscribedChainAgentIds
@@ -1082,10 +1141,11 @@ export class UserService {
       ),
     ];
 
-    const allowedHandlers: HandlerActionId[] = mergeHandlersWithSubgraphExtras(
-      [agentKey, ...subscribedCatalogAgentKeys],
-      onchainAgent,
-    );
+    const allowedHandlers: HandlerActionId[] =
+      await this.mergeHandlersForChatKeys(
+        [agentKey, ...subscribedCatalogAgentKeys],
+        clientEvmChainId,
+      );
 
     const attachments: Array<{
       id: string;
@@ -1144,7 +1204,7 @@ export class UserService {
       ...(onchainAgent ?? {
         agentKey,
         chainAgentId: chainId,
-        note: 'Subgraph not available; falling back to catalog seed.',
+        note: 'Subgraph agent row unavailable for this chain id.',
       }),
       walletActiveSubscriptions: {
         chainAgentIds: activeSubscribedChainAgentIds,
@@ -1191,10 +1251,11 @@ export class UserService {
 
     let agentKeyForAgentBubble = agentKey;
     if (usedToolCalls && structured.handler != null) {
-      const resolved = resolveCatalogAgentKeyForHandler(structured.handler, [
-        agentKey,
-        ...subscribedCatalogAgentKeys,
-      ]);
+      const resolved = await this.resolveCatalogAgentKeyForHandlerFromSubgraph(
+        structured.handler,
+        [agentKey, ...subscribedCatalogAgentKeys],
+        clientEvmChainId,
+      );
       if (resolved) agentKeyForAgentBubble = resolved;
     }
 
@@ -1403,6 +1464,7 @@ export class UserService {
       params?: unknown;
       ctaMessageId?: string;
     },
+    clientEvmChainId?: number,
   ): Promise<{
     message: string;
     attachments?: Array<{ rootHash: string; mimeType: string; name: string }>;
@@ -1492,7 +1554,10 @@ export class UserService {
     const issuingAgentKey = ctaMsg.agentKey ?? conv.agentKey ?? 'beam-default';
 
     const activeSubscribedChainAgentIds =
-      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(wallet);
+      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(
+        wallet,
+        clientEvmChainId,
+      );
     const subscribedCatalogAgentKeys = [
       ...new Set(
         activeSubscribedChainAgentIds
@@ -1500,20 +1565,9 @@ export class UserService {
           .filter((k): k is string => k != null),
       ),
     ];
-    const issuingChainId = resolveStardormChainAgentId(
-      typeof issuingAgentKey === 'string' ? issuingAgentKey.trim() : String(issuingAgentKey),
-    );
-    let issuingOnchain: SubgraphRegistryAgent | null = null;
-    if (issuingChainId != null) {
-      try {
-        issuingOnchain = await this.subgraph.getAgentByChainAgentId(issuingChainId);
-      } catch {
-        issuingOnchain = null;
-      }
-    }
-    const allowed = mergeHandlersWithSubgraphExtras(
+    const allowed = await this.mergeHandlersForChatKeys(
       [issuingAgentKey, ...subscribedCatalogAgentKeys],
-      issuingOnchain,
+      clientEvmChainId,
     );
     if (!allowed.includes(body.handler)) {
       throw new ForbiddenException(
@@ -1526,6 +1580,7 @@ export class UserService {
       execParams,
       {
         walletAddress: wallet,
+        ...(clientEvmChainId != null ? { clientEvmChainId } : {}),
       },
     );
     const rich =

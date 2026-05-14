@@ -14,6 +14,7 @@ import {
 import { useApp } from "@/lib/app-state";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMobileSidebar } from "@/lib/mobile-sidebar-context";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   isRegistryTokenIdOneAgent,
   REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
@@ -94,6 +95,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                     className={cn(
                       "h-6 w-6 rounded-full bg-pill",
                       isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                      a.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
                     )}
                   />
                   {a.online === true && (

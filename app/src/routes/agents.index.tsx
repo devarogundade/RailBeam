@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FireDialog } from "@/components/agent-dialogs";
 import type { Agent } from "@/lib/types";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioRemoveCta,
   isRegistryTokenIdOneAgent,
@@ -49,6 +50,7 @@ function AgentTableRows({
                 className={cn(
                   "h-9 w-9 rounded-full bg-pill",
                   isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                  a.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
                 )}
               />
               {a.online === true && (

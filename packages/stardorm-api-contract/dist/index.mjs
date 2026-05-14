@@ -54,6 +54,86 @@ var catalogResponseSchema = z.object({
   defaultHiredIds: z.array(z.string().min(1)),
   chatSuggestions: z.array(z.string())
 });
+
+// src/catalog-marketplace-response.ts
+var CHAT_SUGGESTIONS = [
+  "Summarize last month\u2019s onchain P&L",
+  "Draft an invoice for Acme Labs",
+  "What are the best stablecoin yields right now?",
+  "Estimate my crypto tax exposure for Q3",
+  "Create an x402 checkout link I can send to a payer",
+  "Help me buy stablecoins on 0G with a card",
+  "Start identity verification for my account",
+  "Create a virtual payment card with my billing address"
+];
+var DEFAULT_HIRED_IDS = ["beam-default", "chain-2", "chain-3"];
+var ALL_CATEGORIES = [
+  "Payments",
+  "Taxes",
+  "Reports",
+  "DeFi",
+  "Compliance",
+  "General"
+];
+var BEAM_DEFAULT_AGENT = {
+  id: "beam-default",
+  name: "Beam",
+  handle: "beam.0g",
+  avatar: "/images/beam.png",
+  category: "General",
+  tagline: "Your default conversational agent",
+  description: "Beam routes your prompts to the best hired agent and handles general financial questions.",
+  skills: ["Routing", "General Q&A", "Wallet"],
+  creator: "Beam",
+  chainAgentId: 1
+};
+function buildStardormCatalogResponse() {
+  return catalogResponseSchema.parse({
+    agents: [BEAM_DEFAULT_AGENT],
+    categories: [...ALL_CATEGORIES],
+    defaultHiredIds: [...DEFAULT_HIRED_IDS],
+    chatSuggestions: [...CHAT_SUGGESTIONS]
+  });
+}
+
+// src/catalog-build.ts
+function resolveStardormChainAgentId(agentKey) {
+  const trimmed = agentKey.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const n = Number.parseInt(trimmed, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  if (/^beam-default$/i.test(trimmed)) return 1;
+  const m = /^chain-(\d+)$/i.exec(trimmed);
+  if (m) {
+    const n = Number.parseInt(m[1], 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return null;
+}
+function resolveStardormAgentKey(chainAgentId) {
+  const n = typeof chainAgentId === "string" ? Number.parseInt(chainAgentId, 10) : Number(chainAgentId);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n === 1) return "beam-default";
+  return `chain-${n}`;
+}
+var authChallengeBodySchema = z.object({
+  walletAddress: z.string().min(1)
+});
+var authChallengeResponseSchema = z.object({
+  message: z.string().min(1)
+});
+var authVerifyBodySchema = z.object({
+  walletAddress: z.string().min(1),
+  message: z.string().min(1),
+  signature: z.string().min(1)
+});
+var authVerifyResponseSchema = z.object({
+  accessToken: z.string().min(1)
+});
+var authMeResponseSchema = z.object({
+  walletAddress: z.string().min(1)
+});
 var HANDLER_ACTION_IDS = [
   "generate_tax_report",
   "create_x402_payment",
@@ -74,308 +154,6 @@ function isHandlerActionId(id) {
 var handlerActionIdSchema = z.enum(HANDLER_ACTION_IDS);
 var handlersListResponseSchema = z.object({
   handlers: z.array(handlerActionIdSchema)
-});
-
-// src/catalog-build.ts
-var STARDORM_CATALOG_SEED = [
-  {
-    chainAgentId: 1,
-    agentKey: "beam-default",
-    name: "Beam",
-    handle: "beam.0g",
-    category: "General",
-    tagline: "Your default conversational agent",
-    description: "Beam routes your prompts to the best hired agent and handles general financial questions.",
-    skills: ["Routing", "General Q&A", "Wallet"],
-    skillHandles: [],
-    allowedHandlers: []
-  },
-  {
-    chainAgentId: 2,
-    agentKey: "ledger",
-    name: "Ledger",
-    handle: "ledger.0g",
-    category: "Payments",
-    tagline: "Accept business payments across chains",
-    description: "Issues invoices, accepts payments in 0G and stablecoins, and reconciles to your books automatically.",
-    skills: ["Invoicing", "Stablecoins", "Reconciliation"],
-    skillHandles: [
-      {
-        handle: "x402_payment",
-        label: "Create x402 payment resource link"
-      }
-    ],
-    allowedHandlers: ["create_x402_payment", "generate_payment_invoice"]
-  },
-  {
-    chainAgentId: 3,
-    agentKey: "fiscus",
-    name: "Fiscus",
-    handle: "fiscus.0g",
-    category: "Taxes",
-    tagline: "Crypto-native tax calculations",
-    description: "Pulls onchain activity, classifies events, and produces jurisdiction-aware tax reports.",
-    skills: ["Tax", "Cost basis", "Reports"],
-    skillHandles: [
-      { handle: "estimate_crypto_tax", label: "Estimate crypto tax exposure" },
-      { handle: "classify_transactions", label: "Classify onchain transactions" },
-      { handle: "export_tax_packet", label: "Export tax packet (CSV / summary)" },
-      { handle: "generate_pdf", label: "Generate tax summary PDF" }
-    ],
-    allowedHandlers: ["generate_tax_report"]
-  },
-  {
-    chainAgentId: 4,
-    agentKey: "scribe",
-    name: "Scribe",
-    handle: "scribe.0g",
-    category: "Reports",
-    tagline: "Beautiful financial reports on demand",
-    description: "Generates P&L, cash flow and treasury reports with charts you can share.",
-    skills: ["P&L", "Cash flow", "PDF"],
-    skillHandles: [
-      { handle: "generate_pl_report", label: "Generate P&L report" },
-      { handle: "generate_cashflow_pdf", label: "Generate cash flow PDF" },
-      { handle: "treasury_summary", label: "Treasury summary" },
-      { handle: "generate_pdf", label: "Generate shareable PDF report" }
-    ],
-    allowedHandlers: ["generate_financial_activity_report"]
-  },
-  {
-    chainAgentId: 5,
-    agentKey: "yieldr",
-    name: "Yieldr",
-    handle: "yieldr.0g",
-    category: "DeFi",
-    tagline: "Allocates idle capital across DeFi",
-    description: "Risk-scored DeFi allocator that rebalances based on rates, TVL and your guardrails.",
-    skills: ["Yield", "Rebalance", "Risk"],
-    skillHandles: [
-      { handle: "scan_yield_opportunities", label: "Scan yield opportunities" },
-      { handle: "rebalance_plan", label: "Propose rebalance plan" },
-      { handle: "risk_check", label: "Risk / drawdown check" }
-    ],
-    allowedHandlers: []
-  },
-  {
-    chainAgentId: 6,
-    agentKey: "audita",
-    name: "Audita",
-    handle: "audita.0g",
-    category: "Reports",
-    tagline: "Continuous onchain audit trail",
-    description: "Verifies transactions and flags anomalies in your treasury operations.",
-    skills: ["Audit", "Anomaly", "Treasury"],
-    skillHandles: [
-      { handle: "audit_trail_export", label: "Export audit trail" },
-      { handle: "anomaly_scan", label: "Run anomaly scan" },
-      { handle: "treasury_verify", label: "Verify treasury movements" },
-      { handle: "generate_pdf", label: "Generate audit PDF" }
-    ],
-    allowedHandlers: ["generate_financial_activity_report"]
-  },
-  {
-    chainAgentId: 7,
-    agentKey: "settler",
-    name: "Settler",
-    handle: "settler.0g",
-    category: "Payments",
-    tagline: "Automated payroll & vendor settlement",
-    description: "Schedules and settles recurring vendor and contractor payouts.",
-    skills: ["Payroll", "Recurring", "Batch"],
-    skillHandles: [
-      { handle: "schedule_payroll", label: "Schedule payroll run" },
-      { handle: "batch_payout", label: "Plan batch payout" },
-      { handle: "vendor_settlement", label: "Vendor settlement draft" },
-      { handle: "generate_pdf", label: "Generate settlement PDF" }
-    ],
-    allowedHandlers: [
-      "create_x402_payment",
-      "generate_payment_invoice",
-      "generate_financial_activity_report"
-    ]
-  },
-  {
-    chainAgentId: 8,
-    agentKey: "quanta",
-    name: "Quanta",
-    handle: "quanta.0g",
-    category: "DeFi",
-    tagline: "Quant strategies for stablecoin yield",
-    description: "Runs market-neutral strategies with strict drawdown limits.",
-    skills: ["Quant", "Stables", "Hedging"],
-    skillHandles: [
-      { handle: "quant_backtest", label: "Describe quant backtest" },
-      { handle: "stable_yield_scan", label: "Scan stablecoin yield" },
-      { handle: "hedge_plan", label: "Hedging / neutral plan" },
-      { handle: "generate_pdf", label: "Export strategy summary PDF" }
-    ],
-    allowedHandlers: []
-  },
-  {
-    chainAgentId: 9,
-    agentKey: "ramp",
-    name: "Ramp",
-    handle: "ramp.0g",
-    category: "Payments",
-    tagline: "Card to crypto on-ramp",
-    description: "Creates a Stripe Checkout link so you can pay in USD and receive supported ERC-20 tokens on 0G after settlement.",
-    skills: ["On-ramp", "Stripe", "Stablecoins"],
-    skillHandles: [
-      {
-        handle: "stripe_on_ramp",
-        label: "Create Stripe on-ramp checkout (card \u2192 token)"
-      }
-    ],
-    allowedHandlers: ["on_ramp_tokens"]
-  },
-  {
-    chainAgentId: 10,
-    agentKey: "passport",
-    name: "Passport",
-    handle: "passport.0g",
-    category: "Compliance",
-    tagline: "Verify with Stripe Identity",
-    description: "Starts Stripe Identity document verification so your account can reach a verified KYC status.",
-    skills: ["KYC", "Identity", "Compliance"],
-    skillHandles: [
-      {
-        handle: "stripe_identity_kyc",
-        label: "Complete Stripe Identity verification"
-      }
-    ],
-    allowedHandlers: ["complete_stripe_kyc"]
-  },
-  {
-    chainAgentId: 11,
-    agentKey: "capita",
-    name: "Capita",
-    handle: "capita.0g",
-    category: "Payments",
-    tagline: "Virtual company cards with a spend balance",
-    description: "Issues virtual payment cards tied to your wallet, stores a full billing profile, and tracks an available balance you can fund or withdraw from the dashboard.",
-    skills: ["Cards", "Treasury", "Spend controls"],
-    skillHandles: [
-      {
-        handle: "create_payment_card",
-        label: "Create virtual payment card"
-      }
-    ],
-    allowedHandlers: ["create_credit_card"]
-  }
-];
-function catalogSeedAvatarPath(agentKey) {
-  const stem = agentKey === "beam-default" ? "beam" : agentKey;
-  return `/images/${stem}.png`;
-}
-function seedRowToAgent(row) {
-  return {
-    id: row.agentKey,
-    name: row.name,
-    handle: row.handle,
-    avatar: row.imageUrl ? row.imageUrl : catalogSeedAvatarPath(row.agentKey),
-    category: row.category,
-    tagline: row.tagline,
-    description: row.description,
-    // No synthetic engagement or pricing; UI hides missing stats.
-    skills: [...row.skills],
-    creator: "Beam catalog",
-    skillHandles: [...row.skillHandles],
-    chainAgentId: row.chainAgentId
-  };
-}
-var CHAT_SUGGESTIONS = [
-  "Summarize last month\u2019s onchain P&L",
-  "Draft an invoice for Acme Labs",
-  "What are the best stablecoin yields right now?",
-  "Estimate my crypto tax exposure for Q3",
-  "Create an x402 checkout link I can send to a payer",
-  "Help me buy stablecoins on 0G with a card",
-  "Start identity verification for my account",
-  "Create a virtual payment card with my billing address"
-];
-var DEFAULT_HIRED_IDS = ["beam-default", "ledger", "fiscus"];
-var ALL_CATEGORIES = [
-  "Payments",
-  "Taxes",
-  "Reports",
-  "DeFi",
-  "Compliance",
-  "General"
-];
-function buildStardormCatalogResponse() {
-  const agents = STARDORM_CATALOG_SEED.map(seedRowToAgent);
-  return catalogResponseSchema.parse({
-    agents,
-    categories: [...ALL_CATEGORIES],
-    defaultHiredIds: [...DEFAULT_HIRED_IDS],
-    chatSuggestions: [...CHAT_SUGGESTIONS]
-  });
-}
-var KEY_TO_CHAIN = Object.fromEntries(
-  STARDORM_CATALOG_SEED.map((r) => [r.agentKey, r.chainAgentId])
-);
-var CHAIN_TO_KEY = Object.fromEntries(
-  STARDORM_CATALOG_SEED.map((r) => [r.chainAgentId, r.agentKey])
-);
-var ALLOWED_HANDLERS_BY_KEY = Object.fromEntries(
-  STARDORM_CATALOG_SEED.map((r) => [r.agentKey, r.allowedHandlers])
-);
-function resolveStardormChainAgentId(agentKey) {
-  const trimmed = agentKey.trim();
-  if (/^\d+$/.test(trimmed)) {
-    const n = Number.parseInt(trimmed, 10);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-  const hit = KEY_TO_CHAIN[trimmed];
-  return hit ?? null;
-}
-function resolveStardormAgentKey(chainAgentId) {
-  const n = typeof chainAgentId === "string" ? Number.parseInt(chainAgentId, 10) : Number(chainAgentId);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return CHAIN_TO_KEY[n] ?? null;
-}
-function getAllowedHandlersForAgentKey(agentKey) {
-  const allowed = ALLOWED_HANDLERS_BY_KEY[agentKey.trim()] ?? [];
-  return allowed.filter(
-    (h) => HANDLER_ACTION_IDS.includes(h)
-  );
-}
-function mergeAllowedHandlersForAgentKeys(agentKeys) {
-  const set = /* @__PURE__ */ new Set();
-  for (const raw of agentKeys) {
-    for (const h of getAllowedHandlersForAgentKey(raw)) {
-      set.add(h);
-    }
-  }
-  return HANDLER_ACTION_IDS.filter((h) => set.has(h));
-}
-function resolveCatalogAgentKeyForHandler(handler, candidateAgentKeys) {
-  const keySet = new Set(candidateAgentKeys.map((k) => k.trim()));
-  for (const row of STARDORM_CATALOG_SEED) {
-    if (!keySet.has(row.agentKey)) continue;
-    if (row.allowedHandlers.includes(handler)) {
-      return row.agentKey;
-    }
-  }
-  return null;
-}
-var authChallengeBodySchema = z.object({
-  walletAddress: z.string().min(1)
-});
-var authChallengeResponseSchema = z.object({
-  message: z.string().min(1)
-});
-var authVerifyBodySchema = z.object({
-  walletAddress: z.string().min(1),
-  message: z.string().min(1),
-  signature: z.string().min(1)
-});
-var authVerifyResponseSchema = z.object({
-  accessToken: z.string().min(1)
-});
-var authMeResponseSchema = z.object({
-  walletAddress: z.string().min(1)
 });
 var storageUploadBodySchema = z.object({
   content: z.string().min(1)
@@ -984,6 +762,6 @@ function taxRateForCountry(country) {
   return 0.2;
 }
 
-export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, getAllowedHandlersForAgentKey, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, mergeAllowedHandlersForAgentKeys, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveCatalogAgentKeyForHandler, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

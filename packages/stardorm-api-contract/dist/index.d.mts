@@ -394,46 +394,16 @@ declare const catalogResponseSchema: z.ZodObject<{
 }>;
 type CatalogResponse = z.infer<typeof catalogResponseSchema>;
 
-/**
- * Source of truth for backend handler ids implemented in
- * `stardorm/backend/src/handlers/handlers.service.ts`. Keep in sync.
- */
-declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"];
-type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];
-declare function isHandlerActionId(id: string): id is HandlerActionId;
-declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
-declare const handlersListResponseSchema: z.ZodObject<{
-    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>, "many">;
-}, "strip", z.ZodTypeAny, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
-}, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
-}>;
-type HandlersListResponse = z.infer<typeof handlersListResponseSchema>;
-
-/** Public marketplace payload for `GET /agents/catalog`. */
+/** Public marketplace payload for `GET /agents/catalog` when no subgraph is wired. */
 declare function buildStardormCatalogResponse(): CatalogResponse;
-/** Resolve URL `agentKey` or numeric string to ERC-8004 `agentId` for inference. */
+
+/**
+ * Resolve catalog / chat `agentKey` values to ERC-8004 registry `agentId`.
+ * Supports numeric strings, `beam-default` (token 1), and `chain-{id}`.
+ */
 declare function resolveStardormChainAgentId(agentKey: string): number | null;
-/** Reverse of `resolveStardormChainAgentId`: ERC-8004 `agentId` → catalog `agentKey`. */
+/** Reverse of `resolveStardormChainAgentId`: registry id → canonical catalog id. */
 declare function resolveStardormAgentKey(chainAgentId: number | bigint | string): string | null;
-/**
- * Backend handler ids the model is allowed to propose for a given catalog
- * agent. Filtered against `HANDLER_ACTION_IDS` so unknown ids are dropped.
- */
-declare function getAllowedHandlersForAgentKey(agentKey: string): HandlerActionId[];
-/**
- * Union of handler ids any of the given catalog agents may propose, in stable
- * `HANDLER_ACTION_IDS` order. Used when the user still has active on-chain
- * subscriptions to specialists while chatting with another agent (e.g. Beam).
- */
-declare function mergeAllowedHandlersForAgentKeys(agentKeys: readonly string[]): HandlerActionId[];
-/**
- * First catalog agent in seed order among `candidateAgentKeys` that is allowed
- * to run `handler`. Used to attribute a tool-call turn to the specialist agent
- * (e.g. `ledger` for x402, `fiscus` for tax) instead of the composing agent.
- */
-declare function resolveCatalogAgentKeyForHandler(handler: HandlerActionId, candidateAgentKeys: readonly string[]): string | null;
 
 declare const authChallengeBodySchema: z.ZodObject<{
     walletAddress: z.ZodString;
@@ -481,6 +451,23 @@ type AuthChallengeResponse = z.infer<typeof authChallengeResponseSchema>;
 type AuthVerifyBody = z.infer<typeof authVerifyBodySchema>;
 type AuthVerifyResponse = z.infer<typeof authVerifyResponseSchema>;
 type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
+
+/**
+ * Source of truth for backend handler ids implemented in
+ * `stardorm/backend/src/handlers/handlers.service.ts`. Keep in sync.
+ */
+declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"];
+type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];
+declare function isHandlerActionId(id: string): id is HandlerActionId;
+declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+declare const handlersListResponseSchema: z.ZodObject<{
+    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>, "many">;
+}, "strip", z.ZodTypeAny, {
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
+}, {
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
+}>;
+type HandlersListResponse = z.infer<typeof handlersListResponseSchema>;
 
 declare const storageUploadBodySchema: z.ZodObject<{
     content: z.ZodString;
@@ -5141,4 +5128,4 @@ declare function isoCountryDisplayName(code: string, locale?: string | string[])
  */
 declare function taxRateForCountry(country: string): number;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFundBody, type CreditCardPublic, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, getAllowedHandlersForAgentKey, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, mergeAllowedHandlersForAgentKeys, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveCatalogAgentKeyForHandler, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFundBody, type CreditCardPublic, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

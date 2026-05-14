@@ -13,8 +13,8 @@ import { fetchSubgraphAgentByChainAgentId } from "./stardorm-subgraph-queries";
 import { getStardormSubgraphUrlForChain } from "./stardorm-subgraph-config";
 
 /**
- * Match persisted chat `agentKey` to a catalog row when ids differ:
- * slug (`ledger`) vs subgraph rows (`chain-2` + `chainAgentId`), or the reverse.
+ * Match persisted chat `agentKey` to a catalog row when ids differ
+ * (e.g. `beam-default` vs `chain-1` for the same registry token).
  */
 export function resolveCatalogAgentForChatBubble(
   persistedAgentKey: string | undefined,

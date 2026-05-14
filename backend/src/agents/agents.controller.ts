@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Headers,
   HttpException,
   HttpStatus,
   Param,
@@ -19,8 +20,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthedWallet } from '../auth/jwt.strategy';
 import { CurrentWallet } from '../auth/current-wallet.decorator';
 import type { ChatTurnResult } from '../user/user.service';
-import { UserService } from '../user/user.service';
 import type { MulterIncomingFile } from '../user/multer-file.types';
+import { UserService } from '../user/user.service';
+import { parseClientEvmChainIdHeader } from '../beam/beam-evm-chain';
 
 const CHAT_MAX_FILES = 2;
 const CHAT_MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -87,6 +89,7 @@ export class AgentsController {
     @Body('message') message: unknown,
     @Body('conversationId') conversationId: unknown,
     @UploadedFiles() files?: MulterIncomingFile[],
+    @Headers('x-beam-chain-id') beamChainHeader?: string,
   ) {
     const chainId = resolveStardormChainAgentId(agentKey);
     if (chainId == null) {
@@ -99,12 +102,14 @@ export class AgentsController {
     try {
       const convId =
         typeof conversationId === 'string' ? conversationId.trim() : undefined;
+      const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
       const result = await this.users.chat(
         wallet.walletAddress,
         agentKey.trim(),
         messageStr,
         files ?? [],
         convId || null,
+        clientEvmChainId,
       );
       return mapChatToContract(agentKey.trim(), result);
     } catch (e: unknown) {

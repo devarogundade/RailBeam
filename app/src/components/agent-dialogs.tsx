@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
 import type { Agent } from "@/lib/types";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioAddCta,
   agentPortfolioAddVerb,
@@ -146,6 +147,7 @@ export function HireDialog({
               className={cn(
                 "h-12 w-12 rounded-full bg-pill",
                 isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                agent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
               )}
             />
             <div>

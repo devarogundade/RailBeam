@@ -11,6 +11,7 @@ import { readStoredBeamPreferredChainId } from "@/lib/beam-network-storage";
 import { useBeamNetwork } from "@/lib/beam-network-context";
 import { getStardormSubgraphUrl, getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { useStardormValidationsForAgent } from "@/lib/hooks/use-stardorm-subgraph";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioAddCta,
   agentPortfolioRemoveCta,
@@ -136,6 +137,7 @@ function AgentDetail() {
               className={cn(
                 "h-24 w-24 rounded-2xl bg-pill",
                 isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                agent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
               )}
             />
             {agent.online === true && (

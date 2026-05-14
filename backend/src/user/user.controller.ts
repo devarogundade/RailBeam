@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpException,
   HttpStatus,
   MaxFileSizeValidator,
@@ -25,6 +26,7 @@ import { parseBody } from '../common/parse-body';
 import { parseQuery, parseQueryRecord } from '../common/parse-query';
 import type { MulterIncomingFile } from './multer-file.types';
 import { UserService } from './user.service';
+import { parseClientEvmChainIdHeader } from '../beam/beam-evm-chain';
 import {
   chatHistoryQuerySchema,
   chatHistoryResponseSchema,
@@ -241,14 +243,16 @@ export class UserController {
   async executeHandler(
     @CurrentWallet() wallet: AuthedWallet,
     @Body() raw: unknown,
+    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
   ) {
     const body = parseBody(executeHandlerBodySchema, raw);
+    const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
     return executeHandlerResponseSchema.parse(
       await this.users.executeHandler(wallet.walletAddress, {
         handler: body.handler,
         params: body.params,
         ctaMessageId: body.ctaMessageId,
-      }),
+      }, clientEvmChainId),
     );
   }
 
@@ -265,8 +269,10 @@ export class UserController {
     @Body('agentId') agentId: unknown,
     @Body('conversationId') conversationId: unknown,
     @UploadedFiles() files?: MulterIncomingFile[],
+    @Headers('x-beam-chain-id') beamChainHeader?: string,
   ) {
     try {
+      const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
       if (agentId === undefined || agentId === null) {
         throw new BadRequestException('agentId required');
       }
@@ -290,6 +296,7 @@ export class UserController {
         messageStr,
         files ?? [],
         convId || null,
+        clientEvmChainId,
       );
     } catch (e: unknown) {
       if (e instanceof HttpException) throw e;

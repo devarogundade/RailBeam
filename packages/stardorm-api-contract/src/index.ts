@@ -9,11 +9,8 @@ export {
   type SkillHandle,
 } from "./agent.js";
 export { catalogResponseSchema, type CatalogResponse } from "./catalog.js";
+export { buildStardormCatalogResponse } from "./catalog-marketplace-response.js";
 export {
-  buildStardormCatalogResponse,
-  getAllowedHandlersForAgentKey,
-  mergeAllowedHandlersForAgentKeys,
-  resolveCatalogAgentKeyForHandler,
   resolveStardormAgentKey,
   resolveStardormChainAgentId,
 } from "./catalog-build.js";

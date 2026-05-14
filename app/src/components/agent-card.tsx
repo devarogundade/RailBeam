@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { Agent } from "@/lib/types";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioAddedBadge,
   agentPortfolioAddVerb,
@@ -49,6 +50,7 @@ export function AgentCard({
             className={cn(
               "h-12 w-12 rounded-full bg-pill",
               isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+              agent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
             )}
           />
           {agent.online === true && (

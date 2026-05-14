@@ -9,6 +9,7 @@ import {
   readStoredBeamNetwork,
   writeStoredBeamNetwork,
 } from "@/lib/beam-network-storage";
+import { stardormClientChainIdRef } from "@/lib/stardorm-client-chain";
 
 type BeamNetworkContextValue = {
   preferredNetwork: BeamNetworkId;
@@ -76,6 +77,13 @@ export function BeamNetworkProvider({ children }: { children: React.ReactNode })
     }),
     [preferredNetwork, preferredChainId, setPreferredNetwork, effectiveChainId],
   );
+
+  React.useLayoutEffect(() => {
+    stardormClientChainIdRef.current = effectiveChainId;
+    return () => {
+      stardormClientChainIdRef.current = undefined;
+    };
+  }, [effectiveChainId]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

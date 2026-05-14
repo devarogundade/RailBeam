@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { beamEvmTierFromChainId } from '../beam/beam-evm-chain';
 import {
   fetchActiveSubscribedChainAgentIdsForUser,
   getAgentByChainAgentId as fetchAgentByChainAgentId,
@@ -14,40 +15,76 @@ import type { Agent, Feedback, Validation } from './types';
 export class SubgraphService {
   constructor(private readonly config: ConfigService) {}
 
-  private url(): string | undefined {
+  /** Legacy single-URL mode; also used as fallback when per-tier URLs are unset. */
+  private legacyUrl(): string | undefined {
     return this.config.get<string>('STARDORM_SUBGRAPH_URL')?.trim() || undefined;
   }
 
-  getAgentByGraphEntityId(id: string): Promise<Agent | null> {
-    return fetchAgentById(id, this.url());
+  /**
+   * Subgraph HTTP endpoint for the client’s selected 0G EVM chain (`X-Beam-Chain-Id`).
+   * Mirrors `app/src/lib/stardorm-subgraph-config.ts`: per-tier env, then legacy URL.
+   */
+  subgraphUrlForClientEvmChain(clientEvmChainId?: number | null): string | undefined {
+    const legacy = this.legacyUrl();
+    const main = this.config.get<string>('STARDORM_SUBGRAPH_URL_MAINNET')?.trim();
+    const test = this.config.get<string>('STARDORM_SUBGRAPH_URL_TESTNET')?.trim();
+    const tier = beamEvmTierFromChainId(clientEvmChainId ?? undefined);
+    if (tier === 'mainnet') return main || legacy || undefined;
+    if (tier === 'testnet') return test || legacy || undefined;
+    return legacy || main || test || undefined;
   }
 
-  getAgentByChainAgentId(agentId: bigint | number | string): Promise<Agent | null> {
-    return fetchAgentByChainAgentId(agentId, this.url());
+  getAgentByGraphEntityId(
+    id: string,
+    clientEvmChainId?: number | null,
+  ): Promise<Agent | null> {
+    const url = this.subgraphUrlForClientEvmChain(clientEvmChainId);
+    if (!url) return Promise.resolve(null);
+    return fetchAgentById(id, url);
+  }
+
+  getAgentByChainAgentId(
+    agentId: bigint | number | string,
+    clientEvmChainId?: number | null,
+  ): Promise<Agent | null> {
+    const url = this.subgraphUrlForClientEvmChain(clientEvmChainId);
+    if (!url) return Promise.resolve(null);
+    return fetchAgentByChainAgentId(agentId, url);
   }
 
   getFeedbacksByAgentId(
     agentId: bigint | number | string,
-    paging?: { first?: number; skip?: number },
+    paging?: { first?: number; skip?: number; clientEvmChainId?: number | null },
   ): Promise<Feedback[]> {
+    const url = this.subgraphUrlForClientEvmChain(paging?.clientEvmChainId);
+    if (!url) return Promise.resolve([]);
     return fetchFeedbacksByAgentId(agentId, {
-      subgraphUrl: this.url(),
-      ...paging,
+      subgraphUrl: url,
+      first: paging?.first,
+      skip: paging?.skip,
     });
   }
 
   getValidationsByAgentId(
     agentId: bigint | number | string,
-    paging?: { first?: number; skip?: number },
+    paging?: { first?: number; skip?: number; clientEvmChainId?: number | null },
   ): Promise<Validation[]> {
+    const url = this.subgraphUrlForClientEvmChain(paging?.clientEvmChainId);
+    if (!url) return Promise.resolve([]);
     return fetchValidationsByAgentId(agentId, {
-      subgraphUrl: this.url(),
-      ...paging,
+      subgraphUrl: url,
+      first: paging?.first,
+      skip: paging?.skip,
     });
   }
 
-  getValidationByRequestHash(requestHash: string): Promise<Validation | null> {
-    return fetchValidationByRequestHash(requestHash, this.url());
+  getValidationByRequestHash(
+    requestHash: string,
+    clientEvmChainId?: number | null,
+  ): Promise<Validation | null> {
+    const url = this.subgraphUrlForClientEvmChain(clientEvmChainId);
+    if (!url) return Promise.resolve(null);
+    return fetchValidationByRequestHash(requestHash, url);
   }
 
   /**
@@ -56,8 +93,9 @@ export class SubgraphService {
    */
   async getActiveSubscribedChainAgentIdsForUser(
     walletAddress: string,
+    clientEvmChainId?: number | null,
   ): Promise<number[]> {
-    const url = this.url();
+    const url = this.subgraphUrlForClientEvmChain(clientEvmChainId);
     if (!url) return [];
     const w = walletAddress.trim().toLowerCase();
     if (!/^0x[a-f0-9]{40}$/.test(w)) return [];

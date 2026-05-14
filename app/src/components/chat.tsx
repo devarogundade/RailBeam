@@ -28,6 +28,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { CoinIcon } from "@/components/icons";
 import {
   ChevronDown,
@@ -62,6 +71,7 @@ import { useUserAvatarPreset } from "@/lib/hooks/use-user-avatar-preset";
 import { USER_AVATAR_URLS } from "@/lib/user-avatar-assets";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveCatalogAgentForChatBubble } from "@/lib/resolve-catalog-agent";
+import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   isRegistryTokenIdOneAgent,
   REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
@@ -93,6 +103,7 @@ import {
   X402CheckoutFormCard,
 } from "@/components/x402-checkout-form-card";
 import { OnRampCheckoutFormCard } from "@/components/on-ramp-checkout-form-card";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /** UI-only attachment row that also keeps the raw `File` for upload. */
 type DraftAttachment = ChatAttachment & { file: File; };
@@ -789,6 +800,7 @@ export function Chat() {
                 className={cn(
                   "h-7 w-7 rounded-full bg-pill",
                   isRegistryTokenIdOneAgent(activeAgent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                  activeAgent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
                 )}
               />
               <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-2.5">
@@ -883,56 +895,67 @@ export function Chat() {
             </div>
           )}
 
-          <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface p-2 focus-within:border-(--border-medium)">
-            <AgentDropdown
-              agents={workspaceAgents}
-              activeId={activeAgentId}
-              onSelect={setActiveAgentId}
-              fallbackAgent={activeAgent}
-            />
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              hidden
-              onChange={(e) => {
-                onFiles(e.target.files);
-                e.currentTarget.value = "";
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={!apiOn}
-              onClick={() => fileRef.current?.click()}
-              aria-label="Attach"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <textarea
-              value={input}
-              disabled={!apiOn || typing}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
+          <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-2 focus-within:border-(--border-medium) md:flex-row md:items-end">
+            <div className="flex shrink-0 items-center gap-2 md:contents">
+              <AgentDropdown
+                agents={workspaceAgents}
+                activeId={activeAgentId}
+                onSelect={setActiveAgentId}
+                fallbackAgent={activeAgent}
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  onFiles(e.target.files);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={!apiOn}
+                onClick={() => fileRef.current?.click()}
+                aria-label="Attach"
+                className="size-10 shrink-0 touch-manipulation md:size-9"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex min-w-0 flex-1 items-end gap-2 md:contents">
+              <textarea
+                value={input}
+                disabled={!apiOn || typing}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+                rows={1}
+                placeholder={
+                  apiOn
+                    ? `Message ${activeAgent.name}…`
+                    : "Sign in to send messages…"
                 }
-              }}
-              rows={1}
-              placeholder={
-                apiOn
-                  ? `Message ${activeAgent.name}…`
-                  : "Sign in to send messages…"
-              }
-              className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            />
-            <Button onClick={() => void send()} size="sm" className="font-semibold" disabled={!apiOn || typing}>
-              <Send className="h-3.5 w-3.5" /> Send
-            </Button>
+                className="max-h-40 min-h-[40px] min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
+              />
+              <Button
+                onClick={() => void send()}
+                size="sm"
+                className="shrink-0 touch-manipulation font-semibold max-md:min-h-10 max-md:px-3"
+                disabled={!apiOn || typing}
+              >
+                <Send className="h-3.5 w-3.5" /> Send
+              </Button>
+            </div>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Shift + Enter for newline</span>
+          <div className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span className="max-md:hidden">Shift + Enter for newline</span>
+            <span className="md:hidden">Enter sends · Shift+Enter newline</span>
             <Link
               to="/marketplace"
               className="inline-flex items-center gap-1 hover:text-foreground"
@@ -959,47 +982,127 @@ function AgentDropdown({
   /** Used when `agents` is empty or no entry matches `activeId` (e.g. catalog-only active agent). */
   fallbackAgent: Agent;
 }) {
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const active =
     agents.find((a) => a.id === activeId) ?? agents[0] ?? fallbackAgent;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-lg border border-border bg-surface-elevated px-2 py-1.5 text-sm hover:border-(--border-medium)">
+
+  const triggerButton = (
+    <button
+      type="button"
+      aria-haspopup={isMobile ? "dialog" : "menu"}
+      aria-expanded={isMobile ? drawerOpen : undefined}
+      aria-label={isMobile ? `Agent: ${active.name}. Tap to change.` : undefined}
+      className={cn(
+        "flex touch-manipulation items-center gap-2 rounded-lg border border-border bg-surface-elevated text-sm hover:border-(--border-medium)",
+        "min-h-10 shrink-0 px-2 py-2 md:min-h-0 md:py-1.5",
+      )}
+    >
+      <img
+        src={active.avatar}
+        alt=""
+        className={cn(
+          "h-6 w-6 shrink-0 rounded-full bg-pill md:h-5 md:w-5",
+          isRegistryTokenIdOneAgent(active) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+        )}
+      />
+      <span className="hidden min-w-0 max-w-40 truncate font-medium md:inline lg:max-w-56">
+        {active.name}
+      </span>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+    </button>
+  );
+
+  const agentRows = (mode: "dropdown" | "drawer") =>
+    agents.map((a) => {
+      const picked = a.id === activeId;
+      const row = (
+        <>
           <img
-            src={active.avatar}
+            src={a.avatar}
             alt=""
             className={cn(
-              "h-5 w-5 rounded-full bg-pill",
-              isRegistryTokenIdOneAgent(active) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+              "h-6 w-6 shrink-0 rounded-full bg-pill",
+              isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
             )}
           />
-          <span className="font-medium">{active.name}</span>
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuLabel>Reply with</DropdownMenuLabel>
-        {agents.map((a) => (
-          <DropdownMenuItem
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm">{a.name}</div>
+            <div className="truncate text-[11px] text-muted-foreground">{a.category}</div>
+          </div>
+          {picked && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+        </>
+      );
+      if (mode === "drawer") {
+        return (
+          <button
             key={a.id}
-            onClick={() => onSelect(a.id)}
-            className="flex items-center gap-2"
+            type="button"
+            onClick={() => {
+              onSelect(a.id);
+              setDrawerOpen(false);
+            }}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left outline-none",
+              "touch-manipulation active:bg-muted/70",
+              picked && "bg-muted/40",
+            )}
           >
-            <img
-              src={a.avatar}
-              alt=""
-              className={cn(
-                "h-6 w-6 rounded-full bg-pill",
-                isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
-              )}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm">{a.name}</div>
-              <div className="truncate text-[11px] text-muted-foreground">{a.category}</div>
-            </div>
-            {a.id === activeId && <Check className="h-3.5 w-3.5 text-primary" />}
-          </DropdownMenuItem>
-        ))}
+            {row}
+          </button>
+        );
+      }
+      return (
+        <DropdownMenuItem
+          key={a.id}
+          onClick={() => onSelect(a.id)}
+          className="flex min-h-10 cursor-pointer items-center gap-2 py-2 md:min-h-0 md:py-1.5"
+        >
+          {row}
+        </DropdownMenuItem>
+      );
+    });
+
+  if (isMobile) {
+    return (
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} repositionInputs={false}>
+        <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
+        <DrawerContent className="max-h-[88dvh] border-border bg-background pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <DrawerHeader className="space-y-1 pb-0 text-left">
+            <DrawerTitle className="text-base">Reply with</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Choose which agent sends your next message.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="mt-1 max-h-[min(380px,52dvh)] overflow-y-auto overscroll-y-contain px-1">
+            {agentRows("drawer")}
+          </div>
+          <div className="mt-2 border-t border-border px-2 pt-2">
+            <DrawerClose asChild>
+              <Link
+                to="/marketplace"
+                className="flex min-h-11 touch-manipulation items-center justify-center rounded-xl py-3 text-sm text-muted-foreground active:bg-muted/60"
+              >
+                Browse marketplace →
+              </Link>
+            </DrawerClose>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <DropdownMenu modal>
+      <DropdownMenuTrigger asChild>{triggerButton}</DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        collisionPadding={12}
+        className="w-[min(100vw-1.5rem,16rem)]"
+      >
+        <DropdownMenuLabel>Reply with</DropdownMenuLabel>
+        {agentRows("dropdown")}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/marketplace" className="text-sm text-muted-foreground">

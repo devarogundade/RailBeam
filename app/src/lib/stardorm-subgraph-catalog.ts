@@ -221,7 +221,7 @@ function slugHandle(name: string, agentId: number): string {
 
 /**
  * Marketplace catalog built from the Stardorm subgraph (`agents` + metadata),
- * merged with static Beam router row, categories, and chat suggestions from the API contract seed.
+ * merged with the default Beam router row, categories, and chat suggestions from the API contract.
  */
 export async function fetchSubgraphBackedCatalogResponse(opts: {
   subgraphUrl: string;

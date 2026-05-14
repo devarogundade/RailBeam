@@ -1,4 +1,8 @@
 import type { ConfigService } from '@nestjs/config';
+import {
+  beamEvmTierFromChainId,
+  type BeamEvmTier,
+} from '../beam/beam-evm-chain';
 
 /** Default JSON-RPC endpoints for 0G (override with `OG_RPC_URL_MAINNET` / `OG_RPC_URL_TESTNET`). */
 export const OG_RPC = {
@@ -109,4 +113,31 @@ export function activeChainscanApiUrl(config: ConfigService): string {
   const testnet = config.get<string>('CHAINSCAN_API_URL_TESTNET')?.trim();
   if (testnet) return testnet;
   return CHAINSCAN_API.mainnet;
+}
+
+function chainscanApiUrlForTier(
+  config: ConfigService,
+  tier: BeamEvmTier,
+): string {
+  const single = config.get<string>('CHAINSCAN_API_URL')?.trim();
+  const mainnet = config.get<string>('CHAINSCAN_API_URL_MAINNET')?.trim();
+  const testnet = config.get<string>('CHAINSCAN_API_URL_TESTNET')?.trim();
+  if (tier === 'mainnet') {
+    return mainnet || single || CHAINSCAN_API.mainnet;
+  }
+  return testnet || single || CHAINSCAN_API.testnet;
+}
+
+/**
+ * Chainscan API base for account modules (`txlist`, `tokentx`).
+ * When the client sends `X-Beam-Chain-Id`, use the matching tier; otherwise
+ * {@link activeChainscanApiUrl} (env-only “backend default”).
+ */
+export function chainscanApiUrlForClientEvmChain(
+  config: ConfigService,
+  clientEvmChainId?: number,
+): string {
+  const tier = beamEvmTierFromChainId(clientEvmChainId);
+  if (tier) return chainscanApiUrlForTier(config, tier);
+  return activeChainscanApiUrl(config);
 }

@@ -18,6 +18,8 @@ export type HandlerMessage = {
 
 export type HandlerContext = {
   walletAddress: string;
+  /** 0G EVM chain id from the Beam app (`X-Beam-Chain-Id`), when known. */
+  clientEvmChainId?: number;
 };
 
 /** Re-exported from `@beam/stardorm-api-contract` so the contract stays the single source of truth. */

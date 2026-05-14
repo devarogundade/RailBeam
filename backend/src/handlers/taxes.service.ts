@@ -6,7 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { formatEther } from 'ethers';
 import { OgStorageService } from 'src/og/og-storage.service';
-import { activeChainscanApiUrl } from 'src/og/beam-og.config';
+import { chainscanApiUrlForClientEvmChain } from 'src/og/beam-og.config';
 import type { HandlerContext, HandlerMessage, HandlerService } from './handler.types';
 import { taxRateForCountry } from '@beam/stardorm-api-contract';
 import { TaxesInputSchema, toUtcTaxDate } from './handler-inputs.schema';
@@ -100,7 +100,10 @@ export class TaxesService implements HandlerService {
     }
 
     const wallet = ctx.walletAddress.trim().toLowerCase();
-    const apiBase = activeChainscanApiUrl(this.config);
+    const apiBase = chainscanApiUrlForClientEvmChain(
+      this.config,
+      ctx.clientEvmChainId,
+    );
     const usdPerNative = Number(
       this.config.get<string>('CHAINSCAN_TAX_USD_PER_NATIVE')?.trim() || '0',
     );
