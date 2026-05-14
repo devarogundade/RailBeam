@@ -10,8 +10,6 @@ import {
 } from './queries';
 import type { Agent, Feedback, Validation } from './types';
 
-const DEFAULT_SUBGRAPH_ENV = 'STARDORM_SUBGRAPH_URL';
-
 const SUBSCRIPTION_PAGE_SIZE = 100;
 
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
@@ -38,13 +36,11 @@ function userSubscriptionQualifiesAsHired(
 }
 
 function resolveSubgraphUrl(explicit?: string): string {
-  const url = explicit ?? process.env[DEFAULT_SUBGRAPH_ENV];
-  if (!url?.trim()) {
-    throw new Error(
-      `Missing subgraph URL: pass subgraphUrl or set ${DEFAULT_SUBGRAPH_ENV}`,
-    );
+  const url = explicit?.trim();
+  if (!url) {
+    throw new Error('Missing subgraph URL: pass subgraphUrl');
   }
-  return url.trim();
+  return url;
 }
 
 function chainAgentIdBigInt(agentId: bigint | number | string): bigint {

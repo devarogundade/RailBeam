@@ -104,6 +104,11 @@ export class TaxesService implements HandlerService {
       this.config,
       ctx.clientEvmChainId,
     );
+    if (!apiBase?.trim()) {
+      throw new ServiceUnavailableException(
+        'Chainscan API URL is not configured. Set CHAINSCAN_API_URL and/or CHAINSCAN_API_URL_MAINNET / CHAINSCAN_API_URL_TESTNET.',
+      );
+    }
     const usdPerNative = Number(
       this.config.get<string>('CHAINSCAN_TAX_USD_PER_NATIVE')?.trim() || '0',
     );

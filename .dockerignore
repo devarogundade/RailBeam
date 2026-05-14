@@ -1,7 +1,9 @@
 .git
 **/.git
 **/node_modules
-**/dist
+# Do not use **/dist — packages/stardorm-api-contract ships built artifacts under dist
+# and the backend image copies that package before `nest build`.
+backend/dist
 coverage
 *.md
 app

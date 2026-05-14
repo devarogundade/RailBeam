@@ -11,16 +11,6 @@ export const OG_RPC = {
     process.env.OG_RPC_URL_TESTNET?.trim() || 'https://evmrpc-testnet.0g.ai',
 } as const;
 
-/** Blockscout-style Chainscan API roots (`.../open/api`); override with env per tier. */
-export const CHAINSCAN_API = {
-  mainnet:
-    process.env.CHAINSCAN_API_URL_MAINNET?.trim() ||
-    'https://chainscan.0g.ai/open/api',
-  testnet:
-    process.env.CHAINSCAN_API_URL_TESTNET?.trim() ||
-    'https://chainscan-testnet.0g.ai/open/api',
-} as const;
-
 export const OG_CONTRACT_ADDRESSES: {
   mainnet: Record<string, `0x${string}`>;
   testnet: Record<string, `0x${string}`>;
@@ -103,40 +93,42 @@ export function activeOgRpcUrl(config: ConfigService): string {
 
 /**
  * Base URL for Chainscan account APIs (`txlist`, `tokentx`).
- * `CHAINSCAN_API_URL` wins if set; otherwise same tier resolution as {@link activeOgRpcUrl}.
+ * `CHAINSCAN_API_URL` wins if set; otherwise first of mainnet / testnet env that is set.
  */
-export function activeChainscanApiUrl(config: ConfigService): string {
+export function activeChainscanApiUrl(
+  config: ConfigService,
+): string | undefined {
   const single = config.get<string>('CHAINSCAN_API_URL')?.trim();
   if (single) return single;
   const mainnet = config.get<string>('CHAINSCAN_API_URL_MAINNET')?.trim();
   if (mainnet) return mainnet;
   const testnet = config.get<string>('CHAINSCAN_API_URL_TESTNET')?.trim();
   if (testnet) return testnet;
-  return CHAINSCAN_API.mainnet;
+  return undefined;
 }
 
 function chainscanApiUrlForTier(
   config: ConfigService,
   tier: BeamEvmTier,
-): string {
+): string | undefined {
   const single = config.get<string>('CHAINSCAN_API_URL')?.trim();
   const mainnet = config.get<string>('CHAINSCAN_API_URL_MAINNET')?.trim();
   const testnet = config.get<string>('CHAINSCAN_API_URL_TESTNET')?.trim();
   if (tier === 'mainnet') {
-    return mainnet || single || CHAINSCAN_API.mainnet;
+    return mainnet || single || undefined;
   }
-  return testnet || single || CHAINSCAN_API.testnet;
+  return testnet || single || undefined;
 }
 
 /**
  * Chainscan API base for account modules (`txlist`, `tokentx`).
  * When the client sends `X-Beam-Chain-Id`, use the matching tier; otherwise
- * {@link activeChainscanApiUrl} (env-only “backend default”).
+ * {@link activeChainscanApiUrl}.
  */
 export function chainscanApiUrlForClientEvmChain(
   config: ConfigService,
   clientEvmChainId?: number,
-): string {
+): string | undefined {
   const tier = beamEvmTierFromChainId(clientEvmChainId);
   if (tier) return chainscanApiUrlForTier(config, tier);
   return activeChainscanApiUrl(config);

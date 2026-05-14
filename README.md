@@ -183,7 +183,7 @@ If you change `packages/stardorm-api-contract`, rebuild it (`pnpm run build` in 
 ### Prerequisites
 
 - **Node.js** + **pnpm**
-- Built **`@beam/stardorm-api-contract`** (same as backend) if you rely on `dist/` from `node_modules`; the Vite config also aliases the package to the **source tree** for dev resolution — keep the package in sync when editing shared schemas.
+- Built **`@railbeam/stardorm-api-contract`** (same as backend): build `packages/stardorm-api-contract` so `dist/` exists. From the **repository root**, run **`npm install`** so workspaces link **`@railbeam/beam-sdk`** and the contract package into `app`.
 
 ### First-time setup
 
@@ -242,7 +242,7 @@ The **facilitator** is a minimal NestJS app that exposes the x402 facilitator HT
 ```bash
 cd facilitator
 cp .env.example .env
-# Required: PRIVATE_KEY (0x-prefixed), X402_EVM_NETWORK (eip155:16661 or eip155:16602)
+# Required: PRIVATE_KEY (0x-prefixed). Optional: X402_EVM_NETWORKS (comma-separated CAIP-2 ids; default mainnet + testnet)
 
 npm install
 ```
@@ -257,8 +257,8 @@ npm run start:dev
 ### Configuration
 
 - **`PRIVATE_KEY`**: EVM key for the facilitator signer (must fund gas on 0G).
-- **`X402_EVM_NETWORK`**: CAIP-2 id — `eip155:16661` (0G mainnet) or `eip155:16602` (0G testnet). Unsupported values throw at startup (`beam-chain.config.ts`).
-- **`OG_RPC_URL`**: optional JSON-RPC override; otherwise the chain’s default HTTP RPC is used.
+- **`X402_EVM_NETWORKS`**: comma-separated CAIP-2 ids (e.g. `eip155:16661,eip155:16602`). Omit for both 0G mainnet and testnet. Unsupported values throw at startup.
+- **`OG_RPC_URL_MAINNET`**, **`OG_RPC_URL_TESTNET`**: optional JSON-RPC overrides; see `facilitator/.env.example`.
 - **`PORT`**: listen port (default `3402`).
 
 ### HTTP API (summary)
@@ -338,8 +338,8 @@ Details and event names for Stripe webhooks are documented inline in [`backend/.
 ### Facilitator (`facilitator/.env`)
 
 - **`PRIVATE_KEY`**: Required — facilitator signer
-- **`X402_EVM_NETWORK`**: Required — `eip155:16661` or `eip155:16602`
-- **`OG_RPC_URL`**, **`PORT`**: Optional overrides
+- **`X402_EVM_NETWORKS`**: Optional — comma-separated `eip155:16661` / `eip155:16602`; default is both networks
+- **`OG_RPC_URL_MAINNET`**, **`OG_RPC_URL_TESTNET`**, **`PORT`**: Optional overrides
 
 ---
 

@@ -1,0 +1,5 @@
+{
+  "name": "beam",
+  "private": true,
+  "workspaces": ["app", "packages/beam-sdk", "packages/stardorm-api-contract"]
+}

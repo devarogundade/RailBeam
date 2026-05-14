@@ -15,23 +15,17 @@ import type { Agent, Feedback, Validation } from './types';
 export class SubgraphService {
   constructor(private readonly config: ConfigService) {}
 
-  /** Legacy single-URL mode; also used as fallback when per-tier URLs are unset. */
-  private legacyUrl(): string | undefined {
-    return this.config.get<string>('STARDORM_SUBGRAPH_URL')?.trim() || undefined;
-  }
-
   /**
    * Subgraph HTTP endpoint for the client’s selected 0G EVM chain (`X-Beam-Chain-Id`).
-   * Mirrors `app/src/lib/stardorm-subgraph-config.ts`: per-tier env, then legacy URL.
+   * Uses `STARDORM_SUBGRAPH_URL_MAINNET` / `STARDORM_SUBGRAPH_URL_TESTNET` only.
    */
   subgraphUrlForClientEvmChain(clientEvmChainId?: number | null): string | undefined {
-    const legacy = this.legacyUrl();
     const main = this.config.get<string>('STARDORM_SUBGRAPH_URL_MAINNET')?.trim();
     const test = this.config.get<string>('STARDORM_SUBGRAPH_URL_TESTNET')?.trim();
     const tier = beamEvmTierFromChainId(clientEvmChainId ?? undefined);
-    if (tier === 'mainnet') return main || legacy || undefined;
-    if (tier === 'testnet') return test || legacy || undefined;
-    return legacy || main || test || undefined;
+    if (tier === 'mainnet') return main || undefined;
+    if (tier === 'testnet') return test || undefined;
+    return main || test || undefined;
   }
 
   getAgentByGraphEntityId(

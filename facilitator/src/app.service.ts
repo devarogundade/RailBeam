@@ -9,20 +9,48 @@ import type {
   VerifyResponse,
 } from '@x402/core/types';
 import { registerExactEvmScheme } from '@x402/evm/exact/facilitator';
-import { toFacilitatorEvmSigner } from '@x402/evm';
-import { createWalletClient, http, publicActions, type Chain } from 'viem';
+import type { Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { Hex } from 'viem';
-import { ZERO_G_CHAIN_BY_CAIP } from './beam-chain.config';
+import {
+  BEAM_RPC,
+  ZERO_G_CHAIN_BY_CAIP,
+} from './beam-chain.config';
+import {
+  createBeamMultiChainFacilitatorSigner,
+  facilitatorNetworkContext,
+} from './multi-chain-signer';
 
-function chainForNetwork(caip: string): Chain {
+function parseEnabledCaipNetworks(config: ConfigService): string[] {
+  const listRaw = config.get<string>('X402_EVM_NETWORKS')?.trim();
+  if (!listRaw) {
+    return ['eip155:16661', 'eip155:16602'];
+  }
+  const parsed = listRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : ['eip155:16661', 'eip155:16602'];
+}
+
+function rpcUrlForCaip(config: ConfigService, caip: string): string {
   const chain = ZERO_G_CHAIN_BY_CAIP[caip];
   if (!chain) {
-    throw new Error(
-      `Unsupported X402_EVM_NETWORK=${caip}. Supported: ${Object.keys(ZERO_G_CHAIN_BY_CAIP).join(', ')} (0G mainnet / testnet).`,
-    );
+    throw new Error(`Unknown CAIP network ${caip}`);
   }
-  return chain;
+  const defaultHttp = chain.rpcUrls.default.http[0] ?? '';
+
+  if (caip === 'eip155:16661') {
+    const explicit = config.get<string>('OG_RPC_URL_MAINNET')?.trim();
+    if (explicit) return explicit;
+    return BEAM_RPC.mainnet || defaultHttp;
+  }
+  if (caip === 'eip155:16602') {
+    const explicit = config.get<string>('OG_RPC_URL_TESTNET')?.trim();
+    if (explicit) return explicit;
+    return BEAM_RPC.testnet || defaultHttp;
+  }
+
+  return defaultHttp;
 }
 
 @Injectable()
@@ -33,49 +61,32 @@ export class AppService implements OnModuleInit {
 
   onModuleInit(): void {
     const pk = this.configService.getOrThrow<string>('PRIVATE_KEY').trim();
-    const network = this.configService
-      .getOrThrow<string>('X402_EVM_NETWORK')
-      .trim();
+    const enabled = parseEnabledCaipNetworks(this.configService);
 
-    const chain = chainForNetwork(network);
+    for (const caip of enabled) {
+      if (!ZERO_G_CHAIN_BY_CAIP[caip]) {
+        throw new Error(
+          `Unsupported network ${caip}. Supported: ${Object.keys(ZERO_G_CHAIN_BY_CAIP).join(', ')} (0G mainnet / testnet).`,
+        );
+      }
+    }
+
     const account = privateKeyToAccount(pk as Hex);
+    const networkClients = enabled.map((caip) => ({
+      caip2: caip,
+      chain: ZERO_G_CHAIN_BY_CAIP[caip],
+      rpcUrl: rpcUrlForCaip(this.configService, caip),
+    }));
 
-    const rpcOverride = this.configService.get<string>('OG_RPC_URL')?.trim();
-    const transportUrl =
-      rpcOverride || chain.rpcUrls.default.http[0] || '';
-
-    const viemClient = createWalletClient({
+    const evmSigner = createBeamMultiChainFacilitatorSigner({
       account,
-      chain,
-      transport: http(transportUrl),
-    }).extend(publicActions);
-
-    const evmSigner = toFacilitatorEvmSigner({
-      address: account.address,
-      getCode: (args) => viemClient.getCode(args),
-      readContract: (args) =>
-        viemClient.readContract({
-          ...args,
-          args: args.args ?? [],
-        }),
-      verifyTypedData: (args) =>
-        viemClient.verifyTypedData(
-          args as Parameters<typeof viemClient.verifyTypedData>[0],
-        ),
-      writeContract: (args) =>
-        viemClient.writeContract({
-          ...args,
-          args: args.args,
-        }),
-      sendTransaction: (args) => viemClient.sendTransaction(args),
-      waitForTransactionReceipt: (args) =>
-        viemClient.waitForTransactionReceipt(args),
+      networks: networkClients,
     });
 
     this.facilitator = new x402Facilitator();
     registerExactEvmScheme(this.facilitator, {
       signer: evmSigner,
-      networks: network as Network,
+      networks: enabled as Network[],
       deployERC4337WithEIP6492: true,
     });
   }
@@ -88,13 +99,19 @@ export class AppService implements OnModuleInit {
     paymentPayload: PaymentPayload,
     paymentRequirements: PaymentRequirements,
   ): Promise<VerifyResponse> {
-    return this.facilitator.verify(paymentPayload, paymentRequirements);
+    return facilitatorNetworkContext.run(
+      paymentRequirements.network,
+      () => this.facilitator.verify(paymentPayload, paymentRequirements),
+    );
   }
 
   settlePayment(
     paymentPayload: PaymentPayload,
     paymentRequirements: PaymentRequirements,
   ): Promise<SettleResponse> {
-    return this.facilitator.settle(paymentPayload, paymentRequirements);
+    return facilitatorNetworkContext.run(
+      paymentRequirements.network,
+      () => this.facilitator.settle(paymentPayload, paymentRequirements),
+    );
   }
 }

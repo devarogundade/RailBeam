@@ -1,0 +1,34 @@
+services:
+  facilitator:
+    image: devarogundade/beam-facilitator
+    env_file:
+      - ./facilitator/.env
+    environment:
+      - PORT=3402
+    restart: unless-stopped
+    ports:
+      - "3402:3402"
+
+  backend:
+    image: devarogundade/beam-backend
+    depends_on:
+      - facilitator
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    restart: unless-stopped
+    ports:
+      - "3401:3401"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+volumes:
+  redis_data:
