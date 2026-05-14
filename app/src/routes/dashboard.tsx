@@ -1,16 +1,17 @@
 import * as React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
-import { ArrowUpRight, Zap, CreditCard } from "lucide-react";
+import { ArrowUpRight, Zap, CreditCard, Eye, EyeOff, Users, Receipt, Landmark } from "lucide-react";
 import {
   useMyActiveSubscribedChainAgentIds,
   useStardormRecentSubscriptions,
 } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
+import { beamNetworkFromChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "@/lib/stardorm-subgraph-config";
 import {
   formatCompactFromBaseUnits,
@@ -25,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchStardormCreditCards,
+  fetchStardormCreditCardSensitiveDetails,
+  fetchCreditCardFundQuote,
   fetchStardormKycStatus,
   fetchStardormOnRamps,
   fetchStardormPaymentRequests,
@@ -32,9 +35,11 @@ import {
   isStardormInferenceEnabled,
   withdrawStardormCreditCard,
 } from "@/lib/stardorm-api";
+import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { Badge } from "@/components/ui/badge";
 import type {
+  CreditCardFundBody,
   CreditCardPublic,
   OnRampRecord,
   PublicPaymentRequest,
@@ -42,9 +47,17 @@ import type {
 } from "@beam/stardorm-api-contract";
 import { toast } from "sonner";
 import { parseAgentUriFromString } from "@/lib/agent-uri-metadata";
+import { EmptyState } from "@/components/empty-state";
+import {
+  DashboardListSkeleton,
+  PageRoutePending,
+  VirtualCardsPanelSkeleton,
+} from "@/components/page-shimmer";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
+  pendingComponent: () => <PageRoutePending variant="default" />,
 });
 
 function Dashboard() {
@@ -197,9 +210,15 @@ function Dashboard() {
                   Could not load employee activity. Try again later.
                 </p>
               ) : subsPending ? (
-                <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+                <DashboardListSkeleton rows={5} />
               ) : !subscriptions?.length ? (
-                <p className="mt-3 text-sm text-muted-foreground">No employee activity yet.</p>
+                <div className="mt-3">
+                  <EmptyState
+                    icon={Users}
+                    title="No employee activity yet"
+                    description="When agents receive payments through the network, they will appear in this list. Hire from the marketplace and complete a paid flow to see history here."
+                  />
+                </div>
               ) : (
                 <ul className="mt-3 divide-y divide-border text-sm">
                   {subscriptions.map((row) => {
@@ -304,11 +323,15 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
       ) : isError ? (
         <p className="mt-3 text-sm text-destructive">Could not load payment requests.</p>
       ) : isPending ? (
-        <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+        <DashboardListSkeleton rows={4} />
       ) : !data?.items.length ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No saved checkouts yet. Use chat with an agent that offers x402 or payment links to create one.
-        </p>
+        <div className="mt-3">
+          <EmptyState
+            icon={Receipt}
+            title="No saved checkouts yet"
+            description="Use chat with an agent that offers x402 or payment links to create a checkout. Completed payments show up here."
+          />
+        </div>
       ) : (
         <ul className="mt-3 divide-y divide-border text-sm">
           {data.items.map((row) => (
@@ -368,7 +391,11 @@ function DashboardKyc({ enabled }: { enabled: boolean }) {
       ) : isError ? (
         <p className="mt-3 text-destructive">Could not load KYC status.</p>
       ) : isPending ? (
-        <p className="mt-3">Loading…</p>
+        <div className="mt-4 space-y-3">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-4 w-full max-w-md" />
+          <Skeleton className="h-4 w-56" />
+        </div>
       ) : data ? (
         <div className="mt-4 space-y-2 rounded-lg border border-border bg-surface-elevated p-4 text-foreground">
           <div className="flex flex-wrap items-center gap-2">
@@ -424,12 +451,15 @@ function DashboardOnRamps({ enabled }: { enabled: boolean }) {
         ) : isError ? (
           <p className="mt-3 text-sm text-destructive">Could not load on-ramps.</p>
         ) : isPending ? (
-          <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+          <DashboardListSkeleton rows={4} />
         ) : !data?.items.length ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No on-ramp orders yet. Open chat with the Ramp agent and create a Stripe checkout when you are
-            ready to buy tokens.
-          </p>
+          <div className="mt-3">
+            <EmptyState
+              icon={Landmark}
+              title="No on-ramp orders yet"
+              description="Open chat with the Ramp agent and create a Stripe checkout when you are ready to buy tokens. Status updates when settlement completes."
+            />
+          </div>
         ) : (
           <ul className="mt-3 divide-y divide-border text-sm">
             {data.items.map((row) => (
@@ -484,9 +514,25 @@ function dollarsToCents(raw: string): number | null {
   return cents > 0 ? cents : null;
 }
 
+function formatPanGroups(pan: string): string {
+  return pan.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
 function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
   const qc = useQueryClient();
   const api = Boolean(getStardormApiBase());
+  const { address } = useAccount();
+  const walletChainId = useChainId();
+  const publicClient = usePublicClient();
+  const { sendTransactionAsync } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const { effectiveChainId } = useBeamNetwork();
+  const mainnetVirtualCardFundsDisabled =
+    beamNetworkFromChainId(effectiveChainId) === "mainnet";
   const { data, isPending, isError } = useQuery({
     queryKey: ["creditCards", "me"],
     queryFn: () => fetchStardormCreditCards(),
@@ -494,10 +540,39 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
   });
 
   const fundMut = useMutation({
-    mutationFn: async ({ id, dollars }: { id: string; dollars: string; }) => {
+    mutationFn: async ({ id, dollars }: { id: string; dollars: string }) => {
       const cents = dollarsToCents(dollars);
       if (cents == null) throw new Error("Enter a positive dollar amount.");
-      const r = await fundStardormCreditCard(id, cents);
+      const quote = await fetchCreditCardFundQuote(cents);
+      if ("error" in quote) throw new Error(quote.error);
+
+      let fundBody: CreditCardFundBody = { amountCents: cents };
+
+      if (quote.onchainFundingRequired) {
+        if (!address) throw new Error("Connect your wallet to pay in native 0G.");
+        if (walletChainId !== quote.chainId) {
+          if (!switchChainAsync) {
+            throw new Error("Switch your wallet to the correct 0G network, then try again.");
+          }
+          await switchChainAsync({ chainId: quote.chainId });
+        }
+        if (!publicClient) {
+          throw new Error("Wallet client unavailable. Refresh and try again.");
+        }
+        const hash = await sendTransactionAsync({
+          chainId: quote.chainId,
+          to: quote.recipient as `0x${string}`,
+          value: BigInt(quote.minNativeWei),
+        });
+        await waitForWriteContractReceipt(publicClient, hash);
+        fundBody = {
+          ...fundBody,
+          fundingTxHash: hash,
+          fundingChainId: quote.chainId,
+        };
+      }
+
+      const r = await fundStardormCreditCard(id, fundBody);
       if ("error" in r) throw new Error(r.error);
       return r;
     },
@@ -516,9 +591,15 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
       if ("error" in r) throw new Error(r.error);
       return r;
     },
-    onSuccess: () => {
-      toast.success("Funds removed from card");
+    onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ["creditCards"] });
+      if (data.lastWithdrawTxHash) {
+        toast.success("Native 0G sent to your wallet", {
+          description: shortenHex(data.lastWithdrawTxHash),
+        });
+      } else {
+        toast.success("Funds removed from card");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -532,8 +613,11 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
             Virtual payment cards
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Cards issued by the Capita agent hold a spend balance. Fund or withdraw in whole cents (USD-style
-            amounts).
+            Cards issued by the Capita agent hold a spend balance in USD cents. When the API has a treasury
+            address configured, adding funds sends native 0G from your wallet and removing funds sends native
+            0G back from the treasury to your wallet; amounts use the configured spot{" "}
+            <span className="font-medium text-foreground">usdValue</span> per 1 0G (same reference as on-ramp
+            hints). Otherwise balance changes are demo-only.
           </p>
         </div>
       </div>
@@ -546,26 +630,43 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
       ) : isError ? (
         <p className="mt-3 text-sm text-destructive">Could not load cards.</p>
       ) : isPending ? (
-        <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+        <VirtualCardsPanelSkeleton />
       ) : !data?.cards.length ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No cards yet. Hire the Capita agent in the marketplace, open chat, and tap{" "}
-          <span className="font-medium text-foreground">Create virtual card</span> after confirming your billing
-          details.
-        </p>
+        <div className="mt-3">
+          <EmptyState
+            icon={CreditCard}
+            title="No virtual cards yet"
+            description={
+              <>
+                Hire the <span className="font-medium text-foreground">Capita</span> agent in the marketplace,
+                open chat, and tap <span className="font-medium text-foreground">Create virtual card</span> after
+                confirming your billing details.
+              </>
+            }
+          />
+        </div>
       ) : (
-        <ul className="mt-4 divide-y divide-border">
-          {data.cards.map((c) => (
-            <CreditCardRow
-              key={c.id}
-              card={c}
-              funding={fundMut.isPending && fundMut.variables?.id === c.id}
-              withdrawing={withdrawMut.isPending && withdrawMut.variables?.id === c.id}
-              onFund={(dollars) => fundMut.mutate({ id: c.id, dollars })}
-              onWithdraw={(dollars) => withdrawMut.mutate({ id: c.id, dollars })}
-            />
-          ))}
-        </ul>
+        <>
+          {mainnetVirtualCardFundsDisabled ? (
+            <p className="mt-3 text-[11px] text-muted-foreground rounded-md border border-border bg-surface-elevated px-3 py-2">
+              Adding or removing virtual card balance is disabled on 0G mainnet. Switch to testnet in the
+              network menu to fund or withdraw.
+            </p>
+          ) : null}
+          <ul className="mt-4 divide-y divide-border">
+            {data.cards.map((c) => (
+              <CreditCardRow
+                key={c.id}
+                card={c}
+                mainnetFundsDisabled={mainnetVirtualCardFundsDisabled}
+                funding={fundMut.isPending && fundMut.variables?.id === c.id}
+                withdrawing={withdrawMut.isPending && withdrawMut.variables?.id === c.id}
+                onFund={(dollars) => fundMut.mutate({ id: c.id, dollars })}
+                onWithdraw={(dollars) => withdrawMut.mutate({ id: c.id, dollars })}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -577,15 +678,29 @@ function CreditCardRow({
   onWithdraw,
   funding,
   withdrawing,
+  mainnetFundsDisabled,
 }: {
   card: CreditCardPublic;
   onFund: (dollars: string) => void;
   onWithdraw: (dollars: string) => void;
   funding: boolean;
   withdrawing: boolean;
+  mainnetFundsDisabled: boolean;
 }) {
   const [fundAmt, setFundAmt] = React.useState("");
   const [wdAmt, setWdAmt] = React.useState("");
+  const qc = useQueryClient();
+  const [cardDetailsRevealed, setCardDetailsRevealed] = React.useState(false);
+  const sensitiveQ = useQuery({
+    queryKey: ["creditCardSensitive", card.id],
+    queryFn: async () => {
+      const r = await fetchStardormCreditCardSensitiveDetails(card.id);
+      if ("error" in r) throw new Error(r.error);
+      return r;
+    },
+    enabled: cardDetailsRevealed,
+    staleTime: 60_000,
+  });
   const bal = `${card.currency} ${(card.balanceCents / 100).toFixed(2)}`;
   const addr = [card.line1, card.line2, [card.city, card.region, card.postalCode].filter(Boolean).join(", "), card.countryCode]
     .filter(Boolean)
@@ -604,6 +719,71 @@ function CreditCardRow({
         </div>
         <div className="shrink-0 text-right text-sm font-semibold tabular-nums">{bal}</div>
       </div>
+      <div className="rounded-lg border border-border bg-surface-elevated p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs font-medium text-foreground">Card credentials</div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 shrink-0 gap-1.5"
+            onClick={() => {
+              if (cardDetailsRevealed) {
+                setCardDetailsRevealed(false);
+                void qc.removeQueries({ queryKey: ["creditCardSensitive", card.id] });
+              } else {
+                setCardDetailsRevealed(true);
+              }
+            }}
+          >
+            {cardDetailsRevealed ? (
+              <>
+                <EyeOff className="h-3.5 w-3.5" />
+                Hide details
+              </>
+            ) : (
+              <>
+                <Eye className="h-3.5 w-3.5" />
+                Reveal details
+              </>
+            )}
+          </Button>
+        </div>
+        {!cardDetailsRevealed ? (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Full card number, expiry, and CVV stay hidden until you choose to reveal them for checkout.
+          </p>
+        ) : sensitiveQ.isPending ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Skeleton className="h-14 rounded-md" />
+            <Skeleton className="h-14 rounded-md" />
+            <Skeleton className="h-14 rounded-md" />
+          </div>
+        ) : sensitiveQ.isError ? (
+          <p className="mt-2 text-[11px] text-destructive">
+            {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
+          </p>
+        ) : sensitiveQ.data ? (
+          <dl className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
+            <div>
+              <dt className="text-muted-foreground">Number</dt>
+              <dd className="mt-0.5 font-mono text-xs font-medium tracking-wide text-foreground">
+                {formatPanGroups(sensitiveQ.data.pan)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Expires</dt>
+              <dd className="mt-0.5 font-mono text-xs font-medium text-foreground">
+                {pad2(sensitiveQ.data.expiryMonth)}/{String(sensitiveQ.data.expiryYear).slice(-2)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">CVV</dt>
+              <dd className="mt-0.5 font-mono text-xs font-medium text-foreground">{sensitiveQ.data.cvv}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface-elevated p-3">
           <Label className="text-xs">Add funds (USD)</Label>
@@ -613,11 +793,12 @@ function CreditCardRow({
               value={fundAmt}
               onChange={(e) => setFundAmt(e.target.value)}
               className="h-9"
+              disabled={mainnetFundsDisabled}
             />
             <Button
               type="button"
               size="sm"
-              disabled={funding}
+              disabled={funding || mainnetFundsDisabled}
               onClick={() => {
                 onFund(fundAmt);
                 setFundAmt("");
@@ -635,12 +816,13 @@ function CreditCardRow({
               value={wdAmt}
               onChange={(e) => setWdAmt(e.target.value)}
               className="h-9"
+              disabled={mainnetFundsDisabled}
             />
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={withdrawing}
+              disabled={withdrawing || mainnetFundsDisabled}
               onClick={() => {
                 onWithdraw(wdAmt);
                 setWdAmt("");

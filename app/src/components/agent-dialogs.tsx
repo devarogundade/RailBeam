@@ -17,7 +17,9 @@ import {
   agentPortfolioAddVerb,
   agentPortfolioRemoveCta,
   agentPortfolioRemoveDialogTitle,
+  canUserCloneCatalogAgent,
   isRegistryTokenIdOneAgent,
+  isViewerOwnedClone,
   REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
 } from "@/lib/registry-token-one-agent";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ import { toast } from "sonner";
 import { useWriteContract, useChainId, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { decodeEventLog } from "viem";
-import { waitForTransactionReceipt } from "viem/actions";
+import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useBeamNetwork } from "@/lib/beam-network-context";
@@ -69,19 +71,28 @@ export function HireDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const { address, balance, hire, connect } = useApp();
+  const { address, balance, hire, connect, ownedClones } = useApp();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const registry = getIdentityRegistryAddressForChain(chainId);
 
+  const ownedCloneIds = React.useMemo(
+    () => new Set(ownedClones.map((a) => a.id)),
+    [ownedClones],
+  );
+
   if (!agent) return null;
+  const isOwnClone = isViewerOwnedClone(agent, address, ownedCloneIds);
 
   const tokenOne = isRegistryTokenIdOneAgent(agent);
   const addVerb = agentPortfolioAddVerb(agent);
   const addCtaTitle = agentPortfolioAddCta(agent, agent.name);
 
   const value = subscribeValueWei(agent);
-  const canHire = Boolean(registry && agent.chainAgentId != null && value !== undefined);
+  const canHire = Boolean(
+    registry && agent.chainAgentId != null && value !== undefined && !isOwnClone,
+  );
   const costLabel =
     value !== undefined
       ? `${formatEther(value)} 0G`
@@ -104,14 +115,27 @@ export function HireDialog({
       });
       return;
     }
+    if (!publicClient) {
+      toast.error("Wallet client unavailable", {
+        description: "Refresh the page and try again.",
+      });
+      return;
+    }
+    if (isOwnClone) {
+      toast.error("You cannot hire your own clone", {
+        description: "You already own this registry token — open chat to use it.",
+      });
+      return;
+    }
     try {
-      await writeContractAsync({
+      const hash = await writeContractAsync({
         address: registry,
         abi: identityRegistryAbi,
         functionName: "subscribe",
         args: [BigInt(agent.chainAgentId), IDENTITY_SUBSCRIBE_NUM_DAYS],
         value,
       });
+      await waitForWriteContractReceipt(publicClient, hash);
       hire(agent.id);
       toast.success(
         tokenOne ? `${agent.name} is available in chat` : `${agent.name} hired`,
@@ -127,7 +151,7 @@ export function HireDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CoinIcon /> {addCtaTitle}
@@ -181,9 +205,11 @@ export function HireDialog({
           <Button disabled={isPending || !canHire} onClick={() => void onHire()}>
             {isPending
               ? "Processing…"
-              : !canHire
-                ? "Pricing unavailable"
-                : `Pay & hire (${String(IDENTITY_SUBSCRIBE_NUM_DAYS)}d)`}
+              : isOwnClone
+                ? "You own this clone"
+                : !canHire
+                  ? "Pricing unavailable"
+                  : `Pay & hire (${String(IDENTITY_SUBSCRIBE_NUM_DAYS)}d)`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -202,6 +228,7 @@ export function FireDialog({
 }) {
   const { fire } = useApp();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const registry = getIdentityRegistryAddressForChain(chainId);
 
@@ -216,12 +243,19 @@ export function FireDialog({
   const onFire = async () => {
     if (canUnsubscribe && registry && agent.chainAgentId != null) {
       try {
-        await writeContractAsync({
+        if (!publicClient) {
+          toast.error("Wallet client unavailable", {
+            description: "Refresh the page and try again.",
+          });
+          return;
+        }
+        const hash = await writeContractAsync({
           address: registry,
           abi: identityRegistryAbi,
           functionName: "unsubscribe",
           args: [BigInt(agent.chainAgentId)],
         });
+        await waitForWriteContractReceipt(publicClient, hash);
       } catch (e) {
         toast.error("Could not complete fire", { description: txError(e) });
         return;
@@ -234,7 +268,7 @@ export function FireDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{removeTitle}</DialogTitle>
           <DialogDescription>
@@ -280,9 +314,17 @@ export function CloneDialog({
     if (!open) setNewTokenId(null);
   }, [open]);
 
+  React.useEffect(() => {
+    if (open && agent && !canUserCloneCatalogAgent(agent)) {
+      onOpenChange(false);
+    }
+  }, [open, agent, onOpenChange]);
+
   if (!agent) return null;
 
-  const registryReady = Boolean(registry && agent.chainAgentId != null && !agent.isCloned);
+  const registryReady = Boolean(
+    registry && canUserCloneCatalogAgent(agent) && publicClient,
+  );
 
   const onClone = async () => {
     if (!address) {
@@ -291,10 +333,18 @@ export function CloneDialog({
       }
       return;
     }
-    if (!registryReady || !registry || agent.chainAgentId == null || !publicClient) {
+    if (!canUserCloneCatalogAgent(agent)) {
+      toast.error("Cannot clone", {
+        description: "The default Beam agent cannot be cloned.",
+      });
+      return;
+    }
+    if (!registryReady || !registry || !publicClient) {
       toast.error("Cannot clone", { description: "Check network and agent token id." });
       return;
     }
+    const chainAgentId = agent.chainAgentId;
+    if (chainAgentId == null) return;
     try {
       const hash = await writeContractAsync({
         address: registry,
@@ -302,12 +352,12 @@ export function CloneDialog({
         functionName: "clone",
         args: [
           address as `0x${string}`,
-          BigInt(agent.chainAgentId),
+          BigInt(chainAgentId),
           "0x" as `0x${string}`,
           "0x" as `0x${string}`,
         ],
       });
-      const receipt = await waitForTransactionReceipt(publicClient, { hash });
+      const receipt = await waitForWriteContractReceipt(publicClient, hash);
       let minted: number | null = null;
       for (const log of receipt.logs) {
         if (log.address.toLowerCase() !== registry.toLowerCase()) continue;
@@ -344,7 +394,7 @@ export function CloneDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Clone {agent.name}</DialogTitle>
           <DialogDescription>

@@ -142,7 +142,10 @@ export function handleAgentMetadataSet(event: AgentMetadataSetEvent): void {
   meta.save();
 
   if (event.params.metadataKey == "agentWallet") {
-    agent.agentWallet = decodeAbiEncodedAddress(event.params.metadataValue);
+    let decodedWallet = decodeAbiEncodedAddress(event.params.metadataValue);
+    if (!(decodedWallet === null)) {
+      agent.agentWallet = decodedWallet;
+    }
   }
 
   agent.blockNumber = event.block.number;
@@ -306,7 +309,11 @@ export function handleNewFeedback(event: NewFeedbackEvent): void {
     event.params.feedbackIndex,
   );
 
-  let fb = new Feedback(id);
+  let fb = Feedback.load(id);
+  if (fb == null) {
+    fb = new Feedback(id);
+  }
+
   fb.agentId = event.params.agentId;
   fb.clientAddress = event.params.clientAddress;
   fb.feedbackIndex = event.params.feedbackIndex;

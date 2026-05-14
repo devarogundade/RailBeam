@@ -68,7 +68,7 @@ var CHAT_SUGGESTIONS = [
   "Start identity verification for my account",
   "Create a virtual payment card with my billing address"
 ];
-var DEFAULT_HIRED_IDS = ["beam-default", "chain-2", "chain-3"];
+var DEFAULT_HIRED_IDS = ["beam-default"];
 var ALL_CATEGORIES = [
   "Payments",
   "Taxes",
@@ -148,7 +148,13 @@ var HANDLER_ACTION_IDS = [
   /** PDF + structured snapshot: payment requests, on-ramps, cards, KYC for this wallet. */
   "generate_payment_invoice",
   /** Summary report across payment requests, on-ramps, virtual cards, and KYC status. */
-  "generate_financial_activity_report"
+  "generate_financial_activity_report",
+  /** Confirms a native (gas token) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_native_transfer",
+  /** Confirms an ERC-20 transfer draft; user signs in their wallet / Beam Send. */
+  "draft_erc20_transfer",
+  /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_nft_transfer"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -470,6 +476,13 @@ var paymentSettlementBodySchema = zod.z.object({
       path: ["txHash"]
     });
   }
+  if (val.txHash && val.x402PaymentPayload) {
+    ctx.addIssue({
+      code: zod.z.ZodIssueCode.custom,
+      message: "Provide only one of txHash or x402PaymentPayload.",
+      path: ["txHash"]
+    });
+  }
 });
 var paymentRequestTypeSchema = zod.z.enum(["on-chain", "x402"]);
 var paymentRequestStatusSchema = zod.z.enum([
@@ -625,15 +638,53 @@ var creditCardPublicSchema = zod.z.object({
   networkBrand: zod.z.string(),
   status: zod.z.enum(["active", "frozen"]),
   createdAt: zod.z.coerce.date().optional(),
-  updatedAt: zod.z.coerce.date().optional()
+  updatedAt: zod.z.coerce.date().optional(),
+  /** Present on some `POST …/withdraw` responses when native 0G was sent from the treasury. */
+  lastWithdrawTxHash: zod.z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional()
+});
+var creditCardSensitiveDetailsSchema = zod.z.object({
+  cardId: zod.z.string().min(1),
+  pan: zod.z.string().regex(/^\d{16}$/),
+  expiryMonth: zod.z.coerce.number().int().min(1).max(12),
+  expiryYear: zod.z.coerce.number().int().min(2e3).max(2100),
+  cvv: zod.z.string().regex(/^\d{3,4}$/)
 });
 var creditCardsListResponseSchema = zod.z.object({
   cards: zod.z.array(creditCardPublicSchema)
 });
 var creditCardFundBodySchema = zod.z.object({
+  amountCents: zod.z.coerce.number().int().min(1).max(1e8),
+  fundingTxHash: zod.z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  fundingChainId: zod.z.coerce.number().int().positive().optional()
+}).refine(
+  (d) => d.fundingTxHash == null && d.fundingChainId == null || d.fundingTxHash != null && d.fundingChainId != null,
+  {
+    message: "fundingTxHash and fundingChainId must both be provided or both omitted",
+    path: ["fundingTxHash"]
+  }
+);
+var creditCardFundQuoteQuerySchema = zod.z.object({
   amountCents: zod.z.coerce.number().int().min(1).max(1e8)
 });
-var creditCardWithdrawBodySchema = creditCardFundBodySchema;
+var creditCardFundQuoteOffChainSchema = zod.z.object({
+  onchainFundingRequired: zod.z.literal(false)
+});
+var creditCardFundQuoteOnChainSchema = zod.z.object({
+  onchainFundingRequired: zod.z.literal(true),
+  chainId: zod.z.number().int(),
+  recipient: zod.z.string().min(1),
+  minNativeWei: zod.z.string().regex(/^\d+$/),
+  usdValue: zod.z.number().finite().positive(),
+  nativeSymbol: zod.z.string().min(1),
+  nativeDecimals: zod.z.number().int().min(0).max(18)
+});
+var creditCardFundQuoteResponseSchema = zod.z.discriminatedUnion(
+  "onchainFundingRequired",
+  [creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema]
+);
+var creditCardWithdrawBodySchema = zod.z.object({
+  amountCents: zod.z.coerce.number().int().min(1).max(1e8)
+});
 var billingDatePartSchema = zod.z.object({
   year: zod.z.number().int().min(2020).max(2036),
   month: zod.z.number().int().min(1).max(12),
@@ -763,6 +814,61 @@ function taxRateForCountry(country) {
   if (HIGH_TIER_OECD.has(c)) return 0.25;
   return 0.2;
 }
+var caip2Eip155 = zod.z.string().min(8).max(64).regex(
+  /^eip155:\d+$/,
+  "network must be CAIP-2 form eip155:<chainId> (e.g. eip155:16602)"
+);
+var evmAddress20 = zod.z.string().trim().refine(
+  (s) => /^0x[a-fA-F0-9]{40}$/.test(s),
+  "must be a 0x-prefixed 20-byte EVM address"
+).transform((s) => s.trim().toLowerCase());
+var positiveWeiString = zod.z.string().trim().regex(
+  /^[1-9]\d*$/,
+  "must be a positive integer decimal string (base units / wei)"
+);
+var decimalStringNonNeg = zod.z.string().trim().regex(/^\d+$/, "must be a non-negative integer decimal string");
+var nftStandardSchema = zod.z.enum(["erc721", "erc1155"]);
+var draftNativeTransferInputSchema = zod.z.object({
+  network: caip2Eip155,
+  to: evmAddress20,
+  valueWei: positiveWeiString,
+  note: zod.z.string().max(500).optional()
+});
+var draftErc20TransferInputSchema = zod.z.object({
+  network: caip2Eip155,
+  token: evmAddress20,
+  tokenSymbol: zod.z.string().min(1).max(32).optional(),
+  tokenDecimals: zod.z.number().int().min(0).max(36),
+  to: evmAddress20,
+  amountWei: positiveWeiString,
+  note: zod.z.string().max(500).optional()
+});
+var draftNftTransferInputSchema = zod.z.object({
+  network: caip2Eip155,
+  contract: evmAddress20,
+  standard: nftStandardSchema.default("erc721"),
+  to: evmAddress20,
+  tokenId: decimalStringNonNeg,
+  /** Required for ERC-1155; omit for ERC-721. */
+  amount: positiveWeiString.optional(),
+  note: zod.z.string().max(500).optional()
+}).superRefine((val, ctx) => {
+  if (val.standard === "erc1155") {
+    if (!val.amount) {
+      ctx.addIssue({
+        code: zod.z.ZodIssueCode.custom,
+        message: "amount (base units) is required for ERC-1155",
+        path: ["amount"]
+      });
+    }
+  } else if (val.amount != null) {
+    ctx.addIssue({
+      code: zod.z.ZodIssueCode.custom,
+      message: "amount must be omitted for ERC-721",
+      path: ["amount"]
+    });
+  }
+});
 
 exports.HANDLER_ACTION_IDS = HANDLER_ACTION_IDS;
 exports.ISO_3166_1_ALPHA2_CODES = ISO_3166_1_ALPHA2_CODES;
@@ -797,10 +903,18 @@ exports.conversationsQuerySchema = conversationsQuerySchema;
 exports.createConversationBodySchema = createConversationBodySchema;
 exports.createCreditCardInputSchema = createCreditCardInputSchema;
 exports.creditCardFundBodySchema = creditCardFundBodySchema;
+exports.creditCardFundQuoteOffChainSchema = creditCardFundQuoteOffChainSchema;
+exports.creditCardFundQuoteOnChainSchema = creditCardFundQuoteOnChainSchema;
+exports.creditCardFundQuoteQuerySchema = creditCardFundQuoteQuerySchema;
+exports.creditCardFundQuoteResponseSchema = creditCardFundQuoteResponseSchema;
 exports.creditCardPublicSchema = creditCardPublicSchema;
+exports.creditCardSensitiveDetailsSchema = creditCardSensitiveDetailsSchema;
 exports.creditCardWithdrawBodySchema = creditCardWithdrawBodySchema;
 exports.creditCardsListResponseSchema = creditCardsListResponseSchema;
 exports.deleteConversationResponseSchema = deleteConversationResponseSchema;
+exports.draftErc20TransferInputSchema = draftErc20TransferInputSchema;
+exports.draftNativeTransferInputSchema = draftNativeTransferInputSchema;
+exports.draftNftTransferInputSchema = draftNftTransferInputSchema;
 exports.executeHandlerBodySchema = executeHandlerBodySchema;
 exports.executeHandlerResponseSchema = executeHandlerResponseSchema;
 exports.generateFinancialActivityReportInputSchema = generateFinancialActivityReportInputSchema;

@@ -17,6 +17,12 @@ export const HANDLER_ACTION_IDS = [
   "generate_payment_invoice",
   /** Summary report across payment requests, on-ramps, virtual cards, and KYC status. */
   "generate_financial_activity_report",
+  /** Confirms a native (gas token) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_native_transfer",
+  /** Confirms an ERC-20 transfer draft; user signs in their wallet / Beam Send. */
+  "draft_erc20_transfer",
+  /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_nft_transfer",
 ] as const;
 
 export type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];

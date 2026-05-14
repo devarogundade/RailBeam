@@ -1,9 +1,10 @@
 import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
 import type { AgentFeedbacksPageResponse } from "@beam/stardorm-api-contract";
 import { useBeamNetwork } from "@/lib/beam-network-context";
+import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchAgentFeedbacksPage } from "@/lib/stardorm-agent-feedbacks";
-import { getStardormSubgraphUrl, getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
+import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 
 const DEFAULT_PAGE_SIZE = 15;
 
@@ -14,7 +15,12 @@ export function useAgentFeedbacksInfinite(
 ) {
   const { effectiveChainId } = useBeamNetwork();
   const subgraphUrl = getStardormSubgraphUrlForChain(effectiveChainId);
-  const enabled = Boolean(getStardormSubgraphUrl() && subgraphUrl && chainAgentId != null);
+  const enabled = Boolean(
+    subgraphUrl &&
+      isBeamConfiguredChainId(effectiveChainId) &&
+      chainAgentId != null &&
+      chainAgentId > 0,
+  );
   return useInfiniteQuery<
     AgentFeedbacksPageResponse,
     Error,

@@ -3,6 +3,7 @@ import {
   catalogResponseSchema,
   type CatalogResponse,
 } from "@beam/stardorm-api-contract";
+import { isBeamConfiguredChainId } from "./beam-chain-config";
 import { fetchTyped } from "./api";
 import { getStardormApiBase } from "./stardorm-axios";
 import { getStardormSubgraphUrlForChain } from "./stardorm-subgraph-config";
@@ -17,7 +18,10 @@ export async function fetchStardormCatalog(
   beamChainId?: number,
   viewerAddress?: `0x${string}`,
 ): Promise<CatalogResponse> {
-  const subgraphUrl = getStardormSubgraphUrlForChain(beamChainId);
+  const subgraphUrl =
+    beamChainId != null && isBeamConfiguredChainId(beamChainId)
+      ? getStardormSubgraphUrlForChain(beamChainId)
+      : undefined;
   if (subgraphUrl) {
     return fetchSubgraphBackedCatalogResponse({ subgraphUrl, viewerAddress });
   }

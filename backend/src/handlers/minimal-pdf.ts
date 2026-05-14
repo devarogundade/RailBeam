@@ -1,76 +1,38 @@
-/** Escape text for PDF literal strings `(…)`. */
-function escPdf(s: string): string {
-  return s
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)')
-    .replace(/\r\n|\r|\n/g, ' ');
-}
+import PDFDocument from 'pdfkit';
+
+const PAGE_W = 612;
+const PAGE_H = 792;
 
 /**
- * Single-page PDF (PDF 1.4) with Helvetica, no external deps.
- * Suitable for short lines (wallet hex, numbers, ISO dates).
+ * Single-page letter PDF with Helvetica, one line per entry.
+ * Uses PDFKit for correct PDF structure and encoding.
  */
-export function buildLinesPdf(lines: string[]): Buffer {
-  const contentChunks: string[] = [];
-  let y = 760;
-  for (const line of lines) {
-    contentChunks.push(
-      `BT /F1 10 Tf 48 ${y} Td (${escPdf(line)}) Tj ET`,
-    );
-    y -= 14;
-    if (y < 48) break;
-  }
-  const streamBody = contentChunks.join('\n');
-  const streamBytes = Buffer.from(streamBody, 'latin1');
+export function buildLinesPdf(lines: string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: [PAGE_W, PAGE_H],
+      margin: 0,
+      autoFirstPage: true,
+    });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-  const obj1 =
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
-  const obj2 =
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
-  const obj3 =
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] ' +
-    '/Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> ' +
-    '/Contents 4 0 R >>\nendobj\n';
-  const obj4Head = `4 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n`;
-  const obj4Tail = '\nendstream\nendobj\n';
+    doc.font('Helvetica').fontSize(10);
 
-  const parts: Buffer[] = [];
-  parts.push(Buffer.from('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n', 'latin1'));
+    let yBottom = 760;
+    const x = 48;
+    for (const line of lines) {
+      if (yBottom < 48) break;
+      const baselineFromTop = PAGE_H - yBottom;
+      doc.text(line, x, baselineFromTop, {
+        width: PAGE_W - x - 48,
+        lineBreak: false,
+      });
+      yBottom -= 14;
+    }
 
-  const offsets: number[] = [];
-
-  const recordAndPush = (s: string) => {
-    const lenSoFar = Buffer.concat(parts).length;
-    offsets.push(lenSoFar);
-    parts.push(Buffer.from(s, 'latin1'));
-  };
-
-  recordAndPush(obj1);
-  recordAndPush(obj2);
-  recordAndPush(obj3);
-  recordAndPush(obj4Head);
-  parts.push(streamBytes);
-  parts.push(Buffer.from(obj4Tail, 'latin1'));
-
-  const body = Buffer.concat(parts);
-  const xrefPos = body.length;
-
-  const xrefLines = [
-    'xref',
-    `0 ${offsets.length + 1}`,
-    '0000000000 65535 f ',
-  ];
-  for (const off of offsets) {
-    xrefLines.push(`${String(off).padStart(10, '0')} 00000 n `);
-  }
-  xrefLines.push(
-    'trailer',
-    `<< /Size ${offsets.length + 1} /Root 1 0 R >>`,
-    'startxref',
-    String(xrefPos),
-    '%%EOF',
-  );
-
-  return Buffer.concat([body, Buffer.from(xrefLines.join('\n'), 'latin1')]);
+    doc.end();
+  });
 }

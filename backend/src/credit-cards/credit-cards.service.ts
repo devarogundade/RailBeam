@@ -9,6 +9,7 @@ import { Model, Types } from 'mongoose';
 import type {
   CreateCreditCardInput,
   CreditCardPublic,
+  CreditCardSensitiveDetails,
 } from '@beam/stardorm-api-contract';
 import {
   CreditCard,
@@ -17,6 +18,20 @@ import {
 
 function normalizeWallet(w: string): string {
   return w.trim().toLowerCase();
+}
+
+function buildCardSecrets(last4: string): {
+  pan: string;
+  cardCvv: string;
+  expiryMonth: number;
+  expiryYear: number;
+} {
+  const mid = String(randomInt(0, 100_000_000)).padStart(8, '0');
+  const pan = `4111${mid}${last4}`;
+  const cardCvv = String(randomInt(100, 1000));
+  const expiryYear = new Date().getFullYear() + randomInt(2, 5);
+  const expiryMonth = randomInt(1, 13);
+  return { pan, cardCvv, expiryMonth, expiryYear };
 }
 
 @Injectable()
@@ -35,6 +50,7 @@ export class CreditCardsService {
     const last4 = String(randomInt(0, 10000)).padStart(4, '0');
     const balance = input.initialBalanceCents ?? 0;
     const currency = input.currency ?? 'USD';
+    const secrets = buildCardSecrets(last4);
     const created = await this.model.create({
       walletAddress: wallet,
       firstName: input.firstName.trim(),
@@ -49,6 +65,7 @@ export class CreditCardsService {
       currency,
       balanceCents: balance,
       last4,
+      ...secrets,
       networkBrand: 'Visa',
       status: 'active',
       ...(userId ? { userId } : {}),
@@ -85,6 +102,45 @@ export class CreditCardsService {
       .find({ walletAddress: wallet })
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  private async ensureSensitiveFields(doc: CreditCardDocument): Promise<void> {
+    if (
+      doc.pan &&
+      doc.cardCvv &&
+      doc.expiryMonth != null &&
+      doc.expiryYear != null
+    ) {
+      return;
+    }
+    const s = buildCardSecrets(doc.last4);
+    doc.pan = doc.pan ?? s.pan;
+    doc.cardCvv = doc.cardCvv ?? s.cardCvv;
+    doc.expiryMonth = doc.expiryMonth ?? s.expiryMonth;
+    doc.expiryYear = doc.expiryYear ?? s.expiryYear;
+    await doc.save();
+  }
+
+  async getSensitiveDetailsForWallet(
+    walletAddress: string,
+    cardId: string,
+  ): Promise<CreditCardSensitiveDetails> {
+    if (!Types.ObjectId.isValid(cardId)) {
+      throw new BadRequestException('Invalid card id');
+    }
+    const wallet = normalizeWallet(walletAddress);
+    const doc = await this.model
+      .findOne({ _id: new Types.ObjectId(cardId), walletAddress: wallet })
+      .exec();
+    if (!doc) throw new NotFoundException('Credit card not found');
+    await this.ensureSensitiveFields(doc);
+    return {
+      cardId: String(doc._id),
+      pan: doc.pan!,
+      expiryMonth: doc.expiryMonth!,
+      expiryYear: doc.expiryYear!,
+      cvv: doc.cardCvv!,
+    };
   }
 
   async fund(
@@ -124,5 +180,26 @@ export class CreditCardsService {
     doc.balanceCents -= amountCents;
     await doc.save();
     return doc;
+  }
+
+  /**
+   * Restores card balance after a failed on-chain unfund payout (no financial snapshot hooks).
+   */
+  async restoreWithdrawBalance(
+    walletAddress: string,
+    cardId: string,
+    amountCents: number,
+  ): Promise<void> {
+    if (!Types.ObjectId.isValid(cardId)) {
+      throw new BadRequestException('Invalid card id');
+    }
+    const wallet = normalizeWallet(walletAddress);
+    const r = await this.model.updateOne(
+      { _id: new Types.ObjectId(cardId), walletAddress: wallet },
+      { $inc: { balanceCents: amountCents } },
+    );
+    if (r.matchedCount === 0) {
+      throw new NotFoundException('Credit card not found');
+    }
   }
 }

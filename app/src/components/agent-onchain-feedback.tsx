@@ -1,14 +1,20 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useConnection, useChainId } from "wagmi";
-import { useReadContract, useWriteContract } from "wagmi";
+import {
+  useChainId,
+  useConnection,
+  usePublicClient,
+  useReadContract,
+  useWriteContract,
+} from "wagmi";
 import { toast } from "sonner";
 import type { Agent } from "@/lib/types";
 import type { AgentOnchainFeedbackItem } from "@beam/stardorm-api-contract";
 import { useAgentFeedbacksInfinite } from "@/lib/hooks/use-agent-feedbacks";
 import { queryKeys } from "@/lib/query-keys";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { getStardormSubgraphUrl, getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
+import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
+import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import {
   getIdentityRegistryAddressForChain,
   identityRegistryAbi,
@@ -22,8 +28,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { isRegistryTokenIdOneAgent } from "@/lib/registry-token-one-agent";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquareText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { ValidationsListSkeleton } from "@/components/page-shimmer";
 
 function txToastDescription(err: unknown): string {
   if (err && typeof err === "object" && "shortMessage" in err) {
@@ -73,7 +82,7 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
   const chainId = useChainId();
   const { effectiveChainId } = useBeamNetwork();
   const subgraphConfigured = Boolean(
-    getStardormSubgraphUrl() && getStardormSubgraphUrlForChain(effectiveChainId),
+    isBeamConfiguredChainId(effectiveChainId) && getStardormSubgraphUrlForChain(effectiveChainId),
   );
   const PAGE_SIZE = 15;
   const {
@@ -104,6 +113,7 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
     Boolean(address && tokenOwner) &&
     address!.toLowerCase() === (tokenOwner as `0x${string}`).toLowerCase();
 
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending: txPending } = useWriteContract();
   const [stars, setStars] = React.useState(5);
   const [comment, setComment] = React.useState("");
@@ -121,7 +131,13 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
     }
     const payload = buildBeamFeedbackPayload(stars, comment);
     try {
-      await writeContractAsync({
+      if (!publicClient) {
+        toast.error("Wallet client unavailable", {
+          description: "Refresh the page and try again.",
+        });
+        return;
+      }
+      const hash = await writeContractAsync({
         address: reputation,
         abi: reputationRegistryAbi,
         functionName: "giveFeedback",
@@ -136,6 +152,7 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
           payload.feedbackHash,
         ],
       });
+      await waitForWriteContractReceipt(publicClient, hash);
       toast.success("Review submitted");
       setComment("");
       await queryClient.invalidateQueries({
@@ -265,11 +282,17 @@ export function AgentOnchainFeedback({ agent }: { agent: Agent; }) {
             Reviews could not be loaded for this agent.
           </p>
         ) : isPending ? (
-          <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+          <ValidationsListSkeleton />
         ) : isError ? (
           <p className="mt-3 text-sm text-destructive">Could not load reviews. Try again later.</p>
         ) : merged.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">No feedback yet.</p>
+          <div className="mt-3">
+            <EmptyState
+              icon={MessageSquareText}
+              title="No on-chain reviews yet"
+              description="Be the first to leave feedback once this agent is published on the registry. Reviews are stored on-chain and show up here for everyone."
+            />
+          </div>
         ) : (
           <div
             ref={(el) => {

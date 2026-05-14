@@ -13,10 +13,13 @@ import {
   REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
 } from "@/lib/registry-token-one-agent";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare, Trash2, Users, Wallet } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { PageRoutePending } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/agents/")({
   component: MyAgents,
+  pendingComponent: () => <PageRoutePending variant="default" />,
 });
 
 function AgentTableRows({
@@ -30,8 +33,22 @@ function AgentTableRows({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-        Nothing here yet.
+      <div className="p-6 md:p-8">
+        <EmptyState
+          icon={Users}
+          title={allowFire ? "No hired agents yet" : "No clones in this wallet"}
+          description={
+            allowFire
+              ? "Hire specialized agents from the marketplace. They land here for chat, billing, and portfolio management."
+              : "When you mint a clone from the marketplace, it appears in this tab with on-chain controls."
+          }
+        >
+          {allowFire ? (
+            <Button asChild>
+              <Link to="/marketplace">Browse marketplace</Link>
+            </Button>
+          ) : null}
+        </EmptyState>
       </div>
     );
   }
@@ -184,8 +201,12 @@ function MyAgents() {
                 <div className="col-span-1 text-right">Actions</div>
               </div>
               {!address ? (
-                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  Connect your wallet to see registry clones you own.
+                <div className="p-6 md:p-8">
+                  <EmptyState
+                    icon={Wallet}
+                    title="Connect your wallet"
+                    description="Registry clones are tied to your address. Connect the wallet that holds your agent NFTs to see them here."
+                  />
                 </div>
               ) : (
                 <AgentTableRows rows={ownedClones} allowFire={false} onFire={setFireTarget} />

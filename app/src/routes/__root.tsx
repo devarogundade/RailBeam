@@ -4,6 +4,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
   useRouter,
   useRouterState,
   HeadContent,
@@ -19,6 +20,7 @@ import { AppHeader } from "@/components/app-header";
 import { MobileSidebarProvider } from "@/lib/mobile-sidebar-context";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 import { Toaster } from "@/components/ui/sonner";
+import { isOnboardingComplete } from "@/lib/onboarding";
 
 function NotFoundComponent() {
   return (
@@ -66,7 +68,22 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+function isPayPath(pathname: string): boolean {
+  return pathname === "/pay" || pathname.startsWith("/pay/");
+}
+
+function isOnboardingPath(pathname: string): boolean {
+  return pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    const pathname = location.pathname;
+    if (isPayPath(pathname) || isOnboardingPath(pathname)) return;
+    /** SSR runs this without `window`; the client run redirects before the shell paints. */
+    if (typeof window === "undefined") return;
+    if (!isOnboardingComplete()) throw redirect({ to: "/onboarding", replace: true });
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -103,42 +120,30 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isPayRoute = pathname === "/pay" || pathname.startsWith("/pay/");
-  const isOnboardingRoute = pathname === "/onboarding" || pathname.startsWith("/onboarding/");
-
-  if (isPayRoute || isOnboardingRoute) {
-    return (
-      <WagmiProvider config={wagmiAdapter.wagmiConfig}>
-        <QueryClientProvider client={queryClient}>
-          <BeamNetworkProvider>
-            <AppProvider>
-              <Outlet />
-              <Toaster richColors position="bottom-right" theme="dark" />
-            </AppProvider>
-          </BeamNetworkProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    );
-  }
+  const minimalShell = isPayPath(pathname) || isOnboardingPath(pathname);
 
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <BeamNetworkProvider>
           <AppProvider>
-            <OnboardingRedirect>
-              <MobileSidebarProvider>
-                <div className="flex h-dvh min-h-0 w-full overflow-hidden">
-                  <AppSidebar />
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                    <AppHeader />
-                    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                      <Outlet />
-                    </main>
+            {minimalShell ? (
+              <Outlet />
+            ) : (
+              <OnboardingRedirect>
+                <MobileSidebarProvider>
+                  <div className="flex h-dvh min-h-0 w-full overflow-hidden">
+                    <AppSidebar />
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <AppHeader />
+                      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                        <Outlet />
+                      </main>
+                    </div>
                   </div>
-                </div>
-              </MobileSidebarProvider>
-            </OnboardingRedirect>
+                </MobileSidebarProvider>
+              </OnboardingRedirect>
+            )}
             <Toaster richColors position="bottom-right" theme="dark" />
           </AppProvider>
         </BeamNetworkProvider>

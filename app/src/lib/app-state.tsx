@@ -21,6 +21,7 @@ import {
 import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { useMyActiveSubscribedChainAgentIds } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
+import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -160,11 +161,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => catalog.data?.agents ?? [],
     [catalog.data?.agents],
   );
-  const defaultHiredIds = React.useMemo(
-    () => catalog.data?.defaultHiredIds ?? [],
-    [catalog.data?.defaultHiredIds],
-  );
-
   const subgraphCatalogHiredIds = React.useMemo(() => {
     const chainIds = subgraphHires.data ?? [];
     const ids: string[] = [];
@@ -176,11 +172,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [subgraphHires.data, agents]);
 
   const hiredIds = React.useMemo(() => {
-    if (!address) return defaultHiredIds;
-    const fromChain = getStardormSubgraphUrlForChain(effectiveChainId) ? subgraphCatalogHiredIds : [];
-    const base = [...new Set([...defaultHiredIds, ...fromChain])];
-    return [...new Set([...base, ...optimisticHiredIds])];
-  }, [address, defaultHiredIds, subgraphCatalogHiredIds, optimisticHiredIds, effectiveChainId]);
+    /** No wallet ⇒ no hires. With a wallet, only indexer subscriptions (+ optimistic post-tx), never catalog seed defaults. */
+    if (!address) return [];
+    const fromChain =
+      getStardormSubgraphUrlForChain(effectiveChainId) && isBeamConfiguredChainId(effectiveChainId)
+        ? subgraphCatalogHiredIds
+        : [];
+    const merged = [...new Set([...fromChain, ...optimisticHiredIds])];
+    return merged.filter((id) => {
+      const a = agents.find((ag) => ag.id === id);
+      if (a?.isCloned === true) return false;
+      return true;
+    });
+  }, [address, subgraphCatalogHiredIds, optimisticHiredIds, effectiveChainId, agents]);
 
   const invalidateSubgraphHires = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.subgraph.all });

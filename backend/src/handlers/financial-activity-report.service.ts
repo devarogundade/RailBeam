@@ -97,7 +97,7 @@ export class FinancialActivityReportService implements HandlerService {
       'This report is for operational visibility in Beam; it is not audited financial statements.',
     ];
 
-    const pdf = buildLinesPdf(lines);
+    const pdf = await buildLinesPdf(lines);
     const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
 
     return {

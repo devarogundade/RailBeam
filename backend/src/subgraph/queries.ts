@@ -113,6 +113,10 @@ export const GET_USER_SUBSCRIPTIONS_PAGE_FILTERED = /* GraphQL */ `
     ) {
       agentId
       endDate
+      agent {
+        isCloned
+        owner
+      }
     }
   }
 `;

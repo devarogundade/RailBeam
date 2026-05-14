@@ -6,6 +6,7 @@ import {
 } from "@beam/stardorm-api-contract";
 import type { QueryClient } from "@tanstack/react-query";
 import { parseAgentUriFromString } from "./agent-uri-metadata";
+import { isBeamConfiguredChainId } from "./beam-chain-config";
 import { queryKeys } from "./query-keys";
 import { fetchStardormCatalog } from "./stardorm-catalog";
 import { mapSubgraphAgentToCatalogAgent } from "./stardorm-subgraph-catalog";
@@ -78,7 +79,8 @@ export async function resolveCatalogAgentByParamId(
   const chainAgentId = Number(m[1]);
   if (!Number.isFinite(chainAgentId) || chainAgentId <= 0) return null;
 
-  const subgraphUrl = getStardormSubgraphUrlForChain(beamChainId);
+  const subgraphUrl =
+    isBeamConfiguredChainId(beamChainId) ? getStardormSubgraphUrlForChain(beamChainId) : undefined;
   if (!subgraphUrl) return null;
 
   const row = await fetchSubgraphAgentByChainAgentId(chainAgentId, { subgraphUrl });

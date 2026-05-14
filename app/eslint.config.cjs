@@ -92,6 +92,7 @@ module.exports = tseslint.config(
       "src/components/ui/**",
       "src/lib/app-state.tsx",
       "src/lib/beam-network-context.tsx",
+      "src/lib/mobile-sidebar-context.tsx",
     ],
     rules: { "react-refresh/only-export-components": "off" },
   },

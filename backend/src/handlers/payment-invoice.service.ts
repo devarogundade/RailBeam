@@ -125,7 +125,7 @@ export class PaymentInvoiceService implements HandlerService {
       'Note: Line items reflect Mongo-backed app state (x402 / on-chain checkouts, on-ramp, cards, KYC). Not legal tax or accounting advice.',
     );
 
-    const pdf = buildLinesPdf(lines.slice(0, 48));
+    const pdf = await buildLinesPdf(lines.slice(0, 48));
     const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
 
     return {

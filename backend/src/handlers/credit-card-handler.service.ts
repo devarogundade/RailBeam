@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { createCreditCardInputSchema } from '@beam/stardorm-api-contract';
 import { CreditCardsService } from '../credit-cards/credit-cards.service';
+import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
 import type {
   HandlerContext,
   HandlerMessage,
@@ -11,7 +12,10 @@ import type {
 export class CreditCardHandlerService implements HandlerService {
   readonly id = 'create_credit_card' as const;
 
-  constructor(private readonly creditCards: CreditCardsService) {}
+  constructor(
+    private readonly creditCards: CreditCardsService,
+    private readonly financialSnapshots: FinancialSnapshotsService,
+  ) {}
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
     const parsed = createCreditCardInputSchema.safeParse(raw);
@@ -22,11 +26,15 @@ export class CreditCardHandlerService implements HandlerService {
       ctx.walletAddress,
       parsed.data,
     );
+    if (row.balanceCents > 0) {
+      void this.financialSnapshots
+        .recordVirtualCardFund(ctx.walletAddress, row.balanceCents)
+        .catch(() => {
+          /* best-effort rollup */
+        });
+    }
     const id = row._id.toHexString();
     const panDisplay = `•••• •••• •••• ${row.last4}`;
-    const addr2 = [row.city, row.region, row.postalCode, row.countryCode]
-      .filter(Boolean)
-      .join(', ');
     const data: Record<string, unknown> = {
       creditCardId: id,
       last4: row.last4,

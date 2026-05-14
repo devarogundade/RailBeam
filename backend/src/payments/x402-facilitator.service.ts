@@ -123,6 +123,12 @@ export class X402FacilitatorService {
           'Facilitator settlement did not succeed.',
       );
     }
-    return { transaction: settle.transaction, payer: settle.payer };
+    const transaction = settle.transaction?.trim();
+    if (!transaction) {
+      throw new BadRequestException(
+        'Facilitator reported success but did not return a transaction hash.',
+      );
+    }
+    return { transaction, payer: settle.payer };
   }
 }

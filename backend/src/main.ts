@@ -7,15 +7,18 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '*')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const corsAllowAll = corsOrigins.some((o) => o === '*');
 
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (corsOrigins.length === 0) return callback(null, true);
+      if (corsOrigins.length === 0 || corsAllowAll) {
+        return callback(null, true);
+      }
       return callback(null, corsOrigins.includes(origin));
     },
     credentials: true,

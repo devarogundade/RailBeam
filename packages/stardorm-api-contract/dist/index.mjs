@@ -66,7 +66,7 @@ var CHAT_SUGGESTIONS = [
   "Start identity verification for my account",
   "Create a virtual payment card with my billing address"
 ];
-var DEFAULT_HIRED_IDS = ["beam-default", "chain-2", "chain-3"];
+var DEFAULT_HIRED_IDS = ["beam-default"];
 var ALL_CATEGORIES = [
   "Payments",
   "Taxes",
@@ -146,7 +146,13 @@ var HANDLER_ACTION_IDS = [
   /** PDF + structured snapshot: payment requests, on-ramps, cards, KYC for this wallet. */
   "generate_payment_invoice",
   /** Summary report across payment requests, on-ramps, virtual cards, and KYC status. */
-  "generate_financial_activity_report"
+  "generate_financial_activity_report",
+  /** Confirms a native (gas token) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_native_transfer",
+  /** Confirms an ERC-20 transfer draft; user signs in their wallet / Beam Send. */
+  "draft_erc20_transfer",
+  /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
+  "draft_nft_transfer"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -468,6 +474,13 @@ var paymentSettlementBodySchema = z.object({
       path: ["txHash"]
     });
   }
+  if (val.txHash && val.x402PaymentPayload) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide only one of txHash or x402PaymentPayload.",
+      path: ["txHash"]
+    });
+  }
 });
 var paymentRequestTypeSchema = z.enum(["on-chain", "x402"]);
 var paymentRequestStatusSchema = z.enum([
@@ -623,15 +636,53 @@ var creditCardPublicSchema = z.object({
   networkBrand: z.string(),
   status: z.enum(["active", "frozen"]),
   createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional()
+  updatedAt: z.coerce.date().optional(),
+  /** Present on some `POST …/withdraw` responses when native 0G was sent from the treasury. */
+  lastWithdrawTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional()
+});
+var creditCardSensitiveDetailsSchema = z.object({
+  cardId: z.string().min(1),
+  pan: z.string().regex(/^\d{16}$/),
+  expiryMonth: z.coerce.number().int().min(1).max(12),
+  expiryYear: z.coerce.number().int().min(2e3).max(2100),
+  cvv: z.string().regex(/^\d{3,4}$/)
 });
 var creditCardsListResponseSchema = z.object({
   cards: z.array(creditCardPublicSchema)
 });
 var creditCardFundBodySchema = z.object({
+  amountCents: z.coerce.number().int().min(1).max(1e8),
+  fundingTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  fundingChainId: z.coerce.number().int().positive().optional()
+}).refine(
+  (d) => d.fundingTxHash == null && d.fundingChainId == null || d.fundingTxHash != null && d.fundingChainId != null,
+  {
+    message: "fundingTxHash and fundingChainId must both be provided or both omitted",
+    path: ["fundingTxHash"]
+  }
+);
+var creditCardFundQuoteQuerySchema = z.object({
   amountCents: z.coerce.number().int().min(1).max(1e8)
 });
-var creditCardWithdrawBodySchema = creditCardFundBodySchema;
+var creditCardFundQuoteOffChainSchema = z.object({
+  onchainFundingRequired: z.literal(false)
+});
+var creditCardFundQuoteOnChainSchema = z.object({
+  onchainFundingRequired: z.literal(true),
+  chainId: z.number().int(),
+  recipient: z.string().min(1),
+  minNativeWei: z.string().regex(/^\d+$/),
+  usdValue: z.number().finite().positive(),
+  nativeSymbol: z.string().min(1),
+  nativeDecimals: z.number().int().min(0).max(18)
+});
+var creditCardFundQuoteResponseSchema = z.discriminatedUnion(
+  "onchainFundingRequired",
+  [creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema]
+);
+var creditCardWithdrawBodySchema = z.object({
+  amountCents: z.coerce.number().int().min(1).max(1e8)
+});
 var billingDatePartSchema = z.object({
   year: z.number().int().min(2020).max(2036),
   month: z.number().int().min(1).max(12),
@@ -761,7 +812,62 @@ function taxRateForCountry(country) {
   if (HIGH_TIER_OECD.has(c)) return 0.25;
   return 0.2;
 }
+var caip2Eip155 = z.string().min(8).max(64).regex(
+  /^eip155:\d+$/,
+  "network must be CAIP-2 form eip155:<chainId> (e.g. eip155:16602)"
+);
+var evmAddress20 = z.string().trim().refine(
+  (s) => /^0x[a-fA-F0-9]{40}$/.test(s),
+  "must be a 0x-prefixed 20-byte EVM address"
+).transform((s) => s.trim().toLowerCase());
+var positiveWeiString = z.string().trim().regex(
+  /^[1-9]\d*$/,
+  "must be a positive integer decimal string (base units / wei)"
+);
+var decimalStringNonNeg = z.string().trim().regex(/^\d+$/, "must be a non-negative integer decimal string");
+var nftStandardSchema = z.enum(["erc721", "erc1155"]);
+var draftNativeTransferInputSchema = z.object({
+  network: caip2Eip155,
+  to: evmAddress20,
+  valueWei: positiveWeiString,
+  note: z.string().max(500).optional()
+});
+var draftErc20TransferInputSchema = z.object({
+  network: caip2Eip155,
+  token: evmAddress20,
+  tokenSymbol: z.string().min(1).max(32).optional(),
+  tokenDecimals: z.number().int().min(0).max(36),
+  to: evmAddress20,
+  amountWei: positiveWeiString,
+  note: z.string().max(500).optional()
+});
+var draftNftTransferInputSchema = z.object({
+  network: caip2Eip155,
+  contract: evmAddress20,
+  standard: nftStandardSchema.default("erc721"),
+  to: evmAddress20,
+  tokenId: decimalStringNonNeg,
+  /** Required for ERC-1155; omit for ERC-721. */
+  amount: positiveWeiString.optional(),
+  note: z.string().max(500).optional()
+}).superRefine((val, ctx) => {
+  if (val.standard === "erc1155") {
+    if (!val.amount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "amount (base units) is required for ERC-1155",
+        path: ["amount"]
+      });
+    }
+  } else if (val.amount != null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "amount must be omitted for ERC-721",
+      path: ["amount"]
+    });
+  }
+});
 
-export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

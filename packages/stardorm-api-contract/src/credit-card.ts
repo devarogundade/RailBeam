@@ -44,9 +44,27 @@ export const creditCardPublicSchema = z.object({
   status: z.enum(["active", "frozen"]),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
+  /** Present on some `POST …/withdraw` responses when native 0G was sent from the treasury. */
+  lastWithdrawTxHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/)
+    .optional(),
 });
 
 export type CreditCardPublic = z.infer<typeof creditCardPublicSchema>;
+
+/** Wallet-authenticated only; never included in list cards responses. */
+export const creditCardSensitiveDetailsSchema = z.object({
+  cardId: z.string().min(1),
+  pan: z.string().regex(/^\d{16}$/),
+  expiryMonth: z.coerce.number().int().min(1).max(12),
+  expiryYear: z.coerce.number().int().min(2000).max(2100),
+  cvv: z.string().regex(/^\d{3,4}$/),
+});
+
+export type CreditCardSensitiveDetails = z.infer<
+  typeof creditCardSensitiveDetailsSchema
+>;
 
 export const creditCardsListResponseSchema = z.object({
   cards: z.array(creditCardPublicSchema),
@@ -54,12 +72,61 @@ export const creditCardsListResponseSchema = z.object({
 
 export type CreditCardsListResponse = z.infer<typeof creditCardsListResponseSchema>;
 
-export const creditCardFundBodySchema = z.object({
-  amountCents: z.coerce.number().int().min(1).max(100_000_000),
-});
+export const creditCardFundBodySchema = z
+  .object({
+    amountCents: z.coerce.number().int().min(1).max(100_000_000),
+    fundingTxHash: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{64}$/)
+      .optional(),
+    fundingChainId: z.coerce.number().int().positive().optional(),
+  })
+  .refine(
+    (d) =>
+      (d.fundingTxHash == null && d.fundingChainId == null) ||
+      (d.fundingTxHash != null && d.fundingChainId != null),
+    {
+      message:
+        "fundingTxHash and fundingChainId must both be provided or both omitted",
+      path: ["fundingTxHash"],
+    },
+  );
 
 export type CreditCardFundBody = z.infer<typeof creditCardFundBodySchema>;
 
-export const creditCardWithdrawBodySchema = creditCardFundBodySchema;
+export const creditCardFundQuoteQuerySchema = z.object({
+  amountCents: z.coerce.number().int().min(1).max(100_000_000),
+});
+
+export type CreditCardFundQuoteQuery = z.infer<
+  typeof creditCardFundQuoteQuerySchema
+>;
+
+export const creditCardFundQuoteOffChainSchema = z.object({
+  onchainFundingRequired: z.literal(false),
+});
+
+export const creditCardFundQuoteOnChainSchema = z.object({
+  onchainFundingRequired: z.literal(true),
+  chainId: z.number().int(),
+  recipient: z.string().min(1),
+  minNativeWei: z.string().regex(/^\d+$/),
+  usdValue: z.number().finite().positive(),
+  nativeSymbol: z.string().min(1),
+  nativeDecimals: z.number().int().min(0).max(18),
+});
+
+export const creditCardFundQuoteResponseSchema = z.discriminatedUnion(
+  "onchainFundingRequired",
+  [creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema],
+);
+
+export type CreditCardFundQuoteResponse = z.infer<
+  typeof creditCardFundQuoteResponseSchema
+>;
+
+export const creditCardWithdrawBodySchema = z.object({
+  amountCents: z.coerce.number().int().min(1).max(100_000_000),
+});
 
 export type CreditCardWithdrawBody = z.infer<typeof creditCardWithdrawBodySchema>;

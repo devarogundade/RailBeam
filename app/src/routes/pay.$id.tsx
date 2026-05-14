@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Copy, ExternalLink, FileText } from "lucide-react";
+import { Copy, ExternalLink, FileText, ShoppingBag } from "lucide-react";
 import {
   useChainId,
+  usePublicClient,
   useSendTransaction,
   useSwitchChain,
   useWriteContract,
@@ -14,6 +15,7 @@ import { zeroGMainnet, zeroGTestnet } from "viem/chains";
 import { publicPaymentRequestSchema } from "@beam/stardorm-api-contract";
 import type { PublicPaymentRequest } from "@beam/stardorm-api-contract";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
+import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { resolvePaymentChainId } from "@/lib/payment-chain";
 import { useApp } from "@/lib/app-state";
 import {
@@ -32,6 +34,8 @@ import { StorageFile } from "@/components/storage-file";
 import { StorageImage } from "@/components/storage-image";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/empty-state";
+import { PageRoutePending, PayCheckoutCardSkeleton } from "@/components/page-shimmer";
 
 type PayOutcome =
   | { kind: "success"; txHash: string; resourceUrl?: string }
@@ -39,6 +43,7 @@ type PayOutcome =
 
 export const Route = createFileRoute("/pay/$id")({
   component: PayCheckoutPage,
+  pendingComponent: () => <PageRoutePending variant="pay" />,
 });
 
 const erc20TransferAbi = [
@@ -198,6 +203,7 @@ function PayCheckoutPage() {
   const { address, connect } = useApp();
   const chainId = useChainId();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
+  const publicClient = usePublicClient();
   const { sendTransactionAsync, isPending: sendingNative } = useSendTransaction();
   const { writeContractAsync, isPending: sendingErc20 } = useWriteContract();
 
@@ -246,6 +252,9 @@ function PayCheckoutPage() {
       if (chainId !== targetChainId && switchChainAsync) {
         await switchChainAsync({ chainId: targetChainId });
       }
+      if (!publicClient) {
+        throw new Error("Wallet client unavailable. Refresh and try again.");
+      }
       const value = BigInt(payment.amount);
       const to = payment.payTo as `0x${string}`;
       let hash: `0x${string}`;
@@ -271,6 +280,7 @@ function PayCheckoutPage() {
           args: [to, value],
         });
       }
+      await waitForWriteContractReceipt(publicClient, hash);
       const updated = await confirmPay.mutateAsync({
         txHash: hash,
         payerAddress: address,
@@ -314,13 +324,24 @@ function PayCheckoutPage() {
               Set <code className="text-foreground">VITE_STARDORM_API_URL</code> to load this payment.
             </p>
           ) : q.isPending ? (
-            <p className="text-sm text-muted-foreground">Loading payment…</p>
+            <PayCheckoutCardSkeleton />
           ) : q.isError ? (
             <p className="text-sm text-destructive">
               {q.error instanceof Error ? q.error.message : "Could not load payment."}
             </p>
           ) : payment == null ? (
-            <p className="text-sm text-muted-foreground">This payment link is invalid or expired.</p>
+            <EmptyState
+              icon={ShoppingBag}
+              title="This checkout is unavailable"
+              description="The link may be wrong, the payment was removed, or it already expired. Ask the sender for a fresh checkout link."
+            >
+              <Link
+                to="/"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}
+              >
+                Back to Beam
+              </Link>
+            </EmptyState>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">

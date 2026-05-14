@@ -7,4 +7,5 @@ export {
   getFeedbacksByAgentId,
   getValidationByRequestHash,
   getValidationsByAgentId,
+  normalizeGraphBytesInput,
 } from './client';

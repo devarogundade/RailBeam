@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { useBeamNetwork } from "@/lib/beam-network-context";
 import { queryKeys } from "@/lib/query-keys";
 import type { AgentOnchainFeedbackItem } from "@beam/stardorm-api-contract";
@@ -14,15 +15,14 @@ import {
   fetchSubgraphUserSubscriptionsPage,
   fetchSubgraphValidationByRequestHash,
   fetchSubgraphValidationsForAgent,
-  getStardormSubgraphUrl,
   type SubgraphAgentMapped,
   type SubgraphFeedbackResponseMapped,
   type SubgraphValidationMapped,
 } from "@/lib/stardorm-subgraph";
 import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 
-function subgraphGloballyConfigured(): boolean {
-  return Boolean(getStardormSubgraphUrl());
+function subgraphEnabledForEffectiveChain(chainId: number, subgraphUrl: string | undefined): boolean {
+  return Boolean(subgraphUrl && isBeamConfiguredChainId(chainId));
 }
 
 function normalizeUser(user: `0x${string}` | null | undefined): `0x${string}` | null {
@@ -48,7 +48,7 @@ export function useStardormRecentSubscriptions(opts: {
         { limit, user: userArg },
         { subgraphUrl: subgraphUrl! },
       ),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl),
+    enabled: subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl),
   });
 }
 
@@ -75,7 +75,7 @@ export function useStardormUserSubscriptionsPage(opts: {
         { first: opts.first, skip: opts.skip, user: userArg },
         { subgraphUrl: subgraphUrl! },
       ),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl),
+    enabled: subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl),
   });
 }
 
@@ -88,7 +88,7 @@ export function useMyActiveSubscribedChainAgentIds(user: `0x${string}` | null) {
   return useQuery({
     queryKey: queryKeys.subgraph.myActiveHires(effectiveChainId, userKey),
     queryFn: () => fetchActiveSubscribedChainAgentIds(user!, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && userKey),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && userKey),
   });
 }
 
@@ -101,7 +101,7 @@ export function useStardormAgentByEntityId(entityId: string | null) {
     queryKey: queryKeys.subgraph.agentByEntityId(effectiveChainId, entityId ?? "__none__"),
     queryFn: (): Promise<SubgraphAgentMapped | null> =>
       fetchSubgraphAgentByEntityId(entityId!, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && entityId),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && entityId),
   });
 }
 
@@ -115,7 +115,7 @@ export function useStardormAgentByChainId(chainAgentId: number | null | undefine
     queryKey: queryKeys.subgraph.agentByChainId(effectiveChainId, id ?? 0),
     queryFn: (): Promise<SubgraphAgentMapped | null> =>
       fetchSubgraphAgentByChainAgentId(id!, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && id != null && id > 0),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && id != null && id > 0),
   });
 }
 
@@ -131,7 +131,7 @@ export function useStardormAgentsPage(opts: { first: number; skip: number }) {
         { first: opts.first, skip: opts.skip },
         { subgraphUrl: subgraphUrl! },
       ),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl),
+    enabled: subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl),
   });
 }
 
@@ -151,7 +151,7 @@ export function useStardormFeedbacksForAgent(
         : (["subgraph", "feedbacks", "disabled"] as const),
     queryFn: (): Promise<AgentOnchainFeedbackItem[]> =>
       fetchSubgraphFeedbacksForAgent(id!, opts.first, opts.skip, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && id != null && id > 0),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && id != null && id > 0),
   });
 }
 
@@ -178,7 +178,7 @@ export function useStardormFeedbackResponsesForAgent(
       fetchSubgraphFeedbackResponsesForAgent(id!, opts.first, opts.skip, {
         subgraphUrl: subgraphUrl!,
       }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && id != null && id > 0),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && id != null && id > 0),
   });
 }
 
@@ -198,7 +198,7 @@ export function useStardormValidationsForAgent(
         : (["subgraph", "validations", "disabled"] as const),
     queryFn: (): Promise<SubgraphValidationMapped[]> =>
       fetchSubgraphValidationsForAgent(id!, opts.first, opts.skip, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && id != null && id > 0),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && id != null && id > 0),
   });
 }
 
@@ -212,6 +212,6 @@ export function useStardormValidationByRequestHash(requestHash: string | null | 
     queryKey: queryKeys.subgraph.validationByRequestHash(effectiveChainId, h || "__none__"),
     queryFn: (): Promise<SubgraphValidationMapped | null> =>
       fetchSubgraphValidationByRequestHash(h, { subgraphUrl: subgraphUrl! }),
-    enabled: Boolean(subgraphGloballyConfigured() && subgraphUrl && h.length > 2),
+    enabled: Boolean(subgraphEnabledForEffectiveChain(effectiveChainId, subgraphUrl) && h.length > 2),
   });
 }

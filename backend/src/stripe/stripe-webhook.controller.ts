@@ -14,6 +14,32 @@ import { getStripe } from './stripe.client';
 import { OnRampService } from './on-ramp.service';
 import { KycStripeService } from './kyc-stripe.service';
 
+type CheckoutSessionWebhookPayload = {
+  metadata?: Record<string, string> | null;
+  client_reference_id?: string | null;
+  payment_status?: string | null;
+  payment_intent?: string | { id: string } | null;
+};
+
+function beamOnRampId(session: CheckoutSessionWebhookPayload): string | undefined {
+  if (session.metadata?.beam_on_ramp !== '1') return undefined;
+  const raw = session.metadata.onRampId ?? session.client_reference_id;
+  if (typeof raw !== 'string') return undefined;
+  const id = raw.trim();
+  return id.length > 0 ? id : undefined;
+}
+
+function paymentIntentIdFromSession(
+  session: CheckoutSessionWebhookPayload,
+): string | undefined {
+  const pi = session.payment_intent;
+  if (typeof pi === 'string' && pi.trim()) return pi.trim();
+  if (pi && typeof pi === 'object' && typeof pi.id === 'string' && pi.id.trim()) {
+    return pi.id.trim();
+  }
+  return undefined;
+}
+
 @Controller('webhooks')
 export class StripeWebhookController {
   private readonly log = new Logger(StripeWebhookController.name);
@@ -54,31 +80,44 @@ export class StripeWebhookController {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as {
-          metadata?: Record<string, string> | null;
-          client_reference_id?: string | null;
-        };
-        if (session.metadata?.beam_on_ramp === '1') {
-          const onRampId =
-            session.metadata.onRampId ?? session.client_reference_id;
-          if (onRampId) {
+        const session = event.data.object as CheckoutSessionWebhookPayload;
+        const onRampId = beamOnRampId(session);
+        if (onRampId) {
+          const pi = paymentIntentIdFromSession(session);
+          if (pi) await this.onRamp.linkStripePaymentIntent(onRampId, pi);
+          // Synchronous methods: paid immediately. Async (e.g. bank debit): wait for
+          // `checkout.session.async_payment_succeeded` before fulfilling.
+          if (session.payment_status === 'paid') {
             await this.onRamp.fulfillPaidOnRamp(onRampId);
           }
         }
         break;
       }
-      case 'checkout.session.expired': {
-        const session = event.data.object as {
-          metadata?: Record<string, string> | null;
-          client_reference_id?: string | null;
-        };
-        if (session.metadata?.beam_on_ramp === '1') {
-          const onRampId =
-            session.metadata.onRampId ?? session.client_reference_id;
-          if (onRampId) {
-            await this.onRamp.markCanceled(onRampId);
-          }
+      case 'checkout.session.async_payment_succeeded': {
+        const session = event.data.object as CheckoutSessionWebhookPayload;
+        const onRampId = beamOnRampId(session);
+        if (onRampId) {
+          const pi = paymentIntentIdFromSession(session);
+          if (pi) await this.onRamp.linkStripePaymentIntent(onRampId, pi);
+          await this.onRamp.fulfillPaidOnRamp(onRampId);
         }
+        break;
+      }
+      case 'checkout.session.async_payment_failed': {
+        const session = event.data.object as CheckoutSessionWebhookPayload;
+        const onRampId = beamOnRampId(session);
+        if (onRampId) {
+          await this.onRamp.markStripePaymentFailed(
+            onRampId,
+            'Stripe async payment failed for this checkout session',
+          );
+        }
+        break;
+      }
+      case 'checkout.session.expired': {
+        const session = event.data.object as CheckoutSessionWebhookPayload;
+        const onRampId = beamOnRampId(session);
+        if (onRampId) await this.onRamp.markCanceled(onRampId);
         break;
       }
       case 'identity.verification_session.processing':

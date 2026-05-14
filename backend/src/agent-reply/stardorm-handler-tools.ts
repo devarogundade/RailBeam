@@ -444,6 +444,110 @@ const generateFinancialActivityReportTool: OpenAiChatTool = {
   },
 };
 
+const caip2NetworkProperty = {
+  type: 'string',
+  pattern: '^eip155:\\d+$',
+  description: 'CAIP-2 id, e.g. eip155:16602 (0G testnet) or eip155:16661 (0G mainnet).',
+} as const;
+
+const evmAddress20Property = {
+  type: 'string',
+  pattern: '^0x[a-fA-F0-9]{40}$',
+  description: '0x-prefixed 20-byte EVM address.',
+} as const;
+
+const draftNativeTransferTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'draft_native_transfer',
+    description:
+      'When the user already stated every field, offer a server action that records a native (gas token) transfer draft. The server does not broadcast transactions — the user signs in Beam Send or their wallet.',
+    parameters: {
+      type: 'object',
+      properties: {
+        network: caip2NetworkProperty,
+        to: evmAddress20Property,
+        valueWei: {
+          type: 'string',
+          pattern: '^[1-9]\\d*$',
+          description: 'Amount in wei: positive integer decimal string (no decimals).',
+        },
+        note: { type: 'string', maxLength: 500 },
+      },
+      required: ['network', 'to', 'valueWei'],
+    },
+  },
+};
+
+const draftErc20TransferTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'draft_erc20_transfer',
+    description:
+      'When the user already stated every field, offer a server action that records an ERC-20 transfer draft. The server does not broadcast — the user signs `transfer` in their wallet.',
+    parameters: {
+      type: 'object',
+      properties: {
+        network: caip2NetworkProperty,
+        token: evmAddress20Property,
+        tokenSymbol: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 32,
+          description: 'Optional display symbol for the card.',
+        },
+        tokenDecimals: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 36,
+        },
+        to: evmAddress20Property,
+        amountWei: {
+          type: 'string',
+          pattern: '^[1-9]\\d*$',
+          description: 'Token amount in base units (positive integer string).',
+        },
+        note: { type: 'string', maxLength: 500 },
+      },
+      required: ['network', 'token', 'tokenDecimals', 'to', 'amountWei'],
+    },
+  },
+};
+
+const draftNftTransferTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'draft_nft_transfer',
+    description:
+      'When the user already stated every field, offer a server action that records an NFT transfer draft (ERC-721 or ERC-1155). The user completes safeTransferFrom in their wallet.',
+    parameters: {
+      type: 'object',
+      properties: {
+        network: caip2NetworkProperty,
+        contract: evmAddress20Property,
+        standard: {
+          type: 'string',
+          enum: ['erc721', 'erc1155'],
+          description: 'Default erc721 when omitted by the model; prefer explicit value.',
+        },
+        to: evmAddress20Property,
+        tokenId: {
+          type: 'string',
+          pattern: '^\\d+$',
+          description: 'NFT id as a non-negative integer decimal string.',
+        },
+        amount: {
+          type: 'string',
+          pattern: '^[1-9]\\d*$',
+          description: 'Required for ERC-1155: transfer amount in base units.',
+        },
+        note: { type: 'string', maxLength: 500 },
+      },
+      required: ['network', 'contract', 'to', 'tokenId'],
+    },
+  },
+};
+
 export function buildOpenAiHandlerTools(
   allowed: readonly HandlerActionId[],
 ): OpenAiChatTool[] {
@@ -470,6 +574,15 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('generate_financial_activity_report')) {
     out.push(generateFinancialActivityReportTool);
+  }
+  if (allowed.includes('draft_native_transfer')) {
+    out.push(draftNativeTransferTool);
+  }
+  if (allowed.includes('draft_erc20_transfer')) {
+    out.push(draftErc20TransferTool);
+  }
+  if (allowed.includes('draft_nft_transfer')) {
+    out.push(draftNftTransferTool);
   }
   return out;
 }

@@ -8,6 +8,11 @@ import { KycStripeService } from '../stripe/kyc-stripe.service';
 import { CreditCardHandlerService } from './credit-card-handler.service';
 import { PaymentInvoiceService } from './payment-invoice.service';
 import { FinancialActivityReportService } from './financial-activity-report.service';
+import {
+  DraftErc20TransferHandlerService,
+  DraftNativeTransferHandlerService,
+  DraftNftTransferHandlerService,
+} from './transfer-draft-handlers.service';
 
 @Injectable()
 export class HandlersService {
@@ -19,6 +24,9 @@ export class HandlersService {
     private readonly creditCard: CreditCardHandlerService,
     private readonly paymentInvoice: PaymentInvoiceService,
     private readonly financialActivityReport: FinancialActivityReportService,
+    private readonly draftNative: DraftNativeTransferHandlerService,
+    private readonly draftErc20: DraftErc20TransferHandlerService,
+    private readonly draftNft: DraftNftTransferHandlerService,
   ) {}
 
   async dispatch(
@@ -44,8 +52,12 @@ export class HandlersService {
         return this.paymentInvoice.handle(body, ctx);
       case 'generate_financial_activity_report':
         return this.financialActivityReport.handle(body, ctx);
-      default:
-        throw new NotFoundException(`Unknown handler: ${handleId}`);
+      case 'draft_native_transfer':
+        return this.draftNative.handle(body, ctx);
+      case 'draft_erc20_transfer':
+        return this.draftErc20.handle(body, ctx);
+      case 'draft_nft_transfer':
+        return this.draftNft.handle(body, ctx);
     }
   }
 }

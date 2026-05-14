@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { Agent } from "@/lib/types";
+import { useApp } from "@/lib/app-state";
 import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioAddedBadge,
@@ -36,6 +37,7 @@ export function AgentCard({
   hired: boolean;
   onHire: (a: Agent) => void;
 }) {
+  const { setActiveAgentId } = useApp();
   const priceLabel = monthlyPriceLabel(agent);
   const skills = agent.skills.slice(0, 3);
   const skillHandles = (agent.skillHandles ?? []).slice(0, 5);
@@ -128,8 +130,22 @@ export function AgentCard({
           </Link>
         </Button>
         {hired ? (
-          <Button size="sm" variant="secondary" disabled className="flex-1">
-            {agentPortfolioAddedBadge(agent)}
+          isRegistryTokenIdOneAgent(agent) ? (
+            <Button size="sm" variant="secondary" className="flex-1" asChild>
+              <Link to="/" onClick={() => setActiveAgentId(agent.id)}>
+                {agentPortfolioAddedBadge(agent)}
+              </Link>
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" disabled className="flex-1">
+              {agentPortfolioAddedBadge(agent)}
+            </Button>
+          )
+        ) : isRegistryTokenIdOneAgent(agent) ? (
+          <Button size="sm" className="flex-1" asChild>
+            <Link to="/" onClick={() => setActiveAgentId(agent.id)}>
+              {agentPortfolioAddVerb(agent)}
+            </Link>
           </Button>
         ) : (
           <Button size="sm" className="flex-1" onClick={() => onHire(agent)}>

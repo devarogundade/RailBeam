@@ -1,5 +1,5 @@
 {
-  "StardormIdentityRegistryModule#IdentityRegistry": "0x7F0B8acEF49fdE1128c2CA64191cf4a928084fe8",
-  "StardormReputationRegistryModule#ReputationRegistry": "0xa9194a9bAc0dF62dAEa74092F5570cC5e0Dca370",
-  "StardormValidationRegistryModule#ValidationRegistry": "0xCA08f96A228AB43A550d42506C4762bEdDa46301"
+  "StardormIdentityRegistryModule#IdentityRegistry": "0xAA7d78F40743fA03AD59CcCb558C968CaE69e337",
+  "StardormReputationRegistryModule#ReputationRegistry": "0x955be54f2169A5Acd3607c647Dbbf6558Cf7907a",
+  "StardormValidationRegistryModule#ValidationRegistry": "0x4E768bf6Bf892C9a9c4627C3B68ea90E509e1d11"
 }

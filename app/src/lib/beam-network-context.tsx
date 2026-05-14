@@ -24,6 +24,8 @@ const Ctx = React.createContext<BeamNetworkContextValue | null>(null);
 export function BeamNetworkProvider({ children }: { children: React.ReactNode }) {
   const { chainId: connectedChainId, status } = useConnection();
   const { switchChainAsync } = useSwitchChain();
+  /** Only sync UI preference from the wallet when the wallet chain id actually changes (avoids fighting the header toggle before switchChain completes). */
+  const prevConnectedChainIdRef = React.useRef<number | undefined>(undefined);
 
   const [preferredNetwork, setPreferredNetworkState] = React.useState<BeamNetworkId>(() =>
     readStoredBeamNetwork(),
@@ -51,14 +53,25 @@ export function BeamNetworkProvider({ children }: { children: React.ReactNode })
     status === "connected" && connectedChainId != null ? connectedChainId : preferredChainId;
 
   React.useEffect(() => {
-    if (status !== "connected" || connectedChainId == null) return;
+    if (status !== "connected") {
+      prevConnectedChainIdRef.current = undefined;
+      return;
+    }
+    if (connectedChainId == null) return;
+
+    const prev = prevConnectedChainIdRef.current;
+    if (prev === connectedChainId) return;
+    prevConnectedChainIdRef.current = connectedChainId;
+
     const tier = beamNetworkFromChainId(connectedChainId);
     if (!tier) return;
-    if (tier !== preferredNetwork) {
-      setPreferredNetworkState(tier);
+
+    setPreferredNetworkState((current) => {
+      if (current === tier) return current;
       writeStoredBeamNetwork(tier);
-    }
-  }, [status, connectedChainId, preferredNetwork]);
+      return tier;
+    });
+  }, [status, connectedChainId]);
 
   React.useEffect(() => {
     if (status !== "connected" || connectedChainId == null || !switchChainAsync) return;

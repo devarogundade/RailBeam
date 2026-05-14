@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Contract, JsonRpcProvider, Wallet } from 'ethers';
+import { Contract, formatUnits, JsonRpcProvider, Wallet } from 'ethers';
 import { Model, Types } from 'mongoose';
 import {
   onRampRecordSchema,
@@ -14,6 +14,7 @@ import {
 } from '@beam/stardorm-api-contract';
 import type { OnRampRecord } from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
+import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
 import { OnRamp, type OnRampDocument } from '../mongo/schemas/on-ramp.schema';
 import { getStripe } from './stripe.client';
 import { rpcUrlForCaip2 } from './onramp-rpc';
@@ -29,6 +30,7 @@ export class OnRampService {
   constructor(
     private readonly config: ConfigService,
     @InjectModel(OnRamp.name) private readonly onRampModel: Model<OnRampDocument>,
+    private readonly financialSnapshots: FinancialSnapshotsService,
   ) {}
 
   readonly id = 'on_ramp_tokens' as const;
@@ -116,35 +118,50 @@ export class OnRampService {
 
     const onRampId = doc._id.toHexString();
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: data.usdAmountCents,
-            product_data: {
-              name: `On-ramp — ${data.tokenSymbol}`,
-              description: `${data.network} · ${data.recipientWallet.slice(0, 10)}…`,
+    let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              unit_amount: data.usdAmountCents,
+              product_data: {
+                name: `On-ramp — ${data.tokenSymbol}`,
+                description: `${data.network} · ${data.recipientWallet.slice(0, 10)}…`,
+              },
             },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      success_url: `${appUrl}/chat?onRamp=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/chat?onRamp=canceled`,
-      client_reference_id: onRampId,
-      metadata: {
-        beam_on_ramp: '1',
-        onRampId,
-      },
-      payment_intent_data: {
+        ],
+        success_url: `${appUrl}/chat?onRamp=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/chat?onRamp=canceled`,
+        client_reference_id: onRampId,
         metadata: {
           beam_on_ramp: '1',
           onRampId,
         },
-      },
-    });
+        payment_intent_data: {
+          metadata: {
+            beam_on_ramp: '1',
+            onRampId,
+          },
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.log.warn(`Stripe checkout.sessions.create failed: ${msg}`);
+      await this.onRampModel
+        .updateOne(
+          { _id: doc._id },
+          { $set: { status: 'failed', errorMessage: msg } },
+        )
+        .exec();
+      throw new ServiceUnavailableException(
+        `Stripe could not start checkout: ${msg}`,
+      );
+    }
 
     const sessionId = session.id;
     const url = session.url;
@@ -197,6 +214,10 @@ export class OnRampService {
    * Transfers `tokenAmountWei` of `tokenAddress` to `recipientWallet` using `ONRAMP_TREASURY_PRIVATE_KEY`.
    */
   async fulfillPaidOnRamp(onRampId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(onRampId)) {
+      this.log.warn(`Invalid onRampId (skip fulfill): ${onRampId}`);
+      return;
+    }
     const pk = this.config.get<string>('ONRAMP_TREASURY_PRIVATE_KEY')?.trim();
     if (!pk) {
       this.log.error('ONRAMP_TREASURY_PRIVATE_KEY is not set; cannot fulfill on-ramp');
@@ -239,6 +260,23 @@ export class OnRampService {
           },
         )
         .exec();
+      const usd =
+        row.usdValue ??
+        (Number.isFinite(row.usdAmountCents) ? row.usdAmountCents / 100 : 0);
+      let tokenHuman: number | undefined;
+      try {
+        const n = parseFloat(
+          formatUnits(BigInt(row.tokenAmountWei), row.tokenDecimals),
+        );
+        if (Number.isFinite(n)) tokenHuman = n;
+      } catch {
+        tokenHuman = undefined;
+      }
+      void this.financialSnapshots
+        .recordOnRampFulfilled(row.walletAddress, usd, tokenHuman)
+        .catch(() => {
+          /* best-effort rollup */
+        });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       this.log.error(`On-ramp fulfillment failed for ${onRampId}: ${msg}`);
@@ -252,10 +290,39 @@ export class OnRampService {
   }
 
   async markCanceled(onRampId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(onRampId)) {
+      this.log.warn(`Invalid onRampId (skip cancel): ${onRampId}`);
+      return;
+    }
     await this.onRampModel
       .updateOne(
         { _id: new Types.ObjectId(onRampId), status: { $ne: 'fulfilled' } },
         { $set: { status: 'canceled' } },
+      )
+      .exec();
+  }
+
+  /** Persist PaymentIntent id when Stripe includes it on the Checkout Session. */
+  async linkStripePaymentIntent(
+    onRampId: string,
+    paymentIntentId: string,
+  ): Promise<void> {
+    const pi = paymentIntentId.trim();
+    if (!Types.ObjectId.isValid(onRampId) || !pi) return;
+    await this.onRampModel
+      .updateOne(
+        { _id: new Types.ObjectId(onRampId) },
+        { $set: { stripePaymentIntentId: pi } },
+      )
+      .exec();
+  }
+
+  async markStripePaymentFailed(onRampId: string, reason: string): Promise<void> {
+    if (!Types.ObjectId.isValid(onRampId)) return;
+    await this.onRampModel
+      .updateOne(
+        { _id: new Types.ObjectId(onRampId), status: { $ne: 'fulfilled' } },
+        { $set: { status: 'failed', errorMessage: reason } },
       )
       .exec();
   }

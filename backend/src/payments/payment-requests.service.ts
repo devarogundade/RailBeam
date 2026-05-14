@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { parsePaymentPayload } from '@x402/core/schemas';
+import type { PaymentPayload } from '@x402/core/types';
 import { publicPaymentRequestSchema } from '@beam/stardorm-api-contract';
 import type {
   PaymentSettlementBody,
@@ -15,12 +17,16 @@ import {
   PaymentRequest,
   type PaymentRequestDocument,
 } from '../mongo/schemas/payment-request.schema';
+import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
+import { X402FacilitatorService } from './x402-facilitator.service';
 
 @Injectable()
 export class PaymentRequestsService {
   constructor(
     @InjectModel(PaymentRequest.name)
     private readonly model: Model<PaymentRequestDocument>,
+    private readonly x402Facilitator: X402FacilitatorService,
+    private readonly financialSnapshots: FinancialSnapshotsService,
   ) {}
 
   toPublic(doc: PaymentRequestDocument): PublicPaymentRequest {
@@ -165,7 +171,8 @@ export class PaymentRequestsService {
   }
 
   /**
-   * Marks a pending checkout as paid after the client broadcasts settlement on-chain.
+   * Marks a pending checkout as paid after direct on-chain settlement (`txHash`) or after
+   * facilitator verify+settle (`x402PaymentPayload` when `X402_FACILITATOR_URL` is set).
    * Idempotent when the same `txHash` is submitted again.
    */
   async confirmSettlement(
@@ -179,10 +186,7 @@ export class PaymentRequestsService {
     if (!doc) throw new NotFoundException();
 
     const txHashRaw = body.txHash?.trim();
-    if (!txHashRaw) {
-      throw new BadRequestException('txHash is required');
-    }
-    const submittedLower = txHashRaw.toLowerCase();
+    const hasFacilitatorPayload = body.x402PaymentPayload != null;
 
     const now = new Date();
     if (
@@ -201,7 +205,15 @@ export class PaymentRequestsService {
     }
 
     if (doc.status === 'paid') {
+      if (hasFacilitatorPayload) {
+        // Success retries may replay the payload; never call settle again.
+        return this.toPublic(doc);
+      }
+      if (!txHashRaw) {
+        throw new BadRequestException('txHash is required');
+      }
       const recorded = doc.txHash?.toLowerCase();
+      const submittedLower = txHashRaw.toLowerCase();
       if (recorded && recorded === submittedLower) {
         return this.toPublic(doc);
       }
@@ -216,12 +228,52 @@ export class PaymentRequestsService {
       );
     }
 
+    let submittedLower: string;
+    let payerToRecord = body.payerAddress?.trim().toLowerCase();
+
+    if (hasFacilitatorPayload) {
+      if (doc.type !== 'x402') {
+        throw new BadRequestException(
+          'Facilitator settlement (x402PaymentPayload) is only supported for x402 checkouts.',
+        );
+      }
+      const facilitatorUrl = this.x402Facilitator.getBaseUrl();
+      if (!facilitatorUrl) {
+        throw new BadRequestException(
+          'Facilitator settlement is not configured (X402_FACILITATOR_URL).',
+        );
+      }
+      const parsed = parsePaymentPayload(body.x402PaymentPayload);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      const settled = await this.x402Facilitator.verifyAndSettle(
+        facilitatorUrl,
+        parsed.data as PaymentPayload,
+        this.x402Facilitator.requirementsFor(doc),
+      );
+      submittedLower = settled.transaction.trim().toLowerCase();
+      if (!payerToRecord && settled.payer?.trim()) {
+        payerToRecord = settled.payer.trim().toLowerCase();
+      }
+    } else {
+      if (!txHashRaw) {
+        throw new BadRequestException(
+          'txHash is required when x402PaymentPayload is not provided.',
+        );
+      }
+      submittedLower = txHashRaw.toLowerCase();
+    }
+
     doc.status = 'paid';
     doc.txHash = submittedLower;
-    if (body.payerAddress) {
-      doc.paidByWallet = body.payerAddress.toLowerCase();
+    if (payerToRecord) {
+      doc.paidByWallet = payerToRecord;
     }
     await doc.save();
+    void this.financialSnapshots.recordPaymentSettled(doc).catch(() => {
+      /* best-effort rollup for dashboard chat */
+    });
     return this.toPublic(doc);
   }
 }

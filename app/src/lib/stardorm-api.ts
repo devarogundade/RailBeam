@@ -2,28 +2,29 @@ import axios from "axios";
 import {
   chatHistoryResponseSchema,
   creditCardFundBodySchema,
+  creditCardFundQuoteResponseSchema,
   creditCardPublicSchema,
+  creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
   onRampsListResponseSchema,
   paymentRequestsListResponseSchema,
-  publicUserSchema,
   stardormChatSuccessSchema,
-  updateUserBodySchema,
   userKycStatusDocumentSchema,
   type ChatHistoryAttachment,
   type ChatHistoryMessage,
   type ChatHistoryResponse,
+  type CreditCardFundBody,
+  type CreditCardFundQuoteResponse,
   type CreditCardPublic,
+  type CreditCardSensitiveDetails,
   type CreditCardsListResponse,
   type ExecuteHandlerBody,
   type OnRampsListResponse,
   type PaymentRequestsListResponse,
-  type PublicUser,
   type StardormChatClientResult,
-  type UpdateUserBody,
   type UserKycStatusDocument,
 } from "@beam/stardorm-api-contract";
 import { getStardormAccessToken } from "./stardorm-auth";
@@ -65,9 +66,7 @@ export async function stardormChat(params: {
         fd.append("conversationId", params.conversationId);
       }
       for (const f of params.files ?? []) fd.append("files", f, f.name);
-      const { data } = await stardormAxios.post<unknown>(url, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await stardormAxios.post<unknown>(url, fd);
       response = data;
     } else {
       const { data } = await stardormAxios.post<unknown>(url, {
@@ -123,35 +122,6 @@ export function mapHistoryToChatMessages(hist: ChatHistoryResponse, apiBase: str
   }));
 }
 
-export async function fetchStardormMe(): Promise<PublicUser | null> {
-  if (!getStardormApiBase()) return null;
-  try {
-    const { data } = await stardormAxios.get<unknown>("/users/me");
-    return publicUserSchema.parse(data);
-  } catch {
-    return null;
-  }
-}
-
-export async function updateStardormMe(
-  patch: UpdateUserBody,
-): Promise<PublicUser | { error: string }> {
-  if (!getStardormApiBase()) return { error: "API not configured" };
-  const parsed = updateUserBodySchema.safeParse(patch);
-  if (!parsed.success) {
-    return { error: "Invalid profile update" };
-  }
-  if (Object.keys(parsed.data).length === 0) {
-    return { error: "Nothing to update" };
-  }
-  try {
-    const { data } = await stardormAxios.patch<unknown>("/users/me", parsed.data);
-    return publicUserSchema.parse(data);
-  } catch (e: unknown) {
-    return { error: axiosErrorMessage(e) };
-  }
-}
-
 export async function fetchStardormChatMessages(params: {
   limit?: number;
   conversationId?: string;
@@ -202,6 +172,20 @@ export async function fetchStardormCreditCards(): Promise<CreditCardsListRespons
   }
 }
 
+export async function fetchStardormCreditCardSensitiveDetails(
+  cardId: string,
+): Promise<CreditCardSensitiveDetails | { error: string }> {
+  if (!getStardormApiBase()) return { error: "API not configured" };
+  try {
+    const { data } = await stardormAxios.get<unknown>(
+      `/users/me/credit-cards/${encodeURIComponent(cardId)}/details`,
+    );
+    return creditCardSensitiveDetailsSchema.parse(data);
+  } catch (e: unknown) {
+    return { error: axiosErrorMessage(e) };
+  }
+}
+
 export async function fetchStardormPaymentRequests(params: {
   limit?: number;
 } = {}): Promise<PaymentRequestsListResponse | null> {
@@ -242,17 +226,31 @@ export async function fetchStardormKycStatus(): Promise<UserKycStatusDocument | 
   }
 }
 
+export async function fetchCreditCardFundQuote(
+  amountCents: number,
+): Promise<CreditCardFundQuoteResponse | { error: string }> {
+  if (!getStardormApiBase()) return { error: "API not configured" };
+  try {
+    const { data } = await stardormAxios.get<unknown>("/users/me/credit-cards/fund-quote", {
+      params: { amountCents },
+    });
+    return creditCardFundQuoteResponseSchema.parse(data);
+  } catch (e: unknown) {
+    return { error: axiosErrorMessage(e) };
+  }
+}
+
 export async function fundStardormCreditCard(
   cardId: string,
-  amountCents: number,
+  body: CreditCardFundBody,
 ): Promise<CreditCardPublic | { error: string }> {
   if (!getStardormApiBase()) return { error: "API not configured" };
-  const body = creditCardFundBodySchema.safeParse({ amountCents });
-  if (!body.success) return { error: "Invalid amount" };
+  const parsed = creditCardFundBodySchema.safeParse(body);
+  if (!parsed.success) return { error: "Invalid amount" };
   try {
     const { data } = await stardormAxios.post<unknown>(
       `/users/me/credit-cards/${encodeURIComponent(cardId)}/fund`,
-      body.data,
+      parsed.data,
     );
     return creditCardPublicSchema.parse(data);
   } catch (e: unknown) {

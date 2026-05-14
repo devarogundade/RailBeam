@@ -10,9 +10,12 @@ import { CoinIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
+import { EmptyState } from "@/components/empty-state";
+import { AgentCardGridSkeleton, PageRoutePending } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/marketplace")({
   component: Marketplace,
+  pendingComponent: () => <PageRoutePending variant="marketplace" />,
 });
 
 function marketplaceAgents(list: Agent[]) {
@@ -180,9 +183,7 @@ function Marketplace() {
               Could not load the marketplace. Try again in a moment.
             </div>
           ) : isPending ? (
-            <div className="col-span-full rounded-xl border border-border bg-surface-elevated p-8 text-center text-sm text-muted-foreground">
-              Loading agents…
-            </div>
+            <AgentCardGridSkeleton count={6} className="col-span-full" />
           ) : (
             filtered.map((a) => (
               <AgentCard
@@ -195,9 +196,13 @@ function Marketplace() {
           )}
         </div>
 
-        {!isError && filtered.length === 0 && (
-          <div className="mt-12 rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-            No agents match your filters.
+        {!isError && !isPending && filtered.length === 0 && (
+          <div className="mt-12">
+            <EmptyState
+              icon={Search}
+              title="No agents match your filters"
+              description="Try clearing search, widening the price range, or choosing a different category to see more of the catalog."
+            />
           </div>
         )}
       </div>

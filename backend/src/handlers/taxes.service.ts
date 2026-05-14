@@ -58,8 +58,8 @@ function buildTaxesOutput(
   const taxRate = taxRateForCountry(countryCode);
   const incomeNativeUsd = usdFromNativeWei(ledger.nativeReceivedWei, usdPerNative);
   const expenseNativeUsd = usdFromNativeWei(ledger.nativeSentWei, usdPerNative);
-  let income = Math.round(incomeNativeUsd);
-  let expenses = Math.round(expenseNativeUsd);
+  const income = Math.round(incomeNativeUsd);
+  const expenses = Math.round(expenseNativeUsd);
   const taxable = Math.max(0, income - expenses);
   const taxes = usdPerNative > 0 ? Math.round(taxable * taxRate) : 0;
   const netIncome = income - expenses - taxes;
@@ -128,7 +128,10 @@ export class TaxesService implements HandlerService {
       Number.isFinite(usdPerNative) && usdPerNative > 0 ? usdPerNative : 0,
     );
 
-    const pdf = this.buildPdf(output, usdPerNative > 0 && Number.isFinite(usdPerNative));
+    const pdf = await this.buildPdf(
+      output,
+      usdPerNative > 0 && Number.isFinite(usdPerNative),
+    );
     const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
 
     return {
@@ -176,7 +179,10 @@ export class TaxesService implements HandlerService {
     };
   }
 
-  private buildPdf(output: TaxesOutput, usdModelActive: boolean): Buffer {
+  private async buildPdf(
+    output: TaxesOutput,
+    usdModelActive: boolean,
+  ): Promise<Buffer> {
     const fmt = (n: number) =>
       n.toLocaleString('en-US', { maximumFractionDigits: 0 });
     const fmtWei = (w: bigint) => {

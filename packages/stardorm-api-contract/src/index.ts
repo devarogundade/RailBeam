@@ -145,13 +145,21 @@ export {
 export {
   createCreditCardInputSchema,
   creditCardPublicSchema,
+  creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
   creditCardFundBodySchema,
+  creditCardFundQuoteQuerySchema,
+  creditCardFundQuoteOffChainSchema,
+  creditCardFundQuoteOnChainSchema,
+  creditCardFundQuoteResponseSchema,
   creditCardWithdrawBodySchema,
   type CreateCreditCardInput,
   type CreditCardPublic,
+  type CreditCardSensitiveDetails,
   type CreditCardsListResponse,
   type CreditCardFundBody,
+  type CreditCardFundQuoteQuery,
+  type CreditCardFundQuoteResponse,
   type CreditCardWithdrawBody,
 } from "./credit-card.js";
 export {
@@ -171,3 +179,11 @@ export {
   isoCountryDisplayName,
 } from "./iso-3166-1-alpha2.js";
 export { taxRateForCountry } from "./tax-rate-for-country.js";
+export {
+  draftNativeTransferInputSchema,
+  draftErc20TransferInputSchema,
+  draftNftTransferInputSchema,
+  type DraftNativeTransferInput,
+  type DraftErc20TransferInput,
+  type DraftNftTransferInput,
+} from "./transfer-drafts.js";

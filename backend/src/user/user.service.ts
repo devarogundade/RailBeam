@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
@@ -23,6 +24,7 @@ import {
   UserPreferences,
 } from 'src/mongo/schemas/user.schema';
 import { SubgraphService } from 'src/subgraph/subgraph.service';
+import { beamEvmTierFromChainId } from 'src/beam/beam-evm-chain';
 import type { Agent as SubgraphRegistryAgent } from 'src/subgraph/types';
 import { ChatMessage, OgComputeService } from 'src/og/og-compute.service';
 import type { OgComputeChatResult } from 'src/og/og-compute.service';
@@ -50,13 +52,21 @@ import {
   onRampTokensInputSchema,
   stripeKycInputSchema,
   createCreditCardInputSchema,
+  draftNativeTransferInputSchema,
+  draftErc20TransferInputSchema,
+  draftNftTransferInputSchema,
+  type CreditCardFundBody,
+  type CreditCardFundQuoteResponse,
   type CreditCardPublic,
+  type CreditCardSensitiveDetails,
 } from '@beam/stardorm-api-contract';
 import {
   X402InputSchema,
   isX402CheckoutFormCtaParams,
 } from 'src/handlers/handler-inputs.schema';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
+import { CreditCardFundingService } from 'src/credit-cards/credit-card-funding.service';
+import { FinancialSnapshotsService } from 'src/mongo/financial-snapshots.service';
 import { PaymentRequestsService } from 'src/payments/payment-requests.service';
 import { OnRampService } from 'src/stripe/on-ramp.service';
 import { KycStripeService } from 'src/stripe/kyc-stripe.service';
@@ -151,6 +161,11 @@ export type ChatThreadSnapshot = {
 
 const CHAT_MAX_FILES = 2;
 
+/** Handler ids on agent chat turns (see `agentReplyFromChatCompletion` / `AgentComputeReplyWithParams`). */
+type AgentChatTurnHandlerId = NonNullable<
+  Extract<AgentComputeReplyWithParams, { handler: string }>['handler']
+>;
+
 function handlerCapabilitiesFromSubgraphAgent(
   agent: SubgraphRegistryAgent | null,
 ): HandlerActionId[] {
@@ -192,9 +207,11 @@ export class UserService {
     private readonly ogStorage: OgStorageService,
     private readonly handlers: HandlersService,
     private readonly creditCards: CreditCardsService,
+    private readonly cardFunding: CreditCardFundingService,
     private readonly paymentRequests: PaymentRequestsService,
     private readonly onRamp: OnRampService,
     private readonly kycStripe: KycStripeService,
+    private readonly financialSnapshots: FinancialSnapshotsService,
   ) {}
 
   private normalizeWallet(wallet: string): string {
@@ -203,6 +220,25 @@ export class UserService {
       throw new BadRequestException('Invalid wallet address');
     }
     return w;
+  }
+
+  /** Virtual card balance fund / withdraw are disabled on 0G mainnet (see product policy). */
+  private assertVirtualCardFundsNotBlockedOnMainnet(
+    clientEvmChainId?: number,
+    fundingTxChainId?: number,
+  ): void {
+    if (beamEvmTierFromChainId(clientEvmChainId) === 'mainnet') {
+      throw new ForbiddenException(
+        'Virtual card funding and withdrawals are disabled on 0G mainnet.',
+      );
+    }
+    if (fundingTxChainId != null) {
+      if (beamEvmTierFromChainId(fundingTxChainId) === 'mainnet') {
+        throw new ForbiddenException(
+          'Virtual card funding and withdrawals are disabled on 0G mainnet.',
+        );
+      }
+    }
   }
 
   private async handlerCapabilitiesForCatalogKeys(
@@ -242,7 +278,7 @@ export class UserService {
   }
 
   private async resolveCatalogAgentKeyForHandlerFromSubgraph(
-    handler: HandlerActionId,
+    handler: AgentChatTurnHandlerId,
     candidateAgentKeys: readonly string[],
     clientEvmChainId?: number,
   ): Promise<string | null> {
@@ -258,8 +294,8 @@ export class UserService {
       } catch {
         agent = null;
       }
-      if (handlerCapabilitiesFromSubgraphAgent(agent).includes(handler))
-        return key;
+      const caps = handlerCapabilitiesFromSubgraphAgent(agent);
+      if (caps.some((h) => h === handler)) return key;
     }
     return null;
   }
@@ -487,6 +523,123 @@ export class UserService {
     };
   }
 
+  private richFromPaymentInvoiceData(
+    data: Record<string, unknown> | undefined,
+  ): AgentRichCard | undefined {
+    if (!data) return undefined;
+    const title =
+      typeof data.invoiceTitle === 'string' && data.invoiceTitle.trim()
+        ? data.invoiceTitle.trim()
+        : 'Beam — payment & checkout summary';
+    const period = data.period as Record<string, unknown> | undefined;
+    const from =
+      period && typeof period.from === 'string'
+        ? period.from.slice(0, 10)
+        : undefined;
+    const to =
+      period && typeof period.to === 'string'
+        ? period.to.slice(0, 10)
+        : undefined;
+    const periodLabel =
+      from && to
+        ? `${from} → ${to} (UTC)`
+        : from
+          ? `From ${from} UTC`
+          : to
+            ? `Through ${to} UTC`
+            : 'All recent activity (no date filter)';
+    const len = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+    const kyc = data.kyc as Record<string, unknown> | undefined;
+    const kycStatus =
+      kyc && typeof kyc.status === 'string' ? kyc.status : '—';
+    return {
+      type: 'invoice',
+      title,
+      rows: [
+        { label: 'Period', value: periodLabel },
+        {
+          label: 'Checkouts created (you)',
+          value: String(len(data.paymentRequestsCreated)),
+        },
+        {
+          label: 'Checkouts paid (you)',
+          value: String(len(data.paymentRequestsPaid)),
+        },
+        { label: 'On-ramp sessions', value: String(len(data.onRamps)) },
+        { label: 'Virtual cards', value: String(len(data.creditCards)) },
+        { label: 'KYC status', value: kycStatus },
+      ],
+    };
+  }
+
+  private richFromFinancialActivityReportData(
+    data: Record<string, unknown> | undefined,
+  ): AgentRichCard | undefined {
+    if (!data) return undefined;
+    const title =
+      typeof data.reportTitle === 'string' && data.reportTitle.trim()
+        ? data.reportTitle.trim()
+        : 'Beam — financial activity snapshot';
+    const period = data.period as Record<string, unknown> | undefined;
+    const from =
+      period && typeof period.from === 'string'
+        ? period.from.slice(0, 10)
+        : undefined;
+    const to =
+      period && typeof period.to === 'string'
+        ? period.to.slice(0, 10)
+        : undefined;
+    const periodLabel =
+      from && to
+        ? `${from} → ${to} (UTC)`
+        : from
+          ? `From ${from} UTC`
+          : to
+            ? `Through ${to} UTC`
+            : 'All recent activity (no date filter)';
+    const pr = data.paymentRequests as Record<string, unknown> | undefined;
+    const distinct =
+      pr &&
+      typeof pr.distinctInWindow === 'number' &&
+      Number.isFinite(pr.distinctInWindow)
+        ? String(pr.distinctInWindow)
+        : '—';
+    const onRamp = data.onRamp as Record<string, unknown> | undefined;
+    const rampTotal =
+      onRamp &&
+      typeof onRamp.total === 'number' &&
+      Number.isFinite(onRamp.total)
+        ? String(onRamp.total)
+        : '—';
+    const fulfilledRaw = onRamp?.fulfilledUsdCents;
+    const fulfilledUsd =
+      typeof fulfilledRaw === 'number' && Number.isFinite(fulfilledRaw)
+        ? `$${(fulfilledRaw / 100).toFixed(2)}`
+        : '—';
+    const cards = data.creditCards as Record<string, unknown> | undefined;
+    const cardCount =
+      cards &&
+      typeof cards.count === 'number' &&
+      Number.isFinite(cards.count)
+        ? String(cards.count)
+        : '—';
+    const kyc = data.kyc as Record<string, unknown> | undefined;
+    const kycStatus =
+      kyc && typeof kyc.status === 'string' ? kyc.status : '—';
+    return {
+      type: 'report',
+      title,
+      rows: [
+        { label: 'Period', value: periodLabel },
+        { label: 'Distinct payment requests', value: distinct },
+        { label: 'On-ramp sessions', value: rampTotal },
+        { label: 'Fulfilled on-ramp (USD sum)', value: fulfilledUsd },
+        { label: 'Virtual cards on file', value: cardCount },
+        { label: 'KYC status', value: kycStatus },
+      ],
+    };
+  }
+
   /** Thousands separators for a non-negative base-10 integer string (e.g. wei). */
   private static formatBase10Integer(raw: string): string {
     const digits = raw.replace(/\s+/g, '');
@@ -652,24 +805,133 @@ export class UserService {
     return { cards: rows.map((r) => this.creditCards.toPublic(r)) };
   }
 
+  async getCreditCardFundQuote(
+    amountCents: number,
+    clientEvmChainId?: number,
+  ): Promise<CreditCardFundQuoteResponse> {
+    this.assertVirtualCardFundsNotBlockedOnMainnet(clientEvmChainId);
+    return this.cardFunding.quote(amountCents, clientEvmChainId);
+  }
+
   async fundMyCreditCard(
     walletAddress: string,
     cardId: string,
-    amountCents: number,
+    body: CreditCardFundBody,
+    clientEvmChainId?: number,
   ): Promise<CreditCardPublic> {
+    this.assertVirtualCardFundsNotBlockedOnMainnet(
+      clientEvmChainId,
+      body.fundingChainId,
+    );
     const wallet = this.normalizeWallet(walletAddress);
-    const doc = await this.creditCards.fund(wallet, cardId, amountCents);
-    return this.creditCards.toPublic(doc);
+    if (this.cardFunding.isOnchainFundingConfigured()) {
+      const h = body.fundingTxHash?.trim();
+      const cid = body.fundingChainId;
+      if (!h || cid == null) {
+        throw new BadRequestException(
+          'Funding this card requires a native 0G treasury transfer first. Use the dashboard fund flow (or send fundingTxHash and fundingChainId after paying).',
+        );
+      }
+    } else if (body.fundingTxHash != null || body.fundingChainId != null) {
+      throw new BadRequestException(
+        'On-chain funding fields are not used in this environment.',
+      );
+    }
+
+    let releaseClaim: (() => Promise<void>) | undefined;
+    try {
+      if (this.cardFunding.isOnchainFundingConfigured()) {
+        const h = body.fundingTxHash!.trim();
+        const cid = body.fundingChainId!;
+        releaseClaim = await this.cardFunding.lockAndVerifyFundingTx({
+          walletAddress: wallet,
+          amountCents: body.amountCents,
+          fundingTxHash: h,
+          fundingChainId: cid,
+        });
+      }
+      const doc = await this.creditCards.fund(
+        wallet,
+        cardId,
+        body.amountCents,
+      );
+      releaseClaim = undefined;
+      void this.financialSnapshots
+        .recordVirtualCardFund(wallet, body.amountCents)
+        .catch(() => {
+          /* best-effort rollup */
+        });
+      return this.creditCards.toPublic(doc);
+    } finally {
+      if (releaseClaim) {
+        await releaseClaim();
+      }
+    }
   }
 
   async withdrawMyCreditCard(
     walletAddress: string,
     cardId: string,
     amountCents: number,
+    clientEvmChainId?: number,
   ): Promise<CreditCardPublic> {
+    this.assertVirtualCardFundsNotBlockedOnMainnet(clientEvmChainId);
     const wallet = this.normalizeWallet(walletAddress);
+
+    if (this.cardFunding.isOnchainUnfundPayoutConfigured()) {
+      const tier = beamEvmTierFromChainId(clientEvmChainId);
+      if (clientEvmChainId == null || tier == null) {
+        throw new BadRequestException(
+          'Send X-Beam-Chain-Id (Beam / 0G network) so the treasury can return native 0G to your wallet.',
+        );
+      }
+      const doc = await this.creditCards.withdraw(wallet, cardId, amountCents);
+      try {
+        const { txHash } = await this.cardFunding.payoutUnfundNative({
+          userWallet: wallet,
+          amountCents,
+          chainId: clientEvmChainId,
+        });
+        void this.financialSnapshots
+          .recordVirtualCardWithdraw(wallet, amountCents)
+          .catch(() => {
+            /* best-effort rollup */
+          });
+        return {
+          ...this.creditCards.toPublic(doc),
+          lastWithdrawTxHash: txHash,
+        };
+      } catch (e) {
+        await this.creditCards.restoreWithdrawBalance(
+          wallet,
+          cardId,
+          amountCents,
+        );
+        throw e;
+      }
+    }
+
+    if (this.cardFunding.isOnchainFundingConfigured()) {
+      throw new ServiceUnavailableException(
+        'On-chain card funding is configured but CREDIT_CARD_TREASURY_PRIVATE_KEY is missing or does not match CREDIT_CARD_FUND_RECIPIENT; native unfund payouts cannot be sent.',
+      );
+    }
+
     const doc = await this.creditCards.withdraw(wallet, cardId, amountCents);
+    void this.financialSnapshots
+      .recordVirtualCardWithdraw(wallet, amountCents)
+      .catch(() => {
+        /* best-effort rollup */
+      });
     return this.creditCards.toPublic(doc);
+  }
+
+  async getMyCreditCardSensitiveDetails(
+    walletAddress: string,
+    cardId: string,
+  ): Promise<CreditCardSensitiveDetails> {
+    const wallet = this.normalizeWallet(walletAddress);
+    return this.creditCards.getSensitiveDetailsForWallet(wallet, cardId);
   }
 
   /** Idempotent: ensures a Mongo user row exists for the wallet (same defaults as auth login). */
@@ -1200,6 +1462,11 @@ export class UserService {
     }
     const userContentForModel = userLines.join('\n') || '(file attachment)';
 
+    const financialSnapshots =
+      await this.financialSnapshots.listRecentDailyForChat(
+        user._id as Types.ObjectId,
+        30,
+      );
     const agentContext = {
       ...(onchainAgent ?? {
         agentKey,
@@ -1210,12 +1477,14 @@ export class UserService {
         chainAgentIds: activeSubscribedChainAgentIds,
         catalogAgentKeys: subscribedCatalogAgentKeys,
       },
+      /** UTC daily buckets: checkouts paid, on-ramp, virtual card fund/unfund (see FinancialSnapshot). */
+      financialSnapshots,
     };
     const prompt: ChatMessage[] = [
       {
         role: 'system',
         content: [
-          'You are Stardorm chat: answer using the following on-chain agent record as context.',
+          'You are Stardorm chat: answer using the following on-chain agent record and dashboard financial rollups as context.',
           STARDORM_AGENT_CAIP2_NETWORKS,
           JSON.stringify(agentContext),
         ].join('\n'),
@@ -1548,6 +1817,33 @@ export class UserService {
       if (!UserService.jsonParamsEqual(storedParams, execParams)) {
         throw new BadRequestException('Params do not match this chat action');
       }
+    } else if (body.handler === 'draft_native_transfer') {
+      const parsed = draftNativeTransferInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
+      if (!UserService.jsonParamsEqual(storedParams, execParams)) {
+        throw new BadRequestException('Params do not match this chat action');
+      }
+    } else if (body.handler === 'draft_erc20_transfer') {
+      const parsed = draftErc20TransferInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
+      if (!UserService.jsonParamsEqual(storedParams, execParams)) {
+        throw new BadRequestException('Params do not match this chat action');
+      }
+    } else if (body.handler === 'draft_nft_transfer') {
+      const parsed = draftNftTransferInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
+      if (!UserService.jsonParamsEqual(storedParams, execParams)) {
+        throw new BadRequestException('Params do not match this chat action');
+      }
     } else if (!UserService.jsonParamsEqual(storedParams, execParams)) {
       throw new BadRequestException('Params do not match this chat action');
     }
@@ -1584,7 +1880,8 @@ export class UserService {
       },
     );
     const rich =
-      body.handler === 'generate_tax_report'
+      result.rich ??
+      (body.handler === 'generate_tax_report'
         ? this.richFromTaxData(result.data)
         : body.handler === 'create_x402_payment'
           ? this.richFromX402Data(result.data)
@@ -1594,7 +1891,11 @@ export class UserService {
               ? this.richFromKycData(result.data)
               : body.handler === 'create_credit_card'
                 ? this.richFromCreditCardData(result.data)
-                : undefined;
+                : body.handler === 'generate_payment_invoice'
+                  ? this.richFromPaymentInvoiceData(result.data)
+                  : body.handler === 'generate_financial_activity_report'
+                    ? this.richFromFinancialActivityReportData(result.data)
+                    : undefined);
     const outAtt = result.attachments?.map((a) => ({
       id: randomUUID(),
       mimeType: a.mimeType,

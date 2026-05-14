@@ -209,3 +209,27 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up { animation: fade-in-up .35s ease both; }
+
+/* Skeleton shimmer (used by `components/ui/skeleton`) */
+@keyframes beam-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.animate-beam-shimmer {
+  animation: beam-shimmer 1.65s ease-in-out infinite;
+}
+.beam-shimmer-highlight {
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--foreground) 14%, transparent),
+    transparent
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-beam-shimmer {
+    animation: none;
+    transform: none;
+  }
+}

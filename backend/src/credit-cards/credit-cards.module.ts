@@ -4,13 +4,21 @@ import {
   CreditCard,
   CreditCardSchema,
 } from '../mongo/schemas/credit-card.schema';
+import {
+  CreditCardFundTx,
+  CreditCardFundTxSchema,
+} from '../mongo/schemas/credit-card-fund-tx.schema';
+import { CreditCardFundingService } from './credit-card-funding.service';
 import { CreditCardsService } from './credit-cards.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: CreditCard.name, schema: CreditCardSchema }]),
+    MongooseModule.forFeature([
+      { name: CreditCard.name, schema: CreditCardSchema },
+      { name: CreditCardFundTx.name, schema: CreditCardFundTxSchema },
+    ]),
   ],
-  providers: [CreditCardsService],
-  exports: [CreditCardsService],
+  providers: [CreditCardsService, CreditCardFundingService],
+  exports: [CreditCardsService, CreditCardFundingService],
 })
 export class CreditCardsModule {}

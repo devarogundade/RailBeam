@@ -18,9 +18,11 @@ import { Progress } from "@/components/ui/progress";
 import { BeamLogo } from "@/components/icons";
 import { setOnboardingComplete } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
+import { PageRoutePending } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/onboarding")({
   component: OnboardingPage,
+  pendingComponent: () => <PageRoutePending variant="narrow" />,
 });
 
 const STEPS = [
@@ -137,6 +139,15 @@ function OnboardingPage() {
   const current = STEPS[step];
   const progress = ((step + 1) / total) * 100;
 
+  /** Warm the main shell + home route chunks so leaving the tour does not hitch on first paint. */
+  React.useEffect(() => {
+    void Promise.all([
+      import("@/components/chat"),
+      import("@/components/app-sidebar"),
+      import("@/components/app-header"),
+    ]);
+  }, []);
+
   const finish = React.useCallback(() => {
     setOnboardingComplete();
     void navigate({ to: "/", replace: true });
@@ -160,7 +171,7 @@ function OnboardingPage() {
         <div className="absolute -right-1/4 bottom-0 h-[360px] w-[60%] rounded-full bg-linear-to-tl from-primary/15 via-transparent to-transparent blur-3xl opacity-80" />
       </div>
 
-      <header className="relative z-10 flex items-center justify-between px-4 py-4 sm:px-8">
+      <header className="z-10 flex items-center justify-between px-4 py-4 sm:px-8 sticky top-0">
         <div className="flex items-center gap-2">
           <BeamLogo />
           <span className="text-lg font-bold tracking-tight">Beam</span>
@@ -174,7 +185,7 @@ function OnboardingPage() {
         </button>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-10 pt-2 sm:px-6">
+      <main className="relative z-10 flex flex-1 flex-col items-center px-4 pb-10 pt-2 sm:px-6">
         <div className="w-full max-w-xl">
           <nav aria-label="Onboarding progress" className="mb-6">
             <ol className="flex w-full items-center gap-1 sm:gap-2">
@@ -189,8 +200,8 @@ function OnboardingPage() {
                           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors",
                           done && "border-primary bg-primary text-primary-foreground",
                           active &&
-                            !done &&
-                            "border-primary bg-primary/15 text-primary shadow-[0_0_20px_-2px] shadow-primary/40",
+                          !done &&
+                          "border-primary bg-primary/15 text-primary shadow-[0_0_20px_-2px] shadow-primary/40",
                           !active && !done && "border-border bg-card text-muted-foreground",
                         )}
                         aria-current={active ? "step" : undefined}
@@ -361,7 +372,7 @@ function FoundationChip({
   title,
   subtitle,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; }>;
   title: string;
   subtitle: string;
 }) {

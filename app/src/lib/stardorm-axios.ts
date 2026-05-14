@@ -28,5 +28,9 @@ stardormAxios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (chainId != null) {
     config.headers.set("X-Beam-Chain-Id", String(chainId));
   }
+  /** Let the runtime set `multipart/form-data` with a proper `boundary=` (default JSON Content-Type breaks uploads). */
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    config.headers.delete("Content-Type");
+  }
   return config;
 });

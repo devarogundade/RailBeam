@@ -88,7 +88,8 @@ export class SubgraphService {
   }
 
   /**
-   * Active on-chain hires for `walletAddress` (subscription `endDate` in the future).
+   * Active on-chain hires for `walletAddress`: subscription `endDate` in the future on a
+   * **canonical** registry agent (`isCloned` is not true). Clone-token subscriptions are omitted.
    * Returns an empty list when subgraph URL is unset or the query fails.
    */
   async getActiveSubscribedChainAgentIdsForUser(

@@ -33,8 +33,16 @@ import {
   createCreditCardInputSchema,
   generatePaymentInvoiceInputSchema,
   generateFinancialActivityReportInputSchema,
+  draftNativeTransferInputSchema,
+  draftErc20TransferInputSchema,
+  draftNftTransferInputSchema,
 } from '@beam/stardorm-api-contract';
 import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
+import {
+  txRichFromErc20Draft,
+  txRichFromNativeDraft,
+  txRichFromNftDraft,
+} from '../handlers/transfer-draft-rich';
 
 function formatBase10Integer(raw: string): string {
   const digits = raw.replace(/\s+/g, '');
@@ -218,6 +226,36 @@ export const agentComputeReplySchema = z
         });
       }
     }
+    if (handler === 'draft_native_transfer') {
+      const r = draftNativeTransferInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for draft_native_transfer',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'draft_erc20_transfer') {
+      const r = draftErc20TransferInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for draft_erc20_transfer',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'draft_nft_transfer') {
+      const r = draftNftTransferInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for draft_nft_transfer',
+          path: ['params'],
+        });
+      }
+    }
   })
   .transform((val) => ({
     text: val.text,
@@ -276,6 +314,24 @@ export type AgentComputeReplyWithParams =
       text: string;
       handler: 'generate_financial_activity_report';
       params: z.infer<typeof generateFinancialActivityReportInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'draft_native_transfer';
+      params: z.infer<typeof draftNativeTransferInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'draft_erc20_transfer';
+      params: z.infer<typeof draftErc20TransferInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'draft_nft_transfer';
+      params: z.infer<typeof draftNftTransferInputSchema>;
       rich?: AgentRichCard;
     };
 
@@ -350,18 +406,40 @@ export function asTypedAgentReply(
     const p = generatePaymentInvoiceInputSchema.parse(
       r.params && typeof r.params === 'object' ? r.params : {},
     );
-    return { text: r.text, handler: 'generate_payment_invoice', params: p, rich };
+    const filledRich = rich ?? agentRichFromPaymentInvoiceParams(p);
+    return {
+      text: r.text,
+      handler: 'generate_payment_invoice',
+      params: p,
+      rich: filledRich,
+    };
   }
   if (r.handler === 'generate_financial_activity_report') {
     const p = generateFinancialActivityReportInputSchema.parse(
       r.params && typeof r.params === 'object' ? r.params : {},
     );
+    const filledRich = rich ?? agentRichFromFinancialActivityReportParams(p);
     return {
       text: r.text,
       handler: 'generate_financial_activity_report',
       params: p,
-      rich,
+      rich: filledRich,
     };
+  }
+  if (r.handler === 'draft_native_transfer') {
+    const p = draftNativeTransferInputSchema.parse(r.params);
+    const filledRich = rich ?? txRichFromNativeDraft(p);
+    return { text: r.text, handler: 'draft_native_transfer', params: p, rich: filledRich };
+  }
+  if (r.handler === 'draft_erc20_transfer') {
+    const p = draftErc20TransferInputSchema.parse(r.params);
+    const filledRich = rich ?? txRichFromErc20Draft(p);
+    return { text: r.text, handler: 'draft_erc20_transfer', params: p, rich: filledRich };
+  }
+  if (r.handler === 'draft_nft_transfer') {
+    const p = draftNftTransferInputSchema.parse(r.params);
+    const filledRich = rich ?? txRichFromNftDraft(p);
+    return { text: r.text, handler: 'draft_nft_transfer', params: p, rich: filledRich };
   }
   return { text: r.text, rich };
 }
@@ -451,6 +529,15 @@ export function buildAgentOutputContract(
     allowed.includes('generate_financial_activity_report')
       ? '- generate_financial_activity_report params: optional `from`/`to` each `{"year","month","day"}` (UTC), optional `reportTitle`; may be `{}` for all recent rows.'
       : '',
+    allowed.includes('draft_native_transfer')
+      ? '- draft_native_transfer params: `network` (CAIP-2 `eip155:<chainId>`), `to` (0x…40 recipient), `valueWei` (positive integer string wei), optional `note`. Never invent addresses or amounts.'
+      : '',
+    allowed.includes('draft_erc20_transfer')
+      ? '- draft_erc20_transfer params: `network` (CAIP-2), `token` (ERC-20 contract 0x…40), `tokenDecimals` (0–36), optional `tokenSymbol`, `to` (0x…40), `amountWei` (positive integer string base units), optional `note`. Never invent contracts or amounts.'
+      : '',
+    allowed.includes('draft_nft_transfer')
+      ? '- draft_nft_transfer params: `network` (CAIP-2), `contract` (NFT collection 0x…40), `standard` (`erc721` default or `erc1155`), `to` (0x…40), `tokenId` (decimal string). For ERC-1155 include required positive integer string `amount`; omit `amount` for ERC-721. Optional `note`. Never invent token ids or contracts.'
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -494,11 +581,68 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
   if (handler === 'generate_financial_activity_report') {
     return 'I can generate an activity snapshot report across your Beam payments, on-ramp, cards, and KYC on request.';
   }
+  if (handler === 'draft_native_transfer') {
+    return 'I can save a native gas-token transfer draft you confirm, then you sign the transaction in your wallet.';
+  }
+  if (handler === 'draft_erc20_transfer') {
+    return 'I can save an ERC-20 transfer draft you confirm, then you sign the transaction in your wallet.';
+  }
+  if (handler === 'draft_nft_transfer') {
+    return 'I can save an NFT transfer draft you confirm, then you sign the transaction in your wallet.';
+  }
   return 'I can run that action on request.';
 }
 
 function fmtTaxDatePart(p: { year: number; month: number; day: number }): string {
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}
+
+function billingPeriodLabelFromParts(input: {
+  from?: { year: number; month: number; day: number };
+  to?: { year: number; month: number; day: number };
+}): string {
+  const a = input.from ? fmtTaxDatePart(input.from) : undefined;
+  const b = input.to ? fmtTaxDatePart(input.to) : undefined;
+  if (a && b) return `${a} → ${b} (UTC)`;
+  if (a) return `From ${a} UTC`;
+  if (b) return `Through ${b} UTC`;
+  return 'All recent activity (no date filter)';
+}
+
+function agentRichFromPaymentInvoiceParams(
+  p: z.infer<typeof generatePaymentInvoiceInputSchema>,
+): AgentRichCard {
+  return {
+    type: 'invoice',
+    title:
+      p.invoiceTitle?.trim() ||
+      'Beam — payment & checkout summary',
+    rows: [
+      {
+        label: 'Includes',
+        value: 'Checkouts, on-ramp, virtual cards, KYC',
+      },
+      { label: 'Period', value: billingPeriodLabelFromParts(p) },
+    ],
+  };
+}
+
+function agentRichFromFinancialActivityReportParams(
+  p: z.infer<typeof generateFinancialActivityReportInputSchema>,
+): AgentRichCard {
+  return {
+    type: 'report',
+    title:
+      p.reportTitle?.trim() ||
+      'Beam — financial activity snapshot',
+    rows: [
+      {
+        label: 'Includes',
+        value: 'Payment counts, on-ramp, cards, KYC',
+      },
+      { label: 'Period', value: billingPeriodLabelFromParts(p) },
+    ],
+  };
 }
 
 function agentRichFromTaxReportToolArgs(
@@ -724,21 +868,56 @@ export function agentReplyFromChatCompletion(
       if (name === 'generate_payment_invoice') {
         const full = generatePaymentInvoiceInputSchema.safeParse(rec);
         if (!full.success) continue;
+        const richCard = agentRichFromPaymentInvoiceParams(full.data);
         return {
           text,
           handler: 'generate_payment_invoice',
           params: full.data,
-          rich: undefined,
+          rich: richCard,
         };
       }
       if (name === 'generate_financial_activity_report') {
         const full = generateFinancialActivityReportInputSchema.safeParse(rec);
         if (!full.success) continue;
+        const richCard = agentRichFromFinancialActivityReportParams(full.data);
         return {
           text,
           handler: 'generate_financial_activity_report',
           params: full.data,
-          rich: undefined,
+          rich: richCard,
+        };
+      }
+      if (name === 'draft_native_transfer') {
+        const full = draftNativeTransferInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        const richCard = txRichFromNativeDraft(full.data);
+        return {
+          text,
+          handler: 'draft_native_transfer',
+          params: full.data,
+          rich: richCard,
+        };
+      }
+      if (name === 'draft_erc20_transfer') {
+        const full = draftErc20TransferInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        const richCard = txRichFromErc20Draft(full.data);
+        return {
+          text,
+          handler: 'draft_erc20_transfer',
+          params: full.data,
+          rich: richCard,
+        };
+      }
+      if (name === 'draft_nft_transfer') {
+        const full = draftNftTransferInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        const richCard = txRichFromNftDraft(full.data);
+        return {
+          text,
+          handler: 'draft_nft_transfer',
+          params: full.data,
+          rich: richCard,
         };
       }
     }
@@ -847,6 +1026,9 @@ export function buildAgentToolCallingSystemPrompt(
     ...(allowed.includes('generate_financial_activity_report')
       ? ['generate_financial_activity_report']
       : []),
+    ...(allowed.includes('draft_native_transfer') ? ['draft_native_transfer'] : []),
+    ...(allowed.includes('draft_erc20_transfer') ? ['draft_erc20_transfer'] : []),
+    ...(allowed.includes('draft_nft_transfer') ? ['draft_nft_transfer'] : []),
   ].join(', ');
   return [
     'You are Stardorm chat: a concise financial assistant.',
@@ -885,6 +1067,15 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     allowed.includes('generate_financial_activity_report')
       ? 'After proposing generate_financial_activity_report, remind the user to tap **Download activity report** to build the snapshot PDF.'
+      : '',
+    allowed.includes('draft_native_transfer')
+      ? 'For native transfers: call **draft_native_transfer** only when the user message states `network` (CAIP-2), full `to` address, and `valueWei` as a positive integer wei string. Remind them to tap **Confirm transfer draft** — the server records the plan; they sign in Beam Send or their wallet.'
+      : '',
+    allowed.includes('draft_erc20_transfer')
+      ? 'For ERC-20 transfers: call **draft_erc20_transfer** only when the user states `network`, `token` contract, `tokenDecimals`, `to`, and `amountWei` (base units string). Optional `tokenSymbol`. Remind them to tap **Confirm transfer draft** then sign in their wallet.'
+      : '',
+    allowed.includes('draft_nft_transfer')
+      ? 'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`. Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.'
       : '',
   ]
     .filter(Boolean)

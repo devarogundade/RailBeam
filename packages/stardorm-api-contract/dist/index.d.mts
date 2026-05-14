@@ -456,16 +456,16 @@ type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
  * Source of truth for backend handler ids implemented in
  * `stardorm/backend/src/handlers/handlers.service.ts`. Keep in sync.
  */
-declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"];
+declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"];
 type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];
 declare function isHandlerActionId(id: string): id is HandlerActionId;
-declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
 declare const handlersListResponseSchema: z.ZodObject<{
-    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>, "many">;
+    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>, "many">;
 }, "strip", z.ZodTypeAny, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer")[];
 }, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report")[];
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer")[];
 }>;
 type HandlersListResponse = z.infer<typeof handlersListResponseSchema>;
 
@@ -630,16 +630,16 @@ declare const userUploadResultSchema: z.ZodObject<{
     txHash?: string | undefined;
 }>;
 declare const executeHandlerBodySchema: z.ZodObject<{
-    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
     params: z.ZodOptional<z.ZodUnknown>;
     /** Mongo id of the chat message that displayed the handler CTA (required). */
     ctaMessageId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     ctaMessageId: string;
     params?: unknown;
 }, {
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     ctaMessageId: string;
     params?: unknown;
 }>;
@@ -1349,16 +1349,16 @@ declare const stardormChatJsonBodySchema: z.ZodObject<{
 type StardormChatJsonBody = z.infer<typeof stardormChatJsonBodySchema>;
 declare const stardormChatStructuredSchema: z.ZodObject<{
     text: z.ZodString;
-    handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>>;
+    handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>>;
     params: z.ZodOptional<z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     text: string;
     params?: unknown;
-    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
 }, {
     text: string;
     params?: unknown;
-    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
 }>;
 declare const stardormChatComputeSchema: z.ZodObject<{
     model: z.ZodString;
@@ -1404,16 +1404,16 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     reply: z.ZodString;
     structured: z.ZodOptional<z.ZodObject<{
         text: z.ZodString;
-        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>>;
+        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>>;
         params: z.ZodOptional<z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     }, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     }>>;
     /** Structured card rows for the client (model or server-generated). */
     rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
@@ -1717,7 +1717,7 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -1801,7 +1801,7 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -1886,16 +1886,16 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     reply: z.ZodString;
     structured: z.ZodOptional<z.ZodObject<{
         text: z.ZodString;
-        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>>;
+        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>>;
         params: z.ZodOptional<z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     }, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     }>>;
     /** Structured card rows for the client (model or server-generated). */
     rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
@@ -2199,7 +2199,7 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2283,7 +2283,7 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2402,14 +2402,14 @@ declare const chatHistoryAttachmentSchema: z.ZodObject<{
     size?: string | undefined;
 }>;
 declare const chatHistoryHandlerCtaSchema: z.ZodObject<{
-    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
     params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     params: Record<string, unknown>;
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
 }, {
     params: Record<string, unknown>;
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
 }>;
 /** Post-execute affordances derived from handler result (x402 checkout, tax PDF, …). */
 declare const chatFollowUpSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
@@ -2749,14 +2749,14 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         }[] | undefined;
     }>]>>;
     handlerCta: z.ZodOptional<z.ZodObject<{
-        handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+        handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
         params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     }, {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     }>>;
     followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
         kind: z.ZodLiteral<"x402_checkout">;
@@ -2906,7 +2906,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
     }[] | undefined;
     handlerCta?: {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     } | undefined;
     followUp?: {
         kind: "x402_checkout";
@@ -3010,7 +3010,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
     }[] | undefined;
     handlerCta?: {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
     } | undefined;
     followUp?: {
         kind: "x402_checkout";
@@ -3311,14 +3311,14 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             }[] | undefined;
         }>]>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
-            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report"]>;
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         }, "strip", z.ZodTypeAny, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         }, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         }>>;
         followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
             kind: z.ZodLiteral<"x402_checkout">;
@@ -3468,7 +3468,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         }[] | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -3572,7 +3572,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         }[] | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -3684,7 +3684,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         }[] | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -3794,7 +3794,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         }[] | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -4782,6 +4782,8 @@ declare const creditCardPublicSchema: z.ZodObject<{
     status: z.ZodEnum<["active", "frozen"]>;
     createdAt: z.ZodOptional<z.ZodDate>;
     updatedAt: z.ZodOptional<z.ZodDate>;
+    /** Present on some `POST …/withdraw` responses when native 0G was sent from the treasury. */
+    lastWithdrawTxHash: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     status: "active" | "frozen";
     id: string;
@@ -4800,6 +4802,7 @@ declare const creditCardPublicSchema: z.ZodObject<{
     updatedAt?: Date | undefined;
     line2?: string | undefined;
     cardLabel?: string | undefined;
+    lastWithdrawTxHash?: string | undefined;
 }, {
     status: "active" | "frozen";
     id: string;
@@ -4818,8 +4821,30 @@ declare const creditCardPublicSchema: z.ZodObject<{
     updatedAt?: Date | undefined;
     line2?: string | undefined;
     cardLabel?: string | undefined;
+    lastWithdrawTxHash?: string | undefined;
 }>;
 type CreditCardPublic = z.infer<typeof creditCardPublicSchema>;
+/** Wallet-authenticated only; never included in list cards responses. */
+declare const creditCardSensitiveDetailsSchema: z.ZodObject<{
+    cardId: z.ZodString;
+    pan: z.ZodString;
+    expiryMonth: z.ZodNumber;
+    expiryYear: z.ZodNumber;
+    cvv: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    cardId: string;
+    pan: string;
+    expiryMonth: number;
+    expiryYear: number;
+    cvv: string;
+}, {
+    cardId: string;
+    pan: string;
+    expiryMonth: number;
+    expiryYear: number;
+    cvv: string;
+}>;
+type CreditCardSensitiveDetails = z.infer<typeof creditCardSensitiveDetailsSchema>;
 declare const creditCardsListResponseSchema: z.ZodObject<{
     cards: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
@@ -4839,6 +4864,8 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
         status: z.ZodEnum<["active", "frozen"]>;
         createdAt: z.ZodOptional<z.ZodDate>;
         updatedAt: z.ZodOptional<z.ZodDate>;
+        /** Present on some `POST …/withdraw` responses when native 0G was sent from the treasury. */
+        lastWithdrawTxHash: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         status: "active" | "frozen";
         id: string;
@@ -4857,6 +4884,7 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
         updatedAt?: Date | undefined;
         line2?: string | undefined;
         cardLabel?: string | undefined;
+        lastWithdrawTxHash?: string | undefined;
     }, {
         status: "active" | "frozen";
         id: string;
@@ -4875,6 +4903,7 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
         updatedAt?: Date | undefined;
         line2?: string | undefined;
         cardLabel?: string | undefined;
+        lastWithdrawTxHash?: string | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     cards: {
@@ -4895,6 +4924,7 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
         updatedAt?: Date | undefined;
         line2?: string | undefined;
         cardLabel?: string | undefined;
+        lastWithdrawTxHash?: string | undefined;
     }[];
 }, {
     cards: {
@@ -4915,17 +4945,104 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
         updatedAt?: Date | undefined;
         line2?: string | undefined;
         cardLabel?: string | undefined;
+        lastWithdrawTxHash?: string | undefined;
     }[];
 }>;
 type CreditCardsListResponse = z.infer<typeof creditCardsListResponseSchema>;
-declare const creditCardFundBodySchema: z.ZodObject<{
+declare const creditCardFundBodySchema: z.ZodEffects<z.ZodObject<{
+    amountCents: z.ZodNumber;
+    fundingTxHash: z.ZodOptional<z.ZodString>;
+    fundingChainId: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    amountCents: number;
+    fundingTxHash?: string | undefined;
+    fundingChainId?: number | undefined;
+}, {
+    amountCents: number;
+    fundingTxHash?: string | undefined;
+    fundingChainId?: number | undefined;
+}>, {
+    amountCents: number;
+    fundingTxHash?: string | undefined;
+    fundingChainId?: number | undefined;
+}, {
+    amountCents: number;
+    fundingTxHash?: string | undefined;
+    fundingChainId?: number | undefined;
+}>;
+type CreditCardFundBody = z.infer<typeof creditCardFundBodySchema>;
+declare const creditCardFundQuoteQuerySchema: z.ZodObject<{
     amountCents: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     amountCents: number;
 }, {
     amountCents: number;
 }>;
-type CreditCardFundBody = z.infer<typeof creditCardFundBodySchema>;
+type CreditCardFundQuoteQuery = z.infer<typeof creditCardFundQuoteQuerySchema>;
+declare const creditCardFundQuoteOffChainSchema: z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<false>;
+}, "strip", z.ZodTypeAny, {
+    onchainFundingRequired: false;
+}, {
+    onchainFundingRequired: false;
+}>;
+declare const creditCardFundQuoteOnChainSchema: z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<true>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    minNativeWei: z.ZodString;
+    usdValue: z.ZodNumber;
+    nativeSymbol: z.ZodString;
+    nativeDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    usdValue: number;
+    onchainFundingRequired: true;
+    chainId: number;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}, {
+    usdValue: number;
+    onchainFundingRequired: true;
+    chainId: number;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}>;
+declare const creditCardFundQuoteResponseSchema: z.ZodDiscriminatedUnion<"onchainFundingRequired", [z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<false>;
+}, "strip", z.ZodTypeAny, {
+    onchainFundingRequired: false;
+}, {
+    onchainFundingRequired: false;
+}>, z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<true>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    minNativeWei: z.ZodString;
+    usdValue: z.ZodNumber;
+    nativeSymbol: z.ZodString;
+    nativeDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    usdValue: number;
+    onchainFundingRequired: true;
+    chainId: number;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}, {
+    usdValue: number;
+    onchainFundingRequired: true;
+    chainId: number;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}>]>;
+type CreditCardFundQuoteResponse = z.infer<typeof creditCardFundQuoteResponseSchema>;
 declare const creditCardWithdrawBodySchema: z.ZodObject<{
     amountCents: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
@@ -5128,4 +5245,91 @@ declare function isoCountryDisplayName(code: string, locale?: string | string[])
  */
 declare function taxRateForCountry(country: string): number;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFundBody, type CreditCardPublic, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+declare const draftNativeTransferInputSchema: z.ZodObject<{
+    network: z.ZodString;
+    to: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    valueWei: z.ZodString;
+    note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    network: string;
+    to: string;
+    valueWei: string;
+    note?: string | undefined;
+}, {
+    network: string;
+    to: string;
+    valueWei: string;
+    note?: string | undefined;
+}>;
+type DraftNativeTransferInput = z.infer<typeof draftNativeTransferInputSchema>;
+declare const draftErc20TransferInputSchema: z.ZodObject<{
+    network: z.ZodString;
+    token: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    tokenSymbol: z.ZodOptional<z.ZodString>;
+    tokenDecimals: z.ZodNumber;
+    to: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    amountWei: z.ZodString;
+    note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    network: string;
+    tokenDecimals: number;
+    to: string;
+    token: string;
+    amountWei: string;
+    tokenSymbol?: string | undefined;
+    note?: string | undefined;
+}, {
+    network: string;
+    tokenDecimals: number;
+    to: string;
+    token: string;
+    amountWei: string;
+    tokenSymbol?: string | undefined;
+    note?: string | undefined;
+}>;
+type DraftErc20TransferInput = z.infer<typeof draftErc20TransferInputSchema>;
+declare const draftNftTransferInputSchema: z.ZodEffects<z.ZodObject<{
+    network: z.ZodString;
+    contract: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    standard: z.ZodDefault<z.ZodEnum<["erc721", "erc1155"]>>;
+    to: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>;
+    tokenId: z.ZodString;
+    /** Required for ERC-1155; omit for ERC-721. */
+    amount: z.ZodOptional<z.ZodString>;
+    note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    network: string;
+    to: string;
+    contract: string;
+    standard: "erc721" | "erc1155";
+    tokenId: string;
+    amount?: string | undefined;
+    note?: string | undefined;
+}, {
+    network: string;
+    to: string;
+    contract: string;
+    tokenId: string;
+    amount?: string | undefined;
+    note?: string | undefined;
+    standard?: "erc721" | "erc1155" | undefined;
+}>, {
+    network: string;
+    to: string;
+    contract: string;
+    standard: "erc721" | "erc1155";
+    tokenId: string;
+    amount?: string | undefined;
+    note?: string | undefined;
+}, {
+    network: string;
+    to: string;
+    contract: string;
+    tokenId: string;
+    amount?: string | undefined;
+    note?: string | undefined;
+    standard?: "erc721" | "erc1155" | undefined;
+}>;
+type DraftNftTransferInput = z.infer<typeof draftNftTransferInputSchema>;
+
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

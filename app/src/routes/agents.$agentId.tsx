@@ -1,30 +1,46 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Star, Users, Zap, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Star, Users, Zap, ArrowLeft, ShieldCheck, ClipboardList } from "lucide-react";
 import { AgentOnchainFeedback } from "@/components/agent-onchain-feedback";
 import { CloneDialog, HireDialog, FireDialog } from "@/components/agent-dialogs";
 import { resolveCatalogAgentByParamId } from "@/lib/resolve-catalog-agent";
 import { readStoredBeamPreferredChainId } from "@/lib/beam-network-storage";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { getStardormSubgraphUrl, getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
+import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
+import { stardormClientChainIdRef } from "@/lib/stardorm-client-chain";
+import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { useStardormValidationsForAgent } from "@/lib/hooks/use-stardorm-subgraph";
 import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
 import {
   agentPortfolioAddCta,
   agentPortfolioRemoveCta,
+  canUserCloneCatalogAgent,
   isRegistryTokenIdOneAgent,
+  isViewerOwnedClone,
   REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
 } from "@/lib/registry-token-one-agent";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/types";
-import { useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { useChainId, useConnection, usePublicClient, useWriteContract } from "wagmi";
+import { getAddress, isAddress } from "viem";
+import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getIdentityRegistryAddressForChain,
   identityRegistryAbi,
@@ -33,10 +49,12 @@ import {
   mergeDisplayFieldsIntoRegistrationUri,
   parseAgentUriFromString,
 } from "@/lib/agent-uri-metadata";
+import { EmptyState } from "@/components/empty-state";
+import { PageRoutePending, ValidationsListSkeleton } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/agents/$agentId")({
   loader: async ({ context, params }) => {
-    const beamCh = readStoredBeamPreferredChainId();
+    const beamCh = stardormClientChainIdRef.current ?? readStoredBeamPreferredChainId();
     const agent = await resolveCatalogAgentByParamId(
       context.queryClient,
       beamCh,
@@ -46,6 +64,7 @@ export const Route = createFileRoute("/agents/$agentId")({
     return { agent };
   },
   component: AgentDetail,
+  pendingComponent: () => <PageRoutePending variant="default" />,
   notFoundComponent: () => (
     <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
       Agent not found.
@@ -56,29 +75,24 @@ export const Route = createFileRoute("/agents/$agentId")({
 function AgentDetail() {
   const { agent } = Route.useLoaderData();
   const { effectiveChainId } = useBeamNetwork();
-  const { address, isHired, setActiveAgentId } = useApp();
+  const { address, isHired, ownedClones, setActiveAgentId } = useApp();
   const hired = isHired(agent.id);
   const [hireOpen, setHireOpen] = React.useState(false);
   const [fireOpen, setFireOpen] = React.useState(false);
   const [cloneOpen, setCloneOpen] = React.useState(false);
 
-  const isOwnedClone = Boolean(
-    agent.isCloned &&
-      address &&
-      agent.ownerAddress &&
-      agent.ownerAddress === address.toLowerCase(),
+  const ownedCloneIds = React.useMemo(
+    () => new Set(ownedClones.map((a) => a.id)),
+    [ownedClones],
   );
-  const canUseChat = hired || isOwnedClone;
+  const isOwnedClone = isViewerOwnedClone(agent, address, ownedCloneIds);
+  /** Registry token #1 (Beam) is available to everyone without a hire; see `registry-token-one-agent`. */
+  const canUseChat = hired || isOwnedClone || isRegistryTokenIdOneAgent(agent);
 
   const subgraphOn = Boolean(
-    getStardormSubgraphUrl() && getStardormSubgraphUrlForChain(effectiveChainId),
+    isBeamConfiguredChainId(effectiveChainId) && getStardormSubgraphUrlForChain(effectiveChainId),
   );
-  const showClone =
-    subgraphOn &&
-    !agent.isCloned &&
-    agent.chainAgentId != null &&
-    agent.id !== "beam-default" &&
-    !isRegistryTokenIdOneAgent(agent);
+  const showClone = subgraphOn && canUserCloneCatalogAgent(agent);
   const validations = useStardormValidationsForAgent(agent.chainAgentId, { first: 12, skip: 0 });
   const hasValidations =
     !validations.isPending && !validations.isError && (validations.data?.length ?? 0) > 0;
@@ -221,7 +235,7 @@ function AgentDetail() {
                       {agentPortfolioRemoveCta(agent)}
                     </Button>
                   ) : null}
-                  {!hired && !agent.isCloned ? (
+                  {!hired && !isOwnedClone && !isRegistryTokenIdOneAgent(agent) ? (
                     <Button onClick={() => setHireOpen(true)}>
                       {agentPortfolioAddCta(agent, agent.name)}
                     </Button>
@@ -237,9 +251,11 @@ function AgentDetail() {
                 </>
               ) : (
                 <>
-                  <Button onClick={() => setHireOpen(true)}>
-                    {agentPortfolioAddCta(agent, agent.name)}
-                  </Button>
+                  {!isOwnedClone ? (
+                    <Button onClick={() => setHireOpen(true)}>
+                      {agentPortfolioAddCta(agent, agent.name)}
+                    </Button>
+                  ) : null}
                   {showClone ? (
                     <Button variant="outline" onClick={() => setCloneOpen(true)}>
                       Clone to my wallet
@@ -254,7 +270,12 @@ function AgentDetail() {
           </div>
         </div>
 
-        {isOwnedClone ? <CloneOwnerUriPanel agent={agent} beamChainId={effectiveChainId} /> : null}
+        {isOwnedClone ? (
+          <div className="mt-6 space-y-6">
+            <CloneOwnerUriPanel agent={agent} beamChainId={effectiveChainId} />
+            <CloneOwnerTokenActions agent={agent} beamChainId={effectiveChainId} />
+          </div>
+        ) : null}
 
         {subgraphOn && agent.chainAgentId != null ? (
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -274,13 +295,19 @@ function AgentDetail() {
                 Recent verification results for this agent.
               </p>
               {validations.isPending ? (
-                <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+                <ValidationsListSkeleton />
               ) : validations.isError ? (
                 <p className="mt-3 text-sm text-destructive">
                   Could not load validation history. Try again later.
                 </p>
               ) : !validations.data?.length ? (
-                <p className="mt-3 text-sm text-muted-foreground">No validation events yet.</p>
+                <div className="mt-3">
+                  <EmptyState
+                    icon={ClipboardList}
+                    title="No validation events yet"
+                    description="When this agent completes verification flows on-chain, the latest checks will show up in this timeline."
+                  />
+                </div>
               ) : (
                 <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto text-sm">
                   {validations.data.map((v) => (
@@ -308,6 +335,201 @@ function AgentDetail() {
       <FireDialog agent={agent} open={fireOpen} onOpenChange={setFireOpen} />
       <CloneDialog agent={agent} open={cloneOpen} onOpenChange={setCloneOpen} />
     </div>
+  );
+}
+
+const REGISTRY_ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChainId: number }) {
+  const navigate = useNavigate();
+  const { address } = useConnection();
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
+  const registry = getIdentityRegistryAddressForChain(chainId);
+  const qc = useQueryClient();
+  const { writeContractAsync, isPending } = useWriteContract();
+  const [newOwnerRaw, setNewOwnerRaw] = React.useState("");
+  const [burnDialogOpen, setBurnDialogOpen] = React.useState(false);
+
+  const tokenId = agent.chainAgentId;
+  const walletLower = address?.toLowerCase();
+  const canManageOnChain =
+    Boolean(
+      agent.isCloned &&
+        walletLower &&
+        agent.ownerAddress &&
+        agent.ownerAddress === walletLower,
+    ) && tokenId != null;
+
+  const invalidateCatalog = () => {
+    void qc.invalidateQueries({
+      queryKey: [...queryKeys.agents.all, "catalog", beamChainId],
+      exact: false,
+    });
+  };
+
+  const onTransferOwnership = async () => {
+    if (!registry || !address || tokenId == null) {
+      toast.error("Wallet or registry not available");
+      return;
+    }
+    const trimmed = newOwnerRaw.trim();
+    if (!isAddress(trimmed)) {
+      toast.error("Enter a valid 0x recipient address");
+      return;
+    }
+    let recipient: `0x${string}`;
+    try {
+      recipient = getAddress(trimmed);
+    } catch {
+      toast.error("Invalid address");
+      return;
+    }
+    if (recipient.toLowerCase() === address.toLowerCase()) {
+      toast.error("That recipient is already you");
+      return;
+    }
+    if (recipient === REGISTRY_ZERO_ADDRESS) {
+      toast.error('Use "Burn this clone" to destroy the token');
+      return;
+    }
+    try {
+      if (!publicClient) {
+        toast.error("Wallet client unavailable", {
+          description: "Refresh the page and try again.",
+        });
+        return;
+      }
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: identityRegistryAbi,
+        functionName: "transferFrom",
+        args: [address, recipient, BigInt(tokenId)],
+      });
+      await waitForWriteContractReceipt(publicClient, hash);
+      setNewOwnerRaw("");
+      invalidateCatalog();
+      toast.success("Ownership transferred", {
+        description: `Token #${tokenId} now belongs to ${recipient.slice(0, 6)}…${recipient.slice(-4)}.`,
+      });
+      void navigate({ to: "/agents" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Transfer failed", { description: msg });
+    }
+  };
+
+  const onBurnToken = async () => {
+    if (!registry || !address || tokenId == null) {
+      toast.error("Wallet or registry not available");
+      return;
+    }
+    try {
+      if (!publicClient) {
+        toast.error("Wallet client unavailable", {
+          description: "Refresh the page and try again.",
+        });
+        return;
+      }
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: identityRegistryAbi,
+        functionName: "transferFrom",
+        args: [address, REGISTRY_ZERO_ADDRESS, BigInt(tokenId)],
+      });
+      await waitForWriteContractReceipt(publicClient, hash);
+      setBurnDialogOpen(false);
+      invalidateCatalog();
+      toast.success("Clone burned", {
+        description: `Registry token #${tokenId} was destroyed (sent to the zero address).`,
+      });
+      void navigate({ to: "/agents" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Burn failed", { description: msg });
+    }
+  };
+
+  if (!canManageOnChain) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <h2 className="text-sm font-semibold">Registry token</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Connect the wallet that owns this clone to transfer or burn it.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <h2 className="text-sm font-semibold">Registry token</h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Transfer full ERC-721 ownership to another wallet, or burn this clone by transferring it
+          to the zero address (cannot be undone).
+        </p>
+
+        <div className="mt-4 space-y-2">
+          <Label htmlFor="clone-transfer-recipient">New owner address</Label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              id="clone-transfer-recipient"
+              className="font-mono text-xs sm:flex-1"
+              placeholder="0x…"
+              value={newOwnerRaw}
+              onChange={(e) => setNewOwnerRaw(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isPending || !newOwnerRaw.trim()}
+              onClick={() => void onTransferOwnership()}
+            >
+              {isPending ? "Waiting…" : "Transfer ownership"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={() => setBurnDialogOpen(true)}
+          >
+            Burn this clone
+          </Button>
+        </div>
+      </div>
+
+      <AlertDialog open={burnDialogOpen} onOpenChange={setBurnDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Burn this clone?</AlertDialogTitle>
+            <AlertDialogDescription className="text-pretty">
+              This sends registry token #{tokenId} to the zero address, which destroys the NFT on
+              this network. You cannot undo this action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button" disabled={isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isPending}
+              onClick={() => void onBurnToken()}
+            >
+              {isPending ? "Confirm in wallet…" : "Burn permanently"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -345,17 +567,24 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
       imageUrl,
     });
     try {
-      await writeContractAsync({
+      if (!publicClient) {
+        toast.error("Wallet client unavailable", {
+          description: "Refresh the page and try again.",
+        });
+        return;
+      }
+      const hash = await writeContractAsync({
         address: registry,
         abi: identityRegistryAbi,
         functionName: "setAgentURI",
         args: [BigInt(agent.chainAgentId), nextUri],
       });
+      await waitForWriteContractReceipt(publicClient, hash);
       toast.success("Listing updated", {
         description: "Name, description, and image are saved on-chain.",
       });
       void qc.invalidateQueries({
-        queryKey: ["agents", "catalog", beamChainId],
+        queryKey: [...queryKeys.agents.all, "catalog", beamChainId],
         exact: false,
       });
     } catch (e) {

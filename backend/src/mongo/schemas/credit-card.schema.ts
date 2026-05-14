@@ -48,6 +48,19 @@ export class CreditCard {
   @Prop({ required: true, minlength: 4, maxlength: 4 })
   last4: string;
 
+  /** Full PAN digits for in-app demo virtual cards (not a live issuer). Filled at creation or lazily on first reveal. */
+  @Prop({ trim: true, minlength: 16, maxlength: 16 })
+  pan?: string;
+
+  @Prop({ trim: true, minlength: 3, maxlength: 4 })
+  cardCvv?: string;
+
+  @Prop({ min: 1, max: 12 })
+  expiryMonth?: number;
+
+  @Prop({ min: 2000, max: 2100 })
+  expiryYear?: number;
+
   @Prop({ required: true, default: 'Visa' })
   networkBrand: string;
 

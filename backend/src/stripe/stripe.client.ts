@@ -12,7 +12,9 @@ export function getStripe(config: ConfigService): StripeClient | null {
     cached = null;
     return null;
   }
-  cached = new Stripe(key);
+  cached = new Stripe(key, {
+    typescript: true,
+  });
   return cached;
 }
 

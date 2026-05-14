@@ -16,9 +16,11 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CoinIcon } from "@/components/icons";
+import { PageRoutePending, SettingsProfileFieldsSkeleton } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
+  pendingComponent: () => <PageRoutePending variant="narrow" />,
 });
 
 function Settings() {
@@ -184,36 +186,42 @@ function Settings() {
                   </p>
                 ) : null}
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="name">Display name</Label>
-                <Input
-                  id="name"
-                  value={displayNameDraft}
-                  onChange={(e) => setDisplayNameDraft(e.target.value)}
-                  placeholder="Beam User"
-                  disabled={syncDisabled || meQuery.isPending}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="email">Email (optional)</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={emailDraft}
-                  onChange={(e) => setEmailDraft(e.target.value)}
-                  placeholder="you@beam.0g"
-                  disabled={syncDisabled || meQuery.isPending}
-                />
-              </div>
-              <div>
-                <Button
-                  size="sm"
-                  onClick={saveProfile}
-                  disabled={syncDisabled || meQuery.isPending || updateMutation.isPending}
-                >
-                  Save profile
-                </Button>
-              </div>
+              {isStardormAuthed && meQuery.isPending ? (
+                <SettingsProfileFieldsSkeleton />
+              ) : (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="name">Display name</Label>
+                    <Input
+                      id="name"
+                      value={displayNameDraft}
+                      onChange={(e) => setDisplayNameDraft(e.target.value)}
+                      placeholder="Beam User"
+                      disabled={syncDisabled || meQuery.isPending}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="email">Email (optional)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={emailDraft}
+                      onChange={(e) => setEmailDraft(e.target.value)}
+                      placeholder="you@beam.0g"
+                      disabled={syncDisabled || meQuery.isPending}
+                    />
+                  </div>
+                  <div>
+                    <Button
+                      size="sm"
+                      onClick={saveProfile}
+                      disabled={syncDisabled || meQuery.isPending || updateMutation.isPending}
+                    >
+                      Save profile
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </Card>
 

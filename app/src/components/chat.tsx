@@ -6,6 +6,7 @@ import type {
   ConversationSummary,
   ChatHistoryResponse,
   ConversationsPageResponse,
+  StardormChatRichBlock,
 } from "@beam/stardorm-api-contract";
 import {
   ISO_3166_1_ALPHA2_CODES,
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
@@ -39,6 +41,7 @@ import {
 } from "@/components/ui/drawer";
 import { CoinIcon } from "@/components/icons";
 import {
+  ArrowLeftRight,
   ChevronDown,
   Paperclip,
   Send,
@@ -54,6 +57,10 @@ import {
   Menu,
   Plus,
   Trash2,
+  MessageSquare,
+  Inbox,
+  Wallet,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -104,6 +111,8 @@ import {
 } from "@/components/x402-checkout-form-card";
 import { OnRampCheckoutFormCard } from "@/components/on-ramp-checkout-form-card";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { EmptyState } from "@/components/empty-state";
+import { ChatHistorySkeleton, ConversationListSkeleton } from "@/components/page-shimmer";
 
 /** UI-only attachment row that also keeps the raw `File` for upload. */
 type DraftAttachment = ChatAttachment & { file: File; };
@@ -661,11 +670,23 @@ export function Chat() {
             </div>
             <div ref={convScrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">
               {convInfinite.isPending && convInfinite.data == null ? (
-                <p className="px-2 py-4 text-sm text-muted-foreground">Loading…</p>
+                <ConversationListSkeleton />
               ) : convInfinite.isError ? (
-                <p className="px-2 py-4 text-sm text-destructive">Could not load conversations.</p>
+                <div className="px-2 py-4">
+                  <EmptyState
+                    icon={AlertCircle}
+                    title="Could not load conversations"
+                    description="Check your connection and try opening the menu again. If the problem persists, sign out and sign back in."
+                  />
+                </div>
               ) : flatConversations.length === 0 ? (
-                <p className="px-2 py-4 text-sm text-muted-foreground">No conversations yet.</p>
+                <div className="px-2 py-4">
+                  <EmptyState
+                    icon={Inbox}
+                    title="No conversations yet"
+                    description="Start a new thread from the button below. History syncs to your Beam account when you are signed in."
+                  />
+                </div>
               ) : (
                 <>
                   <ul className="flex flex-col gap-1">
@@ -721,7 +742,9 @@ export function Chat() {
                   </ul>
                   <div ref={convListEndRef} className="h-2 shrink-0" aria-hidden />
                   {convInfinite.isFetchingNextPage ? (
-                    <p className="py-2 text-center text-[11px] text-muted-foreground">Loading more…</p>
+                    <div className="flex justify-center py-3" aria-hidden>
+                      <Skeleton className="mx-auto h-3 w-28 rounded-full" />
+                    </div>
                   ) : null}
                 </>
               )}
@@ -748,35 +771,49 @@ export function Chat() {
       <div ref={scrollRef} className="bg-dots flex-1 overflow-y-auto px-4 py-6 md:px-10">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           {historyLoading ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-sm text-muted-foreground">
-              <span>Loading conversation from the server…</span>
-            </div>
+            <ChatHistorySkeleton />
           ) : (
             <>
               {chatInfinite.isFetchingNextPage ? (
-                <div className="py-2 text-center text-xs text-muted-foreground">Loading older messages…</div>
+                <div className="flex justify-center py-2" aria-hidden>
+                  <Skeleton className="h-3 w-36 rounded-full" />
+                </div>
               ) : null}
               <div ref={chatTopSentinelRef} className="h-1 w-full shrink-0" aria-hidden />
               {displayMessages.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border bg-surface/50 px-6 py-10 text-center text-sm text-muted-foreground">
+                <div className="py-2">
                   {apiOn ? (
                     openConversationId ? (
-                      <p>
-                        No messages in this thread yet. Send a message to talk to{" "}
-                        <span className="font-medium text-foreground">{activeAgent.name}</span> — replies
-                        are generated on the backend and stored with your account.
-                      </p>
+                      <EmptyState
+                        icon={MessageSquare}
+                        title="No messages in this thread yet"
+                        description={
+                          <>
+                            Send a message to talk to{" "}
+                            <span className="font-medium text-foreground">{activeAgent.name}</span>. Replies are
+                            generated on the backend and stored with your account.
+                          </>
+                        }
+                      />
                     ) : (
-                      <p>
-                        No conversation selected. Send a message to start a new thread with{" "}
-                        <span className="font-medium text-foreground">{activeAgent.name}</span>, or use the
-                        menu to open an existing one.
-                      </p>
+                      <EmptyState
+                        icon={MessageSquare}
+                        title="Pick or start a conversation"
+                        description={
+                          <>
+                            No thread is open. Send a message to start with{" "}
+                            <span className="font-medium text-foreground">{activeAgent.name}</span>, or open the
+                            menu to continue an existing conversation.
+                          </>
+                        }
+                      />
                     )
                   ) : (
-                    <p>
-                      Connect your wallet and sign in.
-                    </p>
+                    <EmptyState
+                      icon={Wallet}
+                      title="Connect to use chat"
+                      description="Connect your wallet and complete Beam sign-in so agents can run with your account context."
+                    />
                   )}
                 </div>
               )}
@@ -1189,7 +1226,45 @@ function handlerCtaLabel(handler: string) {
     return "Download payment summary";
   if (handler === "generate_financial_activity_report")
     return "Download activity report";
+  if (handler === "draft_native_transfer") return "Confirm native transfer draft";
+  if (handler === "draft_erc20_transfer") return "Confirm token transfer draft";
+  if (handler === "draft_nft_transfer") return "Confirm NFT transfer draft";
   return handler.replace(/_/g, " ");
+}
+
+type CheckoutFormRich = Extract<
+  StardormChatRichBlock,
+  { type: "x402_checkout_form" } | { type: "on_ramp_checkout_form" }
+>;
+
+/** Checkout rich blocks need `handlerCta` to run `create_x402_payment` / `on_ramp_tokens`; show context if it is missing. */
+function CheckoutRichUnavailableNotice({ rich }: { rich: CheckoutFormRich }) {
+  return (
+    <div
+      className="w-full max-w-md overflow-hidden rounded-xl border border-amber-500/35 bg-surface-elevated"
+      role="alert"
+    >
+      <div className="flex items-start gap-2 border-b border-border px-3.5 py-2.5">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">{rich.title}</p>
+          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+            {rich.type.replace(/_/g, " ")}
+          </p>
+        </div>
+      </div>
+      <div className="space-y-2 px-3.5 py-3 text-sm text-muted-foreground">
+        {rich.intro ? (
+          <p className="whitespace-pre-wrap text-foreground/90">{rich.intro}</p>
+        ) : null}
+        <p>
+          This checkout cannot be submitted because the server did not attach an action for this
+          message (for example, older history or a partial sync). Reload the chat or ask the agent
+          to offer checkout again.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
@@ -1489,12 +1564,18 @@ function Bubble({
             onCreateLink={(params) => void onRunHandlerCta(m, params)}
           />
         )}
+        {m.rich?.type === "x402_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
         {m.rich?.type === "on_ramp_checkout_form" && !isUser && m.handlerCta && (
           <OnRampCheckoutFormCard
             rich={m.rich}
             disabled={executingHandlerForId === m.id}
             onCreateCheckout={(params) => void onRunHandlerCta(m, params)}
           />
+        )}
+        {m.rich?.type === "on_ramp_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
         )}
         {m.rich &&
           m.rich.type !== "x402_checkout_form" &&
@@ -1508,6 +1589,8 @@ function Bubble({
                   <CreditCard className="h-4 w-4 text-primary" />
                 ) : m.rich.type === "report" ? (
                   <Sparkles className="h-4 w-4 text-primary" />
+                ) : m.rich.type === "tx" ? (
+                  <ArrowLeftRight className="h-4 w-4 text-primary" />
                 ) : (
                   <CoinIcon className="h-4 w-4" />
                 )}

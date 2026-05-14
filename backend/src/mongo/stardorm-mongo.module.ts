@@ -24,6 +24,7 @@ import {
   CreditCard,
   CreditCardSchema,
 } from './schemas/credit-card.schema';
+import { FinancialSnapshotsService } from './financial-snapshots.service';
 
 const stardormModels = [
   { name: User.name, schema: UserSchema },
@@ -39,6 +40,7 @@ const stardormModels = [
 
 @Module({
   imports: [MongooseModule.forFeature(stardormModels)],
-  exports: [MongooseModule],
+  providers: [FinancialSnapshotsService],
+  exports: [MongooseModule, FinancialSnapshotsService],
 })
 export class StardormMongoModule {}

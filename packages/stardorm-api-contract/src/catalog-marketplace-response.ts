@@ -12,8 +12,8 @@ const CHAT_SUGGESTIONS = [
   "Create a virtual payment card with my billing address",
 ] as const;
 
-/** When the subgraph lists these agents, the client pre-hires them for new wallets. */
-const DEFAULT_HIRED_IDS = ["beam-default", "chain-2", "chain-3"] as const;
+/** Catalog metadata only; the app does not treat these as on-chain hires without a subscription. */
+const DEFAULT_HIRED_IDS = ["beam-default"] as const;
 
 const ALL_CATEGORIES: readonly AgentCategory[] = [
   "Payments",

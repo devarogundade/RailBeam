@@ -1,7 +1,14 @@
 import axios from "axios";
+import { getStardormApiBase } from "./stardorm-axios";
 
-const STORAGE_CLIENT = axios.create({
-  baseURL: import.meta.env.VITE_STARDORM_API_URL ?? "",
+const STORAGE_CLIENT = axios.create();
+
+STORAGE_CLIENT.interceptors.request.use((config) => {
+  const base = getStardormApiBase()?.replace(/\/$/, "");
+  if (base) {
+    config.baseURL = base;
+  }
+  return config;
 });
 
 export const OG_STORAGE_PREFIX = "0g-storage:" as const;

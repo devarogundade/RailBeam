@@ -23,6 +23,13 @@ import { agentGraphEntityIdFromChainAgentId } from "./subgraph-entity-ids";
 
 export type SubgraphRequestOpts = { subgraphUrl?: string };
 
+/** Active subscription on a canonical registry agent (not an ERC-7857 clone token). */
+function userSubscriptionQualifiesAsHired(row: UserSubscriptionNode, nowSec: bigint): boolean {
+  const end = BigInt(row.endDate);
+  if (end <= nowSec) return false;
+  return row.agent?.isCloned !== true;
+}
+
 function subgraphUrlOrThrow(opts?: SubgraphRequestOpts): string {
   const u = opts?.subgraphUrl ?? getStardormSubgraphUrl();
   if (!u) {
@@ -39,6 +46,13 @@ function parseBigIntString(s: string): number {
     throw new Error(`Expected finite number from subgraph bigint string: ${s}`);
   }
   return n;
+}
+
+/** Lowercase `0x…` for GraphQL `Bytes` filters (subgraph stores hashes in canonical form). */
+function normalizeSubgraphBytesHexFilter(raw: string): string {
+  const t = raw.trim().toLowerCase();
+  if (!t.startsWith("0x")) return `0x${t}`;
+  return t;
 }
 
 export function mapSubgraphFeedbackRaw(raw: SubgraphFeedbackRaw): AgentOnchainFeedbackItem {
@@ -361,6 +375,8 @@ const RECENT_SUBSCRIPTIONS_QUERY = /* GraphQL */ `
       agent {
         agentId
         uri
+        isCloned
+        owner
       }
     }
   }
@@ -381,6 +397,8 @@ const RECENT_SUBSCRIPTIONS_ALL_QUERY = /* GraphQL */ `
       agent {
         agentId
         uri
+        isCloned
+        owner
       }
     }
   }
@@ -407,6 +425,8 @@ const USER_SUBSCRIPTIONS_PAGE_FILTERED = /* GraphQL */ `
       agent {
         agentId
         uri
+        isCloned
+        owner
       }
     }
   }
@@ -432,6 +452,8 @@ const USER_SUBSCRIPTIONS_PAGE_ALL = /* GraphQL */ `
       agent {
         agentId
         uri
+        isCloned
+        owner
       }
     }
   }
@@ -608,7 +630,7 @@ export async function fetchSubgraphValidationByRequestHash(
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
     GET_VALIDATION_BY_REQUEST_HASH,
-    { requestHash },
+    { requestHash: normalizeSubgraphBytesHexFilter(requestHash) },
     validationsByRequestHashDataSchema,
     url,
   );
@@ -651,7 +673,8 @@ const SUBSCRIPTION_PAGE_SIZE = 100;
 
 /**
  * Chain-facing ERC-8004 `agentId` values for which `user` currently has an active subscription
- * (`endDate` after current wall time), deduped across paginated `userSubscriptions`.
+ * on a **canonical** agent (`agent.isCloned` is not true), deduped across paginated `userSubscriptions`.
+ * Clone-token subscriptions are excluded from the hired roster.
  */
 export async function fetchActiveSubscribedChainAgentIds(
   user: `0x${string}`,
@@ -671,8 +694,8 @@ export async function fetchActiveSubscribedChainAgentIds(
       opts,
     );
     for (const row of page) {
+      if (!userSubscriptionQualifiesAsHired(row, nowSec)) continue;
       const end = BigInt(row.endDate);
-      if (end <= nowSec) continue;
       const chainAgentId = Number(row.agentId);
       if (!Number.isFinite(chainAgentId)) continue;
       const prev = active.get(chainAgentId);

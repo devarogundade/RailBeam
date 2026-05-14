@@ -36,7 +36,10 @@ import {
   createConversationBodySchema,
   deleteConversationResponseSchema,
   creditCardFundBodySchema,
+  creditCardFundQuoteQuerySchema,
+  creditCardFundQuoteResponseSchema,
   creditCardPublicSchema,
+  creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
@@ -170,6 +173,36 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('me/credit-cards/fund-quote')
+  async creditCardFundQuote(
+    @Query() query: Record<string, string | string[] | undefined>,
+    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
+  ) {
+    const q = parseQuery(
+      creditCardFundQuoteQuerySchema,
+      parseQueryRecord(query),
+    );
+    const chainId = parseClientEvmChainIdHeader(beamChainHeader);
+    return creditCardFundQuoteResponseSchema.parse(
+      await this.users.getCreditCardFundQuote(q.amountCents, chainId),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/credit-cards/:cardId/details')
+  async getCreditCardSensitiveDetails(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Param('cardId') cardId: string,
+  ) {
+    return creditCardSensitiveDetailsSchema.parse(
+      await this.users.getMyCreditCardSensitiveDetails(
+        wallet.walletAddress,
+        cardId.trim(),
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me/payment-requests')
   async listMyPaymentRequests(
     @CurrentWallet() wallet: AuthedWallet,
@@ -210,13 +243,16 @@ export class UserController {
     @CurrentWallet() wallet: AuthedWallet,
     @Param('cardId') cardId: string,
     @Body() raw: unknown,
+    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
   ) {
     const body = parseBody(creditCardFundBodySchema, raw);
+    const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
     return creditCardPublicSchema.parse(
       await this.users.fundMyCreditCard(
         wallet.walletAddress,
         cardId.trim(),
-        body.amountCents,
+        body,
+        clientEvmChainId,
       ),
     );
   }
@@ -227,13 +263,16 @@ export class UserController {
     @CurrentWallet() wallet: AuthedWallet,
     @Param('cardId') cardId: string,
     @Body() raw: unknown,
+    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
   ) {
     const body = parseBody(creditCardWithdrawBodySchema, raw);
+    const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
     return creditCardPublicSchema.parse(
       await this.users.withdrawMyCreditCard(
         wallet.walletAddress,
         cardId.trim(),
         body.amountCents,
+        clientEvmChainId,
       ),
     );
   }

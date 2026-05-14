@@ -28,6 +28,13 @@ export const paymentSettlementBodySchema = z
         path: ["txHash"],
       });
     }
+    if (val.txHash && val.x402PaymentPayload) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide only one of txHash or x402PaymentPayload.",
+        path: ["txHash"],
+      });
+    }
   });
 
 export type PaymentSettlementBody = z.infer<typeof paymentSettlementBodySchema>;

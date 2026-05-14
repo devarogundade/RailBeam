@@ -44,7 +44,7 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   }, [onNavigate]);
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 px-5 py-5">
         <BeamLogo />
         <div className="text-lg font-bold tracking-tight">Beam</div>
@@ -109,27 +109,47 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </ul>
       </nav>
 
-      <div className="m-3 rounded-lg border border-border bg-surface-elevated p-3">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <CoinIcon /> Add 0G
+      <div className="mt-auto shrink-0">
+        <div className="m-3 rounded-lg border border-border bg-surface-elevated p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <CoinIcon /> Add 0G
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Top up to hire and pay agents on demand.
+          </p>
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Top up to hire and pay agents on demand.
-        </p>
-      </div>
 
-      <div className="flex items-center gap-3 px-5 pb-5 text-muted-foreground">
-        <a className="hover:text-foreground" href="#">
-          <Twitter className="h-3.5 w-3.5" />
-        </a>
-        <a className="hover:text-foreground" href="#">
-          <Github className="h-3.5 w-3.5" />
-        </a>
-        <a className="hover:text-foreground" href="#">
-          <Send className="h-3.5 w-3.5" />
-        </a>
+        <div className="flex items-center gap-3 px-5 pb-5 text-muted-foreground">
+          <a
+            className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href="https://x.com/railbeam_ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RailBeam on X"
+          >
+            <Twitter className="h-3.5 w-3.5" />
+          </a>
+          <a
+            className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href="https://github.com/devarogundade/RailBeam"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RailBeam on GitHub"
+          >
+            <Github className="h-3.5 w-3.5" />
+          </a>
+          <a
+            className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href="https://t.me/arogundadeibrahim"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Telegram"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </a>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 

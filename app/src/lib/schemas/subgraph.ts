@@ -4,6 +4,8 @@ export const subgraphAgentRefSchema = z
   .object({
     agentId: z.string(),
     uri: z.string().nullable().optional(),
+    isCloned: z.boolean().optional(),
+    owner: z.string().optional(),
   })
   .nullable()
   .optional();

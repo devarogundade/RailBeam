@@ -11,6 +11,31 @@ export function isRegistryTokenIdOneAgent(agent: Pick<Agent, "id" | "chainAgentI
   return m != null && m[1] === "1";
 }
 
+/**
+ * True when this row is an ERC-7857 registry clone owned by the viewer.
+ * You cannot `subscribe` (hire) your own clone token — use it directly from your wallet.
+ */
+export function isViewerOwnedClone(
+  agent: Pick<Agent, "id" | "isCloned" | "ownerAddress">,
+  viewerAddress: string | null | undefined,
+  ownedCloneIds?: ReadonlySet<string>,
+): boolean {
+  if (agent.isCloned !== true) return false;
+  if (ownedCloneIds?.has(agent.id)) return true;
+  if (viewerAddress == null || viewerAddress === "") return false;
+  const v = viewerAddress.trim().toLowerCase();
+  return Boolean(agent.ownerAddress && agent.ownerAddress === v);
+}
+
+/** On-chain clone is not offered for the default Beam listing (registry token #1). */
+export function canUserCloneCatalogAgent(
+  agent: Pick<Agent, "id" | "chainAgentId" | "isCloned">,
+): boolean {
+  if (agent.isCloned === true) return false;
+  if (agent.chainAgentId == null) return false;
+  return !isRegistryTokenIdOneAgent(agent);
+}
+
 /** Tailwind classes for the avatar ring on registry token #1. */
 export const REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS =
   "ring-2 ring-primary ring-offset-2 ring-offset-background";

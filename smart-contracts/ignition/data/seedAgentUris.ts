@@ -13,6 +13,9 @@ const SEED_HANDLER_ACTION_IDS = [
   "on_ramp_tokens",
   "complete_stripe_kyc",
   "create_credit_card",
+  "draft_native_transfer",
+  "draft_erc20_transfer",
+  "draft_nft_transfer",
 ] as const;
 type SeedHandlerActionId = (typeof SEED_HANDLER_ACTION_IDS)[number];
 
@@ -44,7 +47,11 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
     skills: ["Routing", "General Q&A", "Wallet"],
     skillHandles: [],
     feesPerDay: "0",
-    handlerCapabilities: [],
+    handlerCapabilities: [
+      "draft_native_transfer",
+      "draft_erc20_transfer",
+      "draft_nft_transfer",
+    ],
   },
   ledger: {
     agentKey: "ledger",
