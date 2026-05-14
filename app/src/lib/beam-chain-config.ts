@@ -69,24 +69,17 @@ function parseAddr(raw: string | undefined): `0x${string}` | undefined {
   return s as `0x${string}`;
 }
 
-const legacyIdentity = parseAddr(import.meta.env.VITE_IDENTITY_REGISTRY_ADDRESS);
-const legacyReputation = parseAddr(import.meta.env.VITE_REPUTATION_REGISTRY_ADDRESS);
-
 export const BEAM_CONTRACT_ADDRESSES: {
   mainnet: BeamContractAddresses;
   testnet: BeamContractAddresses;
 } = {
   mainnet: {
-    identityRegistry:
-      parseAddr(import.meta.env.VITE_IDENTITY_REGISTRY_MAINNET) ?? legacyIdentity,
-    reputationRegistry:
-      parseAddr(import.meta.env.VITE_REPUTATION_REGISTRY_MAINNET) ?? legacyReputation,
+    identityRegistry: parseAddr(import.meta.env.VITE_IDENTITY_REGISTRY_ADDRESS_MAINNET),
+    reputationRegistry: parseAddr(import.meta.env.VITE_REPUTATION_REGISTRY_ADDRESS_MAINNET),
   },
   testnet: {
-    identityRegistry:
-      parseAddr(import.meta.env.VITE_IDENTITY_REGISTRY_TESTNET) ?? legacyIdentity,
-    reputationRegistry:
-      parseAddr(import.meta.env.VITE_REPUTATION_REGISTRY_TESTNET) ?? legacyReputation,
+    identityRegistry: parseAddr(import.meta.env.VITE_IDENTITY_REGISTRY_ADDRESS_TESTNET),
+    reputationRegistry: parseAddr(import.meta.env.VITE_REPUTATION_REGISTRY_ADDRESS_TESTNET),
   },
 };
 

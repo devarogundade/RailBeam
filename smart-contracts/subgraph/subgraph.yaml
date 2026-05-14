@@ -11,11 +11,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: IdentityRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0xAA7d78F40743fA03AD59CcCb558C968CaE69e337"
+      address: "0x950Ab17d75b65430a2e5536b0d269abFAD0bc30F"
       abi: IdentityRegistry
-      startBlock: 33278700
+      startBlock: 33256400
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -47,11 +47,11 @@ dataSources:
       file: ./src/mapping.ts
   - kind: ethereum
     name: ReputationRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x955be54f2169A5Acd3607c647Dbbf6558Cf7907a"
+      address: "0x8Bc1926c91D7c7031A76FfE23057037694d529eb"
       abi: ReputationRegistry
-      startBlock: 33278700
+      startBlock: 33256400
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -72,11 +72,11 @@ dataSources:
       file: ./src/mapping.ts
   - kind: ethereum
     name: ValidationRegistry
-    network: 0g-galileo-testnet
+    network: 0g
     source:
-      address: "0x4E768bf6Bf892C9a9c4627C3B68ea90E509e1d11"
+      address: "0x4697B37fDeb796E450a46007591fcFFe8baD8124"
       abi: ValidationRegistry
-      startBlock: 33278700
+      startBlock: 33256400
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

@@ -127,7 +127,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const scrollResetKey = useRouterState({
-    select: (s) => `${s.location.pathname}${s.location.search}`,
+    select: (s) => `${s.location.pathname}${s.location.searchStr}`,
   });
   const mainScrollRef = React.useRef<HTMLElement>(null);
   const minimalShell =

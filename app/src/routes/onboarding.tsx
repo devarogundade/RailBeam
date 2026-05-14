@@ -71,7 +71,7 @@ const STEPS = [
     key: "agents",
     label: "Hire",
     eyebrow: "Step 3 · Agents",
-    title: "Hire agents by Agent ID",
+    title: "Hire or clone iNFT agents",
     lead: "The marketplace is where you discover capability; chat is where you steer it. Every specialist carries a standard Agent ID across catalog, conversation, and chain so context and receipts stay aligned no matter where you work.",
     icon: Bot,
     accent: "from-chart-3/30 via-primary/10 to-transparent",
@@ -165,9 +165,9 @@ function OnboardingPage() {
   const Icon = current.icon;
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-background bg-dots">
+    <div className="relative flex min-h-dvh flex-col bg-background bg-dots bg-dots-fixed">
       <div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         aria-hidden
       >
         <div
@@ -300,7 +300,7 @@ function OnboardingPage() {
                         aria-hidden
                       />
                       <div className="min-w-0 space-y-1">
-                        <p className="text-sm font-semibold leading-snug text-foreground sm:text-base">
+                        <p className="text-sm font-normal leading-snug text-foreground sm:text-base">
                           {item.title}
                         </p>
                         <p className="text-sm leading-relaxed text-muted-foreground sm:text-[15px] sm:leading-6">

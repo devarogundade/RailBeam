@@ -1,8 +1,4 @@
-export {
-  getStardormSubgraphUrl,
-  getStardormSubgraphUrlForChain,
-  getStardormPaymentTokenDecimals,
-} from "./stardorm-subgraph-config";
+export { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "./stardorm-subgraph-config";
 export {
   fetchActiveSubscribedChainAgentIds,
   fetchRecentUserSubscriptions,

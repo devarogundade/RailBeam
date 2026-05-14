@@ -53,7 +53,7 @@ flowchart LR
   App --> Chain
 ```
 
-- The **app** talks to the **backend** (`VITE_STARDORM_API_URL`) for wallet auth, conversations, handlers, and payment APIs. It can read on-chain/agent catalog data from a **subgraph** when `VITE_STARDORM_SUBGRAPH_URL` is set (often a **Goldsky**-hosted GraphQL endpoint; see [`smart-contracts/subgraph/`](smart-contracts/subgraph/)).
+- The **app** talks to the **backend** (`VITE_STARDORM_API_URL`) for wallet auth, conversations, handlers, and payment APIs. It can read on-chain/agent catalog data from a **subgraph** when `VITE_STARDORM_SUBGRAPH_URL_MAINNET` / `VITE_STARDORM_SUBGRAPH_URL_TESTNET` are set for the active 0G tier (often a **Goldsky**-hosted GraphQL endpoint; see [`smart-contracts/subgraph/`](smart-contracts/subgraph/)).
 - The **backend** persists state in **MongoDB**, may call **0G** RPCs and SDKs for compute/storage, calls **Stripe** for KYC, card funding, and on-ramp flows (with **webhooks** back into the API), and calls the **facilitator** when `X402_FACILITATOR_URL` is set and a checkout uses facilitator settlement.
 - The **facilitator** holds an EVM private key and uses `@x402/core` + `@x402/evm` to verify and settle payments on the configured 0G network.
 
@@ -114,7 +114,7 @@ Typical workflow:
 
 ### Wiring the app and API
 
-- **Frontend**: set `VITE_STARDORM_SUBGRAPH_URL` (or per-network `VITE_STARDORM_SUBGRAPH_URL_MAINNET` / `VITE_STARDORM_SUBGRAPH_URL_TESTNET`) to your deployed GraphQL HTTP endpoint; optional `VITE_IDENTITY_REGISTRY_ADDRESS` and `VITE_REPUTATION_REGISTRY_ADDRESS` for on-chain UI actions ([`app/.env.example`](app/.env.example)).
+- **Frontend**: set `VITE_STARDORM_SUBGRAPH_URL_MAINNET` and `VITE_STARDORM_SUBGRAPH_URL_TESTNET` to your deployed GraphQL HTTP endpoints; set `VITE_IDENTITY_REGISTRY_ADDRESS_MAINNET` / `VITE_REPUTATION_REGISTRY_ADDRESS_MAINNET` and the `*_TESTNET` pairs for on-chain UI actions ([`app/.env.example`](app/.env.example)).
 - **Backend**: `STARDORM_SUBGRAPH_URL` and optional `STARDORM_SUBGRAPH_URL_MAINNET` / `STARDORM_SUBGRAPH_URL_TESTNET` ([`backend/.env.example`](backend/.env.example)).
 
 ---
@@ -332,8 +332,8 @@ Details and event names for Stripe webhooks are documented inline in [`backend/.
 ### Frontend (`app/.env`)
 
 - **`VITE_STARDORM_API_URL`**: Backend origin (e.g. `http://localhost:3000`)
-- **`VITE_STARDORM_SUBGRAPH_URL`**: Optional GraphQL HTTP endpoint for marketplace / on-chain data
-- **Optional**: payment token decimals, 0G registry contract addresses, `VITE_REOWN_PROJECT_ID`
+- **`VITE_STARDORM_SUBGRAPH_URL_MAINNET`** / **`VITE_STARDORM_SUBGRAPH_URL_TESTNET`**: GraphQL HTTP endpoints per 0G tier for marketplace / on-chain data
+- **Optional**: `VITE_STARDORM_PAYMENT_TOKEN_DECIMALS`, per-network registry addresses (`VITE_IDENTITY_REGISTRY_ADDRESS_*`, `VITE_REPUTATION_REGISTRY_ADDRESS_*`), `VITE_REOWN_PROJECT_ID`
 
 ### Facilitator (`facilitator/.env`)
 

@@ -2,7 +2,6 @@ import type { AgentOnchainFeedbackItem } from "@beam/stardorm-api-contract";
 import { agentOnchainFeedbackItemSchema } from "@beam/stardorm-api-contract";
 import type { z } from "zod";
 import { requestStardormSubgraph } from "./stardorm-graphql-client";
-import { getStardormSubgraphUrl } from "./stardorm-subgraph-config";
 import {
   agentByIdDataSchema,
   agentsListDataSchema,
@@ -21,7 +20,7 @@ import {
 } from "./schemas/subgraph";
 import { agentGraphEntityIdFromChainAgentId } from "./subgraph-entity-ids";
 
-export type SubgraphRequestOpts = { subgraphUrl?: string };
+export type SubgraphRequestOpts = { subgraphUrl: string };
 
 /** Active subscription on a canonical registry agent (not an ERC-7857 clone token). */
 function userSubscriptionQualifiesAsHired(row: UserSubscriptionNode, nowSec: bigint): boolean {
@@ -30,11 +29,11 @@ function userSubscriptionQualifiesAsHired(row: UserSubscriptionNode, nowSec: big
   return row.agent?.isCloned !== true;
 }
 
-function subgraphUrlOrThrow(opts?: SubgraphRequestOpts): string {
-  const u = opts?.subgraphUrl ?? getStardormSubgraphUrl();
+function subgraphUrlOrThrow(opts: SubgraphRequestOpts): string {
+  const u = opts.subgraphUrl.trim();
   if (!u) {
     throw new Error(
-      "Subgraph URL not configured (set VITE_STARDORM_SUBGRAPH_URL or MAINNET/TESTNET URLs)",
+      "Subgraph URL missing (set VITE_STARDORM_SUBGRAPH_URL_MAINNET / VITE_STARDORM_SUBGRAPH_URL_TESTNET for the wallet chain)",
     );
   }
   return u;
@@ -462,7 +461,7 @@ const USER_SUBSCRIPTIONS_PAGE_ALL = /* GraphQL */ `
 /** `agent(id:)` — full row including nested metadata. */
 export async function fetchSubgraphAgentByEntityId(
   id: string,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphAgentMapped | null> {
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(GET_AGENT, { id }, agentByIdDataSchema, url);
@@ -472,7 +471,7 @@ export async function fetchSubgraphAgentByEntityId(
 /** Numeric ERC-8004 `agentId` → subgraph entity id → `fetchSubgraphAgentByEntityId`. */
 export async function fetchSubgraphAgentByChainAgentId(
   agentId: bigint | number | string,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphAgentMapped | null> {
   const id = agentGraphEntityIdFromChainAgentId(BigInt(agentId));
   return fetchSubgraphAgentByEntityId(id, opts);
@@ -484,7 +483,7 @@ export async function fetchSubgraphAgentsPage(
     first: number;
     skip: number;
   },
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphAgentMapped[]> {
   const first = Math.min(Math.max(1, Math.floor(params.first)), 100);
   const skip = Math.max(0, Math.floor(params.skip));
@@ -505,7 +504,7 @@ export async function fetchSubgraphAgentsClonedByOwnerPage(
     skip: number;
     owner: `0x${string}`;
   },
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphAgentMapped[]> {
   const first = Math.min(Math.max(1, Math.floor(params.first)), 100);
   const skip = Math.max(0, Math.floor(params.skip));
@@ -526,7 +525,7 @@ const AGENTS_PAGE_SIZE = 100;
  * Walks paginated `agents` with `where: { isCloned: false }` (marketplace / canonical listings)
  * until a short page (or safety cap).
  */
-export async function fetchAllSubgraphAgents(opts?: SubgraphRequestOpts): Promise<SubgraphAgentMapped[]> {
+export async function fetchAllSubgraphAgents(opts: SubgraphRequestOpts): Promise<SubgraphAgentMapped[]> {
   const out: SubgraphAgentMapped[] = [];
   let skip = 0;
   const maxAgents = 10_000;
@@ -542,7 +541,7 @@ export async function fetchAllSubgraphAgents(opts?: SubgraphRequestOpts): Promis
 /** All cloned agents owned by `owner` (for merging into the viewer’s catalog). */
 export async function fetchAllSubgraphAgentsClonedByOwner(
   owner: `0x${string}`,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphAgentMapped[]> {
   const out: SubgraphAgentMapped[] = [];
   let skip = 0;
@@ -564,7 +563,7 @@ export async function fetchSubgraphFeedbacksForAgent(
   agentId: bigint | number | string,
   first: number,
   skip: number,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<AgentOnchainFeedbackItem[]> {
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
@@ -585,7 +584,7 @@ export async function fetchSubgraphFeedbackResponsesForAgent(
   agentId: bigint | number | string,
   first: number,
   skip: number,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphFeedbackResponseMapped[]> {
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
@@ -606,7 +605,7 @@ export async function fetchSubgraphValidationsForAgent(
   agentId: bigint | number | string,
   first: number,
   skip: number,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphValidationMapped[]> {
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
@@ -625,7 +624,7 @@ export async function fetchSubgraphValidationsForAgent(
 /** First validation row matching `requestHash`, if any. */
 export async function fetchSubgraphValidationByRequestHash(
   requestHash: string,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<SubgraphValidationMapped | null> {
   const url = subgraphUrlOrThrow(opts);
   const data = await requestStardormSubgraph(
@@ -645,7 +644,7 @@ export async function fetchSubgraphUserSubscriptionsPage(
     skip: number;
     user?: `0x${string}`;
   },
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<UserSubscriptionNode[]> {
   const first = Math.min(Math.max(1, Math.floor(params.first)), 100);
   const skip = Math.max(0, Math.floor(params.skip));
@@ -678,7 +677,7 @@ const SUBSCRIPTION_PAGE_SIZE = 100;
  */
 export async function fetchActiveSubscribedChainAgentIds(
   user: `0x${string}`,
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<number[]> {
   const nowSec = BigInt(Math.floor(Date.now() / 1000));
   const active = new Map<number, bigint>();
@@ -716,7 +715,7 @@ export async function fetchRecentUserSubscriptions(
     /** If set, filters to this subscriber (checksummed or any case; normalized to lowercase). */
     user?: `0x${string}`;
   },
-  opts?: SubgraphRequestOpts,
+  opts: SubgraphRequestOpts,
 ): Promise<UserSubscriptionNode[]> {
   const first = Math.min(Math.max(1, Math.floor(params.limit)), 100);
   const url = subgraphUrlOrThrow(opts);

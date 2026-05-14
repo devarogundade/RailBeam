@@ -11,7 +11,7 @@ import { Menu, X } from "lucide-react";
 export function DocsShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const scrollResetKey = useRouterState({
-    select: (s) => `${s.location.pathname}${s.location.search}`,
+    select: (s) => `${s.location.pathname}${s.location.searchStr}`,
   });
   const [mobileNav, setMobileNav] = React.useState(false);
   const docMainRef = React.useRef<HTMLElement>(null);

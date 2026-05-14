@@ -177,6 +177,11 @@
   background-size: 22px 22px;
 }
 
+/* Keep dots aligned to the viewport when the page scrolls (avoid on nested overflow scrollers). */
+.bg-dots.bg-dots-fixed {
+  background-attachment: fixed;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
