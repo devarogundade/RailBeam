@@ -20,6 +20,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 /// - ERC-721 + URIStorage (agentId = tokenId, agentURI = tokenURI)
 /// - Optional key/value metadata per agentId (bytes)
 /// - Reserved key `agentWallet` with wallet-control verification via EIP-712 signatures (EOA) or ERC-1271 (contract)
+/// - Subscriptions: exact native payment on `subscribe`; fees forwarded to `agentWallet`; `unsubscribe` does not refund on-chain
 contract IdentityRegistry is
     ERC721URIStorage,
     EIP712,
@@ -80,9 +81,6 @@ contract IdentityRegistry is
     mapping(uint256 agentId => uint256) private _feesPerDay;
     mapping(address user => mapping(uint256 agentId => Subscription))
         private _subscriptions;
-    /// @dev Start of the current paid window; used with `endDate` for linear refunds on unsubscribe.
-    mapping(address user => mapping(uint256 agentId => uint256))
-        private _subscriptionWindowStart;
 
     constructor()
         ERC721("Beam Agents", "BEAM")
@@ -326,13 +324,15 @@ contract IdentityRegistry is
         require(fee != 0, Errors.INVALID_INPUT);
         require(numDays <= type(uint256).max / fee, Errors.INVALID_INPUT);
         uint256 cost = fee * numDays;
-        require(msg.value >= cost, Errors.INVALID_INPUT);
+        require(msg.value == cost, Errors.INVALID_INPUT);
+
+        address wallet = _agentWallet[agentId];
+        require(wallet != address(0), Errors.INVALID_INPUT);
 
         uint256 duration = numDays * 1 days;
         Subscription storage sub = _subscriptions[msg.sender][agentId];
 
         if (sub.endDate <= block.timestamp) {
-            _subscriptionWindowStart[msg.sender][agentId] = block.timestamp;
             sub.endDate = block.timestamp + duration;
             sub.paidAmount = cost;
         } else {
@@ -342,10 +342,7 @@ contract IdentityRegistry is
 
         emit Subscribed(msg.sender, agentId, numDays, cost);
 
-        uint256 excess = msg.value - cost;
-        if (excess != 0) {
-            Address.sendValue(payable(msg.sender), excess);
-        }
+        Address.sendValue(payable(wallet), cost);
     }
 
     function unsubscribe(
@@ -354,26 +351,30 @@ contract IdentityRegistry is
         Subscription storage sub = _subscriptions[msg.sender][agentId];
         require(sub.endDate > block.timestamp, Errors.INVALID_INPUT);
 
-        uint256 windowStart = _subscriptionWindowStart[msg.sender][agentId];
-        require(windowStart != 0, Errors.INVALID_INPUT);
-
         uint256 windowEnd = sub.endDate;
-        uint256 paid = sub.paidAmount;
-        require(windowEnd > windowStart, Errors.INTERNAL_ERROR);
-
         uint256 remaining = windowEnd - block.timestamp;
-        refund = (paid * remaining) / (windowEnd - windowStart);
         daysLeft = remaining / 1 days;
+        refund = 0;
 
         sub.endDate = 0;
         sub.paidAmount = 0;
-        _subscriptionWindowStart[msg.sender][agentId] = 0;
 
         emit Unsubscribed(msg.sender, agentId, daysLeft, refund);
+    }
 
-        if (refund != 0) {
-            Address.sendValue(payable(msg.sender), refund);
+    function viewUnsubscribe(
+        address user, 
+        uint256 agentId
+    ) external view override returns (uint256 daysLeft, uint256 refund) {
+        Subscription storage sub = _subscriptions[user][agentId];
+        if (sub.endDate <= block.timestamp) {
+            return (0, 0);
         }
+
+        uint256 windowEnd = sub.endDate;
+        uint256 remaining = windowEnd - block.timestamp;
+        daysLeft = remaining / 1 days;
+        return (daysLeft, 0);
     }
 
     function setFees(uint256 agentId, uint256 feePerDay) external override {

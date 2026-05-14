@@ -21,6 +21,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
+      "@beam/stardorm-api-contract": ["../packages/stardorm-api-contract/dist/index.mjs"],
       "@/*": ["./src/*"],
       "@stardorm/agentflow-finance/src/components/storage-image": [
         "./src/components/storage-image.tsx"

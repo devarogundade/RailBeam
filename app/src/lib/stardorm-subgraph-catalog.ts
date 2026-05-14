@@ -159,7 +159,7 @@ export function mapSubgraphAgentToCatalogAgent(
   const pricePerMonth = pricePerMonthFromFeePerDay(row.feePerDay);
   const feePerDayWei = feePerDayWeiFromRow(row.feePerDay);
   const avatar =
-    uriDetails?.imageUrl && /^https?:\/\//i.test(uriDetails.imageUrl)
+    uriDetails?.imageUrl
       ? uriDetails.imageUrl
       : `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(String(row.agentId))}`;
 

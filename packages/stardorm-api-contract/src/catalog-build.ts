@@ -227,7 +227,7 @@ function seedRowToAgent(row: SeedRow): Agent {
     id: row.agentKey,
     name: row.name,
     handle: row.handle,
-    avatar: avatarUrl(row.agentKey),
+    avatar: row.imageUrl ? row.imageUrl : avatarUrl(row.agentKey),
     category: row.category,
     tagline: row.tagline,
     description: row.description,

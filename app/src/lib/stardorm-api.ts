@@ -1,12 +1,20 @@
 import axios from "axios";
 import {
   chatHistoryResponseSchema,
+  creditCardFundBodySchema,
+  creditCardPublicSchema,
+  creditCardsListResponseSchema,
+  creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
   publicUserSchema,
   stardormChatSuccessSchema,
   updateUserBodySchema,
+  type ChatHistoryAttachment,
+  type ChatHistoryMessage,
   type ChatHistoryResponse,
+  type CreditCardPublic,
+  type CreditCardsListResponse,
   type ExecuteHandlerBody,
   type PublicUser,
   type StardormChatClientResult,
@@ -75,7 +83,7 @@ export async function stardormChat(params: {
 /** Maps persisted thread rows to in-app chat bubbles (storage URLs use API base). */
 export function mapHistoryToChatMessages(hist: ChatHistoryResponse, apiBase: string): ChatMessage[] {
   const base = apiBase.replace(/\/$/, "");
-  return hist.messages.map((m) => ({
+  return hist.messages.map((m: ChatHistoryMessage) => ({
     id: m.id,
     role: m.role,
     agentId: m.agentKey,
@@ -91,7 +99,7 @@ export function mapHistoryToChatMessages(hist: ChatHistoryResponse, apiBase: str
     ...(typeof m.provider === "string" ? { provider: m.provider } : {}),
     ...(m.attachments?.length
       ? {
-          attachments: m.attachments.map((a) => {
+          attachments: m.attachments.map((a: ChatHistoryAttachment) => {
             const isImg = a.mimeType.startsWith("image/");
             const storageUrl = `${base}/storage/${encodeURIComponent(a.hash)}`;
             return {

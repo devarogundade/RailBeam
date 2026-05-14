@@ -19,6 +19,7 @@ type SeedHandlerActionId = (typeof SEED_HANDLER_ACTION_IDS)[number];
 type StardormCatalogAgent = {
   agentKey: string;
   name: string;
+  imageUrl: string;
   handle: string;
   category: string;
   tagline: string;
@@ -35,6 +36,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
     agentKey: "beam-default",
     name: "Beam",
     handle: "beam.0g",
+    imageUrl: "/images/beam.png",
     category: "General",
     tagline: "Your default conversational agent",
     description:
@@ -47,6 +49,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   ledger: {
     agentKey: "ledger",
     name: "Ledger",
+    imageUrl: "/images/ledger.png",
     handle: "ledger.0g",
     category: "Payments",
     tagline: "Accept business payments across chains",
@@ -65,6 +68,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   fiscus: {
     agentKey: "fiscus",
     name: "Fiscus",
+    imageUrl: "/images/fiscus.png",
     handle: "fiscus.0g",
     category: "Taxes",
     tagline: "Crypto-native tax calculations",
@@ -89,6 +93,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   scribe: {
     agentKey: "scribe",
     name: "Scribe",
+    imageUrl: "/images/scribe.png",
     handle: "scribe.0g",
     category: "Reports",
     tagline: "Beautiful financial reports on demand",
@@ -107,6 +112,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   yieldr: {
     agentKey: "yieldr",
     name: "Yieldr",
+    imageUrl: "/images/yieldr.png",
     handle: "yieldr.0g",
     category: "DeFi",
     tagline: "Allocates idle capital across DeFi",
@@ -124,6 +130,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   audita: {
     agentKey: "audita",
     name: "Audita",
+    imageUrl: "/images/audita.png",
     handle: "audita.0g",
     category: "Reports",
     tagline: "Continuous onchain audit trail",
@@ -142,6 +149,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   settler: {
     agentKey: "settler",
     name: "Settler",
+    imageUrl: "/images/settler.png",
     handle: "settler.0g",
     category: "Payments",
     tagline: "Automated payroll & vendor settlement",
@@ -160,6 +168,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   quanta: {
     agentKey: "quanta",
     name: "Quanta",
+    imageUrl: "/images/quanta.png",
     handle: "quanta.0g",
     category: "DeFi",
     tagline: "Quant strategies for stablecoin yield",
@@ -177,6 +186,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   ramp: {
     agentKey: "ramp",
     name: "Ramp",
+    imageUrl: "/images/ramp.png",
     handle: "ramp.0g",
     category: "Payments",
     tagline: "Card to crypto on-ramp",
@@ -195,6 +205,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   passport: {
     agentKey: "passport",
     name: "Passport",
+    imageUrl: "/images/passport.png",
     handle: "passport.0g",
     category: "Compliance",
     tagline: "Verify with Stripe Identity",
@@ -213,6 +224,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
   capita: {
     agentKey: "capita",
     name: "Capita",
+    imageUrl: "/images/capita.png",
     handle: "capita.0g",
     category: "Payments",
     tagline: "Virtual company cards with a spend balance",
@@ -254,6 +266,7 @@ export function registrationUriFromCatalogAgent(agent: StardormCatalogAgent): {
       name: agent.name,
       description: [agent.tagline, agent.description].filter(Boolean).join(" "),
       agentKey: agent.agentKey,
+      imageUrl: agent.imageUrl,
       handle: agent.handle,
       category: agent.category,
       tagline: agent.tagline,

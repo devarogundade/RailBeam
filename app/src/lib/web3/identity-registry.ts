@@ -3,7 +3,7 @@ import { beamContractAddressesForChain } from "@/lib/beam-chain-config";
 /** First billing window length when hiring via `subscribe` (30 days ≈ one month). */
 export const IDENTITY_SUBSCRIBE_NUM_DAYS = 30n;
 
-/** `getFees` per-day rate and `subscribe` `msg.value` use native smallest units (18 on 0G / EVM). */
+/** `getFees` per-day rate and `subscribe` `msg.value` use native smallest units (18 on 0G / EVM). Value must match `feePerDay * numDays` exactly; fees are paid to the agent wallet on-chain. */
 export const IDENTITY_REGISTRY_NATIVE_DECIMALS = 18;
 
 export const identityRegistryAbi = [

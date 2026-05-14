@@ -434,6 +434,25 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
       );
     });
 
+    it("reverts subscribe when msg.value exceeds cost", async function () {
+      const { identity, deployer, bob, agentId, viem: v } =
+        await networkHelpers.loadFixture(deployStardormFixture);
+
+      const feePerDay = 10n ** 15n;
+      await identity.write.setFees([agentId, feePerDay], {
+        account: deployer.account,
+      });
+      const numDays = 5n;
+      const cost = feePerDay * numDays;
+      await v.assertions.revertWith(
+        identity.write.subscribe([agentId, numDays], {
+          account: bob.account,
+          value: cost + 1n,
+        }),
+        ERR.INVALID_INPUT,
+      );
+    });
+
     it("subscribe emits Subscribed", async function () {
       const { identity, deployer, bob, agentId, viem: v } =
         await networkHelpers.loadFixture(deployStardormFixture);
@@ -451,7 +470,7 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
       );
     });
 
-    it("subscribe refunds excess ETH", async function () {
+    it("subscribe sends fees to agentWallet", async function () {
       const { identity, deployer, bob, agentId, publicClient } =
         await networkHelpers.loadFixture(deployStardormFixture);
 
@@ -460,25 +479,48 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
         account: deployer.account,
       });
 
-      const beforeBob = await publicClient.getBalance({
-        address: bob.account.address,
+      const agentWallet = getAddress(
+        await identity.read.getAgentWallet([agentId]),
+      );
+      const beforeWallet = await publicClient.getBalance({
+        address: agentWallet,
       });
       const numDays = 5n;
       const cost = feePerDay * numDays;
-      const overpay = cost + 10n ** 14n;
 
       await identity.write.subscribe([agentId, numDays], {
         account: bob.account,
-        value: overpay,
+        value: cost,
       });
 
-      const afterBob = await publicClient.getBalance({
-        address: bob.account.address,
+      const afterWallet = await publicClient.getBalance({
+        address: agentWallet,
       });
-      assert.ok(afterBob >= beforeBob - cost - 10n ** 17n);
+      assert.equal(afterWallet - beforeWallet, cost);
     });
 
-    it("stacked subscribe extends window; full refund if unsubscribed immediately", async function () {
+    it("reverts subscribe when agentWallet is unset", async function () {
+      const { identity, deployer, bob, agentId, viem: v } =
+        await networkHelpers.loadFixture(deployStardormFixture);
+
+      const feePerDay = 10n ** 15n;
+      await identity.write.setFees([agentId, feePerDay], {
+        account: deployer.account,
+      });
+      await identity.write.unsetAgentWallet([agentId], {
+        account: deployer.account,
+      });
+
+      await v.assertions.revertWith(
+        identity.write.subscribe([agentId, 1n], {
+          account: bob.account,
+          value: feePerDay,
+        }),
+        ERR.INVALID_INPUT,
+      );
+    });
+
+    it("stacked subscribe extends window; unsubscribe refunds zero", async function () {
       const { identity, deployer, bob, agentId, publicClient, viem: v } =
         await networkHelpers.loadFixture(deployStardormFixture);
 
@@ -503,9 +545,7 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
         account: bob.account,
       });
       const [, refund] = result as readonly [bigint, bigint];
-      const expectedMax = fee * (d1 + d2);
-      assert.ok(refund <= expectedMax);
-      assert.ok(refund >= expectedMax - 10n ** 12n);
+      assert.equal(refund, 0n);
 
       await v.assertions.emit(
         identity.write.unsubscribe([agentId], { account: bob.account }),
@@ -514,7 +554,7 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
       );
     });
 
-    it("unsubscribe pro-rates refund after partial window", async function () {
+    it("unsubscribe returns no refund after partial window", async function () {
       const {
         identity,
         deployer,
@@ -534,7 +574,7 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
       const cost = feePerDay * numDays;
       await identity.write.subscribe([agentId, numDays], {
         account: bob.account,
-        value: cost + 10n ** 14n,
+        value: cost,
       });
 
       await nh.time.increase((Number(numDays) * 86_400) / 2);
@@ -548,7 +588,7 @@ describe("Stardorm registries (Identity, Reputation, Validation)", async functio
       });
       const [daysLeft, refund] = result as readonly [bigint, bigint];
       assert.ok(daysLeft > 0n);
-      assert.ok(refund > 0n);
+      assert.equal(refund, 0n);
 
       await identity.write.unsubscribe([agentId], { account: bob.account });
       await v.assertions.revertWith(

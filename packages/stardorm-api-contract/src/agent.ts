@@ -29,7 +29,7 @@ export const agentSchema = z.object({
   reputation: z.number().min(0).max(100).optional(),
   /** Estimated from indexer `feePerDay` (wei) when available; omit if unknown. */
   pricePerMonth: z.number().nonnegative().optional(),
-  /** Raw `feePerDay` (wei, decimal string) straight from the subgraph. Used to compute `subscribe` msg.value without a contract read. */
+  /** Raw `feePerDay` (wei, decimal string) from the subgraph. `subscribe` must send exactly `feePerDay * numDays` wei. */
   feePerDayWei: z.string().regex(/^\d+$/).optional(),
   /** Presence-only when we have a live signal; omit if unknown. */
   online: z.boolean().optional(),

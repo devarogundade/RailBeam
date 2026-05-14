@@ -30,7 +30,7 @@ function txError(err: unknown): string {
 }
 
 /**
- * Total wei the wallet must send to `subscribe(agentId, IDENTITY_SUBSCRIBE_NUM_DAYS)`.
+ * Exact wei the wallet must send to `subscribe(agentId, IDENTITY_SUBSCRIBE_NUM_DAYS)` (no overpay).
  * Returns `undefined` when the subgraph has not given us a per-day rate.
  */
 function subscribeValueWei(agent: Agent): bigint | undefined {

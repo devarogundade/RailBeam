@@ -129,10 +129,10 @@ function pickString(o: Record<string, unknown>, ...keys: string[]): string | und
   return undefined;
 }
 
-function httpsImageUrl(raw: string | undefined): string | undefined {
+function httpsImageUrl(raw: string | undefined, name: string | undefined): string | undefined {
   const t = raw?.trim();
-  if (!t || !/^https?:\/\//i.test(t))
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(t || "")}`;
+  if (!t && name) return `/images/${name}.png`;
+  if (!t) return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(name || "")}`;
   return t;
 }
 
@@ -156,9 +156,7 @@ function extractEip8004RegistrationV1(o: Record<string, unknown>): AgentUriParse
   const x402Support = typeof o.x402Support === "boolean" ? o.x402Support : undefined;
   const active = typeof o.active === "boolean" ? o.active : undefined;
 
-  const imageUrl = httpsImageUrl(
-    pickString(o, "image", "image_url", "imageUrl", "avatar", "logo") || agentKey,
-  );
+  const imageUrl = httpsImageUrl(pickString(o, "imageUrl"), name);
 
   const out: AgentUriParseResult = {};
   if (name) out.name = name;
@@ -232,7 +230,7 @@ function extractGenericRegistration(o: Record<string, unknown>): AgentUriParseRe
   const description = pickString(o, "description", "about", "bio");
   const tagline = pickString(o, "tagline", "subtitle", "summary", "shortDescription");
   const category = pickString(o, "category", "type");
-  const imageUrl = httpsImageUrl(pickString(o, "image", "image_url", "imageUrl", "avatar", "logo"));
+  const imageUrl = httpsImageUrl(pickString(o, "imageUrl"), name);
   const skills = parseSkills(o);
 
   const out: AgentUriParseResult = {};

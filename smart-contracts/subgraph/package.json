@@ -6,7 +6,8 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy:goldsky": "graph build && goldsky subgraph deploy stardorm-eip8004/1.0.0 --path ."
+    "deploy:goldsky": "graph build && goldsky subgraph deploy stardorm-eip8004/1.0.0 --path .",
+    "deploy:testnet:goldsky": "graph build && goldsky subgraph deploy stardormtestnet-eip8004/1.0.0 --path ."
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.95.0",
