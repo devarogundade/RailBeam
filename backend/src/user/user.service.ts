@@ -34,6 +34,7 @@ import {
   buildAgentOutputContract,
   buildAgentToolCallingSystemPrompt,
   agentReplyFromChatCompletion,
+  enrichAgentReplyWithMarketplaceRouting,
   type AgentComputeReplyWithParams,
   type AgentRichCard,
 } from 'src/agent-reply/stardorm-agent-reply.schema';
@@ -1508,10 +1509,14 @@ export class UserService {
       conv.inferenceConversationId = raw.openAiConversationId.trim();
       await conv.save();
     }
-    const structured = agentReplyFromChatCompletion(
-      raw.assistantMessage,
+    const structured = enrichAgentReplyWithMarketplaceRouting({
+      userContent: userBubbleContent,
       allowedHandlers,
-    );
+      reply: agentReplyFromChatCompletion(
+        raw.assistantMessage,
+        allowedHandlers,
+      ),
+    });
 
     const assistant = raw.assistantMessage;
     const usedToolCalls =

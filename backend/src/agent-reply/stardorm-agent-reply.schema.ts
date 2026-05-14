@@ -487,6 +487,7 @@ export function buildAgentOutputContract(
           '- If the user asks for a virtual company payment card, billing profile on file, or card spend balance: tell them to hire **Capita** (agentKey `capita`, Payments), switch to that agent, then ask again.',
           '- If the user asks for a wallet invoice or PDF covering their checkouts, on-ramp, cards, and KYC: tell them to hire **Ledger** (agentKey `ledger`, Payments), switch to that agent, then ask again.',
           '- If the user asks for an activity snapshot or treasury-style counts across payments, on-ramp, cards, and KYC: tell them to hire **Scribe** or **Audita** (Reports), or **Settler** (Payments for settlements), switch agents, then ask again.',
+          '- Whenever any bullet above applies, you MUST also set "rich" to {"type":"report",...}: title names the task; rows include Specialist (display name + agentKey in backticks + category), What they run (one line), Next steps (marketplace → hire → switch active agent → ask again). Do not answer with text alone for those redirects.',
         ].join('\n')
       : '';
   return [
@@ -1077,7 +1078,81 @@ export function buildAgentToolCallingSystemPrompt(
     allowed.includes('draft_nft_transfer')
       ? 'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`. Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.'
       : '',
+    !allowed.includes('complete_stripe_kyc')
+      ? [
+          'KYC / identity: if the user asks to start identity verification, KYC, Stripe Identity, or ID checks, explain that **Passport** (agentKey `passport`, Compliance) owns the `complete_stripe_kyc` action on Beam.',
+          'Tell them to open the agent marketplace, hire or subscribe to Passport, set Passport as this chat’s active agent, then ask again for the one-tap **Start identity verification** button.',
+          'Never say you have no tool or that the product lacks verification—this agent’s toolkit is different from Passport’s.',
+        ].join(' ')
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/** User message hints they want Beam Stripe Identity / KYC, not generic “verify email”. */
+const KYC_USER_INTENT_RE =
+  /\b(kyc|stripe\s+identity|identity\s+verification|verify\s+(?:my\s+)?identity|document\s+verification|start\s+identity\s+verification|verify\s+my\s+account)\b/i;
+
+function looksLikeToolDenialAssistantText(text: string): boolean {
+  const t = text.toLowerCase();
+  return (
+    /\bno tool\b/.test(t) ||
+    /\bnot have (?:a )?tool\b/.test(t) ||
+    /\bdon't have (?:a )?tool\b/.test(t) ||
+    /\bdo not have (?:a )?tool\b/.test(t) ||
+    /\bno tools?\b.*\bavailab/.test(t) ||
+    /\bunable to initiate\b/.test(t)
+  );
+}
+
+/**
+ * When the active agent cannot run a handler but the user clearly asked for it,
+ * attach a marketplace routing card so the client shows a rich summary (not only prose).
+ */
+export function enrichAgentReplyWithMarketplaceRouting(args: {
+  userContent: string;
+  allowedHandlers: readonly HandlerActionId[];
+  reply: AgentComputeReplyWithParams;
+}): AgentComputeReplyWithParams {
+  const { userContent, allowedHandlers, reply } = args;
+  if (reply.handler != null || reply.rich != null) return reply;
+  const u = userContent.trim();
+  if (!u) return reply;
+
+  if (
+    !allowedHandlers.includes('complete_stripe_kyc') &&
+    KYC_USER_INTENT_RE.test(u)
+  ) {
+    const canned =
+      'Stripe Identity for your wallet is started from the Passport specialist. Open the agent marketplace, hire Passport (Compliance), set Passport as this chat’s active agent, then ask again—you will get the one-tap Start identity verification action.';
+    const text =
+      looksLikeToolDenialAssistantText(reply.text) || !reply.text.trim()
+        ? canned
+        : reply.text;
+    return {
+      text,
+      rich: {
+        type: 'report',
+        title: 'Hire Passport for identity verification',
+        rows: [
+          {
+            label: 'Specialist',
+            value: 'Passport · Compliance · agentKey `passport`',
+          },
+          {
+            label: 'What they run',
+            value: 'Stripe Identity (`complete_stripe_kyc`) for your Beam account',
+          },
+          {
+            label: 'Next steps',
+            value:
+              'Marketplace → hire Passport → switch active chat agent → ask to verify again',
+          },
+        ],
+      },
+    };
+  }
+
+  return reply;
 }
