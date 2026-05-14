@@ -10,7 +10,7 @@ This repository contains:
 | [`backend/`](backend/) | **Stardorm** NestJS API — auth, users, agents, payments, Stripe/KYC, 0G compute/storage hooks, subgraph-backed catalog |
 | [`facilitator/`](facilitator/) | Small NestJS **x402 facilitator** — HTTP `verify` / `settle` / `supported` for EVM exact payments on 0G |
 | [`packages/stardorm-api-contract/`](packages/stardorm-api-contract/) | Shared Zod schemas and API types consumed by `app` and `backend` |
-| [`smart-contracts/`](smart-contracts/) | Hardhat / on-chain work and subgraph config (see that folder’s README) |
+| [`smart-contracts/`](smart-contracts/) | Hardhat, Ignition deployments, and The Graph subgraph (see [Smart contracts and subgraph](#smart-contracts-and-subgraph-0g)) |
 
 Product positioning and narrative live in [`deck.md`](deck.md).
 
@@ -65,6 +65,57 @@ flowchart LR
 | Facilitator (`PORT`) | `3402` | Nest default in code / compose |
 | Redis (Docker host mapping) | `6378` → container `6379` | Declared in compose for future or multi-instance use |
 | App (Vite) | Vite default (often `5173`) | Set in terminal when you run `pnpm dev` |
+
+---
+
+## Smart contracts and subgraph (0G)
+
+On-chain **EIP-8004**–style registries (**IdentityRegistry**, **ReputationRegistry**, **ValidationRegistry**) live under [`smart-contracts/`](smart-contracts/). Hardhat networks are named **`zogMainnet`** (chain id **16661**) and **`zogTestnet`** / Galileo (**16602**); RPC URLs are set in [`smart-contracts/hardhat.config.ts`](smart-contracts/hardhat.config.ts).
+
+### Deployed registry addresses
+
+Canonical outputs from Ignition are committed under [`smart-contracts/ignition/deployments/`](smart-contracts/ignition/deployments/) as `deployed_addresses.json` per chain. The following matches the checked-in manifests at the time of this guide (redeploys change addresses — update the repo and any subgraph manifest when you ship new contracts).
+
+| Network | Chain id | IdentityRegistry | ReputationRegistry | ValidationRegistry |
+|---------|----------|-------------------|--------------------|--------------------|
+| **0G mainnet** | 16661 | `0x950Ab17d75b65430a2e5536b0d269abFAD0bc30F` | `0x8Bc1926c91D7c7031A76FfE23057037694d529eb` | `0x4697B37fDeb796E450a46007591fcFFe8baD8124` |
+| **0G testnet** (Galileo) | 16602 | `0xAA7d78F40743fA03AD59CcCb558C968CaE69e337` | `0x955be54f2169A5Acd3607c647Dbbf6558Cf7907a` | `0x4E768bf6Bf892C9a9c4627C3B68ea90E509e1d11` |
+
+For new subgraph deployments aligned with these addresses, you can read creation blocks from [`smart-contracts/ignition/deployments/chain-16661/journal.jsonl`](smart-contracts/ignition/deployments/chain-16661/journal.jsonl) and `chain-16602/journal.jsonl` (search for `TRANSACTION_CONFIRM` / `blockNumber`). Example: mainnet IdentityRegistry in that journal deployed at block **`33256416`**.
+
+Explorers: [0G Chainscan](https://chainscan.0g.ai) (mainnet), [0G Chainscan (testnet)](https://chainscan-testnet.0g.ai).
+
+### Deploying contracts (Ignition)
+
+From `smart-contracts/`:
+
+1. Set **`MNEMONIC`** in `.env` (or your shell) to a funded deployer on the target network.
+2. Compile: `npx hardhat compile`
+3. Deploy the bundled **Stardorm8004** module (three registries plus seed agent registrations):
+
+```bash
+cd smart-contracts
+pnpm run deploy:stardorm8004          # zogMainnet
+pnpm run deploy:testnet:stardorm8004 # zogTestnet
+```
+
+Equivalent: `npx hardhat ignition deploy ./ignition/modules/Stardorm8004.ts --network zogMainnet` (or `zogTestnet`). Optional verification uses the Hardhat verify config in `hardhat.config.ts` and [0G Chainscan contract verification](https://chainscan.0g.ai).
+
+### Subgraph (The Graph / Goldsky)
+
+Indexer code and manifest live in [`smart-contracts/subgraph/`](smart-contracts/subgraph/). The checked-in [`subgraph.yaml`](smart-contracts/subgraph/subgraph.yaml) targets Goldsky’s **`0g-galileo-testnet`** network slug and the **testnet** addresses above. For each data source, set `startBlock` to the **contract creation block or earlier**; if it is **after** creation, the indexer misses early events. Raising `startBlock` toward that creation block (without passing it) reduces empty scanning versus an unnecessarily low value. The committed manifest uses `33278700` as a conservative starting point — bump it after a redeploy if you want faster sync.
+
+Typical workflow:
+
+1. **`npx hardhat compile`** in `smart-contracts/` so artifacts exist.
+2. Copy ABIs into the subgraph package: `pnpm run subgraph:build` from `smart-contracts/` (runs `scripts/copy-subgraph-abis.mjs` then `graph build` inside `subgraph/`), or stepwise: `pnpm run subgraph:abis` then `cd subgraph && npm i && npm run codegen && npm run build`.
+3. Edit **`subgraph.yaml`** (or add a separate manifest for mainnet) with `source.address` and `source.startBlock` for each data source, and the correct Goldsky **`network:`** slug for that chain.
+4. Deploy to Goldsky (after `goldsky login`): see comments in the manifest and [`smart-contracts/subgraph/package.json`](smart-contracts/subgraph/package.json) scripts `deploy:goldsky` / `deploy:testnet:goldsky`, and [Goldsky’s subgraph docs](https://docs.goldsky.com/subgraphs/deploying-subgraphs).
+
+### Wiring the app and API
+
+- **Frontend**: set `VITE_STARDORM_SUBGRAPH_URL` (or per-network `VITE_STARDORM_SUBGRAPH_URL_MAINNET` / `VITE_STARDORM_SUBGRAPH_URL_TESTNET`) to your deployed GraphQL HTTP endpoint; optional `VITE_IDENTITY_REGISTRY_ADDRESS` and `VITE_REPUTATION_REGISTRY_ADDRESS` for on-chain UI actions ([`app/.env.example`](app/.env.example)).
+- **Backend**: `STARDORM_SUBGRAPH_URL` and optional `STARDORM_SUBGRAPH_URL_MAINNET` / `STARDORM_SUBGRAPH_URL_TESTNET` ([`backend/.env.example`](backend/.env.example)).
 
 ---
 
@@ -294,5 +345,6 @@ Details and event names for Stripe webhooks are documented inline in [`backend/.
 
 ## Related docs
 
-- [`smart-contracts/README.md`](smart-contracts/README.md) — Hardhat / contracts / tests
+- This file, [Smart contracts and subgraph](#smart-contracts-and-subgraph-0g) — deployments, addresses, indexer workflow
+- [`smart-contracts/README.md`](smart-contracts/README.md) — upstream Hardhat 3 sample / generic test commands
 - [`deck.md`](deck.md) — product narrative
