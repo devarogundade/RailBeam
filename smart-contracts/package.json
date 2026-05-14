@@ -1,0 +1,25 @@
+{
+  "name": "smart-contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "hardhat test",
+    "subgraph:abis": "node scripts/copy-subgraph-abis.mjs",
+    "subgraph:codegen": "npm run subgraph:abis && cd subgraph && npm run codegen",
+    "subgraph:build": "npm run subgraph:abis && cd subgraph && npm run build",
+    "deploy:stardorm8004": "npx hardhat ignition deploy ./ignition/modules/Stardorm8004.ts --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.1.5",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.5",
+    "@types/node": "^22.19.19",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.4.5",
+    "typescript": "~5.8.0",
+    "viem": "^2.48.11"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^17.4.2"
+  }
+}

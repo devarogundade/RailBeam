@@ -1,0 +1,34 @@
+import type { UserAvatarPreset } from "@beam/stardorm-api-contract";
+
+const STORAGE_KEY = "beam.userAvatarPreset";
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function subscribeStoredUserAvatarPreset(onStoreChange: Listener) {
+  listeners.add(onStoreChange);
+  return () => {
+    listeners.delete(onStoreChange);
+  };
+}
+
+export function readStoredUserAvatarPreset(): UserAvatarPreset | null {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === "male" || v === "female") return v;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function writeStoredUserAvatarPreset(preset: UserAvatarPreset) {
+  try {
+    localStorage.setItem(STORAGE_KEY, preset);
+  } catch {
+    /* ignore */
+  }
+  for (const l of listeners) {
+    l();
+  }
+}

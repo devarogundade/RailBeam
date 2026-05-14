@@ -1,0 +1,245 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthedWallet } from '../auth/jwt.strategy';
+import { CurrentWallet } from '../auth/current-wallet.decorator';
+import { parseBody } from '../common/parse-body';
+import { parseQuery, parseQueryRecord } from '../common/parse-query';
+import type { MulterIncomingFile } from './multer-file.types';
+import { UserService } from './user.service';
+import {
+  chatHistoryQuerySchema,
+  chatHistoryResponseSchema,
+  conversationSummarySchema,
+  conversationsPageResponseSchema,
+  conversationsQuerySchema,
+  createConversationBodySchema,
+  creditCardFundBodySchema,
+  creditCardPublicSchema,
+  creditCardsListResponseSchema,
+  creditCardWithdrawBodySchema,
+  executeHandlerBodySchema,
+  executeHandlerResponseSchema,
+  publicUserSchema,
+  updateUserBodySchema,
+  userUploadResultSchema,
+} from '@beam/stardorm-api-contract';
+
+const USER_UPLOAD_MAX_FILE_BYTES = 5 * 1024 * 1024;
+const CHAT_MAX_FILES = 2;
+
+@Controller('users')
+export class UserController {
+  constructor(private readonly users: UserService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async me(@CurrentWallet() wallet: AuthedWallet) {
+    return publicUserSchema.parse(await this.users.getMe(wallet.walletAddress));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/files')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: USER_UPLOAD_MAX_FILE_BYTES },
+    }),
+  )
+  async uploadMeFile(
+    @CurrentWallet() wallet: AuthedWallet,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: true,
+        validators: [
+          new MaxFileSizeValidator({ maxSize: USER_UPLOAD_MAX_FILE_BYTES }),
+        ],
+      }),
+    )
+    file: MulterIncomingFile,
+  ) {
+    try {
+      return userUploadResultSchema.parse(
+        await this.users.uploadMeFile(wallet.walletAddress, file),
+      );
+    } catch (e: unknown) {
+      if (e instanceof HttpException) throw e;
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpException(msg, HttpStatus.BAD_GATEWAY);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateMe(@CurrentWallet() wallet: AuthedWallet, @Body() raw: unknown) {
+    const body = parseBody(updateUserBodySchema, raw);
+    return publicUserSchema.parse(
+      await this.users.updateUser(wallet.walletAddress, body),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/conversations')
+  async listConversations(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Query() query: Record<string, string | string[] | undefined>,
+  ) {
+    const q = parseQuery(conversationsQuerySchema, parseQueryRecord(query));
+    return conversationsPageResponseSchema.parse(
+      await this.users.listConversations(
+        wallet.walletAddress,
+        q.limit,
+        q.cursor,
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/conversations')
+  async createConversation(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Body() raw: unknown,
+  ) {
+    const body = parseBody(createConversationBodySchema, raw);
+    return conversationSummarySchema.parse(
+      await this.users.createConversation(wallet.walletAddress, body),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/chat/messages')
+  async chatMessages(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Query() query: Record<string, string | string[] | undefined>,
+  ) {
+    const q = parseQuery(chatHistoryQuerySchema, parseQueryRecord(query));
+    return chatHistoryResponseSchema.parse(
+      await this.users.listChatMessages(
+        wallet.walletAddress,
+        q.limit,
+        q.conversationId,
+        q.cursor,
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/credit-cards')
+  async listCreditCards(@CurrentWallet() wallet: AuthedWallet) {
+    return creditCardsListResponseSchema.parse(
+      await this.users.listMyCreditCards(wallet.walletAddress),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/credit-cards/:cardId/fund')
+  async fundCreditCard(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Param('cardId') cardId: string,
+    @Body() raw: unknown,
+  ) {
+    const body = parseBody(creditCardFundBodySchema, raw);
+    return creditCardPublicSchema.parse(
+      await this.users.fundMyCreditCard(
+        wallet.walletAddress,
+        cardId.trim(),
+        body.amountCents,
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/credit-cards/:cardId/withdraw')
+  async withdrawCreditCard(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Param('cardId') cardId: string,
+    @Body() raw: unknown,
+  ) {
+    const body = parseBody(creditCardWithdrawBodySchema, raw);
+    return creditCardPublicSchema.parse(
+      await this.users.withdrawMyCreditCard(
+        wallet.walletAddress,
+        cardId.trim(),
+        body.amountCents,
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/chat/execute-handler')
+  async executeHandler(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Body() raw: unknown,
+  ) {
+    const body = parseBody(executeHandlerBodySchema, raw);
+    return executeHandlerResponseSchema.parse(
+      await this.users.executeHandler(wallet.walletAddress, {
+        handler: body.handler,
+        params: body.params,
+        ctaMessageId: body.ctaMessageId,
+      }),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/chat')
+  @UseInterceptors(
+    FilesInterceptor('files', CHAT_MAX_FILES, {
+      limits: { fileSize: USER_UPLOAD_MAX_FILE_BYTES },
+    }),
+  )
+  async chat(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Body('message') message: unknown,
+    @Body('agentId') agentId: unknown,
+    @Body('conversationId') conversationId: unknown,
+    @UploadedFiles() files?: MulterIncomingFile[],
+  ) {
+    try {
+      if (agentId === undefined || agentId === null) {
+        throw new BadRequestException('agentId required');
+      }
+      const aid =
+        typeof agentId === 'bigint'
+          ? agentId
+          : typeof agentId === 'number'
+            ? agentId
+            : typeof agentId === 'string'
+              ? agentId.trim()
+              : null;
+      if (aid === null || aid === '') {
+        throw new BadRequestException('agentId required');
+      }
+      const messageStr = typeof message === 'string' ? message : '';
+      const convId =
+        typeof conversationId === 'string' ? conversationId.trim() : undefined;
+      return await this.users.chat(
+        wallet.walletAddress,
+        aid,
+        messageStr,
+        files ?? [],
+        convId || null,
+      );
+    } catch (e: unknown) {
+      if (e instanceof HttpException) throw e;
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpException(msg, HttpStatus.BAD_GATEWAY);
+    }
+  }
+}

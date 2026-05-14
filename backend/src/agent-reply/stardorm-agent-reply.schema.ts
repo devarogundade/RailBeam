@@ -1,0 +1,774 @@
+import { z } from 'zod';
+import { formatUnits } from 'ethers';
+import { stardormChatRichBlockSchema } from '@beam/stardorm-api-contract';
+import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
+import {
+  HANDLER_ACTION_IDS,
+  isHandlerActionId,
+  type HandlerActionId,
+} from '../handlers/handler.types';
+import {
+  TaxesInputSchema,
+  X402InputSchema,
+  generateTaxReportToolArgsSchema,
+  createX402PaymentToolArgsSchema,
+  createOnRampTokensToolArgsSchema,
+  createCreditCardToolArgsSchema,
+  offerX402CheckoutFormToolArgsSchema,
+  offerOnRampCheckoutFormToolArgsSchema,
+  x402CheckoutFormCtaParamsSchema,
+  type GenerateTaxReportToolArgs,
+  type CreateX402PaymentToolArgs,
+  type CreateOnRampTokensToolArgs,
+  type CreateCreditCardToolArgs,
+  type X402CheckoutFormCtaParams,
+} from '../handlers/handler-inputs.schema';
+import {
+  onRampFormCtaParamsSchema,
+  onRampTokensInputSchema,
+  stripeKycInputSchema,
+  createCreditCardInputSchema,
+} from '@beam/stardorm-api-contract';
+import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
+
+function formatBase10Integer(raw: string): string {
+  const digits = raw.replace(/\s+/g, '');
+  if (!/^\d+$/.test(digits)) return raw;
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function trimDecimalZeros(s: string): string {
+  if (!s.includes('.')) return s;
+  return s.replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function shortenMiddle(s: string, maxLen: number): string {
+  const t = s.trim();
+  if (t.length <= maxLen) return t;
+  const edge = Math.max(4, Math.floor((maxLen - 1) / 2));
+  return `${t.slice(0, edge)}…${t.slice(-edge)}`;
+}
+
+function shortenEvmAddress(addr: string): string {
+  const t = addr.trim();
+  if (!t) return '—';
+  if (!/^0x[a-fA-F0-9]{40}$/i.test(t)) {
+    return shortenMiddle(t, 28);
+  }
+  const lower = t.toLowerCase();
+  return `${lower.slice(0, 6)}…${lower.slice(-4)}`;
+}
+
+function shortenAssetDisplay(asset: string): string {
+  const t = asset.trim();
+  if (!t) return '—';
+  if (/^0x[a-fA-F0-9]{40}$/i.test(t)) return shortenEvmAddress(t);
+  if (t.length <= 24) return t;
+  return shortenMiddle(t, 24);
+}
+
+/** Matches `@beam/stardorm-api-contract` `stardormChatRichBlockSchema`. */
+export const agentChatRichBlockSchema = stardormChatRichBlockSchema;
+
+export type AgentRichCard = StardormChatRichBlock;
+
+const handlerEnum = z.enum(HANDLER_ACTION_IDS);
+
+const OFFER_X402_CHECKOUT_FORM = 'offer_x402_checkout_form' as const;
+const OFFER_ON_RAMP_CHECKOUT_FORM = 'offer_on_ramp_checkout_form' as const;
+
+function handlerIdsForJsonContract(): string {
+  return HANDLER_ACTION_IDS.map((h) => `"${h}"`).join('|');
+}
+
+function normalizeHandlerField(v: unknown): HandlerActionId | undefined {
+  if (v === null || v === undefined || v === '') return undefined;
+  return v as HandlerActionId;
+}
+
+function normalizeParamsField(v: unknown): unknown {
+  if (v === null || v === undefined) return undefined;
+  return v;
+}
+
+/**
+ * Model-facing JSON: exactly one object. `handler` / `params` may be omitted,
+ * or set to `null`, when no server CTA is needed. When `handler` is a real id,
+ * `params` must match that handler’s input schema.
+ */
+export const agentComputeReplySchema = z
+  .object({
+    text: z.string().min(1),
+    handler: z.union([handlerEnum, z.null(), z.literal('')]).optional(),
+    params: z.unknown().nullish(),
+    rich: agentChatRichBlockSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    const handler = normalizeHandlerField(val.handler);
+    const params = normalizeParamsField(val.params);
+
+    if (handler === undefined) {
+      if (params !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'params must be null or omitted when handler is null, empty, or omitted',
+          path: ['params'],
+        });
+      }
+      return;
+    }
+    if (params === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'params required when handler is set',
+        path: ['params'],
+      });
+      return;
+    }
+    if (handler === 'generate_tax_report') {
+      const r = TaxesInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for generate_tax_report',
+          path: ['params'],
+        });
+        return;
+      }
+    }
+    if (handler === 'create_x402_payment') {
+      const form = x402CheckoutFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
+      const r = X402InputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'Invalid params for create_x402_payment (need full payment fields or a checkout form payload)',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'on_ramp_tokens') {
+      const form = onRampFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
+      const r = onRampTokensInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'Invalid params for on_ramp_tokens (need full on-ramp fields or an on-ramp checkout form payload)',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'complete_stripe_kyc') {
+      const r = stripeKycInputSchema.safeParse(
+        params && typeof params === 'object' ? params : {},
+      );
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for complete_stripe_kyc',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'create_credit_card') {
+      const r = createCreditCardInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for create_credit_card',
+          path: ['params'],
+        });
+      }
+    }
+  })
+  .transform((val) => ({
+    text: val.text,
+    handler: normalizeHandlerField(val.handler),
+    params: normalizeParamsField(val.params),
+    rich: val.rich,
+  }));
+
+export type AgentComputeReply = z.infer<typeof agentComputeReplySchema>;
+
+type X402HandlerParams = z.infer<typeof X402InputSchema> | X402CheckoutFormCtaParams;
+type OnRampHandlerParams =
+  | z.infer<typeof onRampTokensInputSchema>
+  | z.infer<typeof onRampFormCtaParamsSchema>;
+
+/** After validation: either text-only, or text + handler + params (no nulls). */
+export type AgentComputeReplyWithParams =
+  | { text: string; handler?: undefined; params?: undefined; rich?: AgentRichCard }
+  | {
+      text: string;
+      handler: 'generate_tax_report';
+      params: z.infer<typeof TaxesInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'create_x402_payment';
+      params: X402HandlerParams;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'on_ramp_tokens';
+      params: OnRampHandlerParams;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'complete_stripe_kyc';
+      params: z.infer<typeof stripeKycInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'create_credit_card';
+      params: z.infer<typeof createCreditCardInputSchema>;
+      rich?: AgentRichCard;
+    };
+
+/** Narrow `AgentComputeReply` after successful schema parse. */
+export function asTypedAgentReply(
+  r: AgentComputeReply,
+): AgentComputeReplyWithParams {
+  const rich = r.rich;
+  if (!r.handler) {
+    return { text: r.text, rich };
+  }
+  if (r.handler === 'generate_tax_report') {
+    const p = TaxesInputSchema.parse(r.params);
+    return { text: r.text, handler: 'generate_tax_report', params: p, rich };
+  }
+  if (r.handler === 'create_x402_payment') {
+    const formTry = x402CheckoutFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'x402_checkout_form',
+          title: 'Payment checkout',
+          supportedAssets: formTry.data.supportedAssets,
+          networks: formTry.data.networks,
+          intro: formTry.data.intro,
+        } as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'create_x402_payment',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
+    const p = X402InputSchema.parse(r.params);
+    return { text: r.text, handler: 'create_x402_payment', params: p, rich };
+  }
+  if (r.handler === 'on_ramp_tokens') {
+    const formTry = onRampFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'on_ramp_checkout_form',
+          title: 'Token on-ramp',
+          supportedAssets: formTry.data.supportedAssets,
+          networks: formTry.data.networks,
+          intro: formTry.data.intro,
+        } as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'on_ramp_tokens',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
+    const p = onRampTokensInputSchema.parse(r.params);
+    return { text: r.text, handler: 'on_ramp_tokens', params: p, rich };
+  }
+  if (r.handler === 'complete_stripe_kyc') {
+    const p = stripeKycInputSchema.parse(
+      r.params && typeof r.params === 'object' ? r.params : {},
+    );
+    return { text: r.text, handler: 'complete_stripe_kyc', params: p, rich };
+  }
+  if (r.handler === 'create_credit_card') {
+    const p = createCreditCardInputSchema.parse(r.params);
+    return { text: r.text, handler: 'create_credit_card', params: p, rich };
+  }
+  return { text: r.text, rich };
+}
+
+export function agentAllowsHandler(
+  allowed: readonly HandlerActionId[],
+  handler: HandlerActionId,
+): boolean {
+  return allowed.includes(handler);
+}
+
+export function parseModelJsonObject(raw: string): unknown {
+  let s = raw.trim();
+  const fence = /^```(?:json)?\s*([\s\S]*?)```$/im.exec(s);
+  if (fence) s = fence[1].trim();
+  const tryParse = (t: string) => {
+    try {
+      return JSON.parse(t) as unknown;
+    } catch {
+      return null;
+    }
+  };
+  let v = tryParse(s);
+  if (v !== null) return v;
+  const i = s.indexOf('{');
+  const j = s.lastIndexOf('}');
+  if (i >= 0 && j > i) v = tryParse(s.slice(i, j + 1));
+  return v;
+}
+
+export function buildAgentOutputContract(
+  allowed: readonly HandlerActionId[],
+): string {
+  const list = allowed.length
+    ? allowed.join(', ')
+    : '(none — never set handler)';
+  const routing =
+    allowed.length === 0
+      ? [
+          '- This chat agent has NO server handler tools. Never set "handler" or "params" to a real id.',
+          '- If the user asks for x402 payment links, checkout pages, invoices, or on-chain payment requests: in "text", briefly explain you cannot create those here and tell them to open the marketplace, hire the **Ledger** agent (agentKey `ledger`, Payments), switch the active chat agent to Ledger, then ask again.',
+          '- If the user asks for tax reports, tax PDFs, filing summaries, or crypto tax exports: tell them to hire **Fiscus** (agentKey `fiscus`, Taxes), switch to that agent, then ask again.',
+          '- If the user asks for card-to-crypto on-ramp or Stripe checkout for tokens: tell them to hire **Ramp** (agentKey `ramp`, Payments), switch to that agent, then ask again.',
+          '- If the user asks for KYC or identity verification: tell them to hire **Passport** (agentKey `passport`, Compliance), switch to that agent, then ask again.',
+          '- If the user asks for a virtual company payment card, billing profile on file, or card spend balance: tell them to hire **Capita** (agentKey `capita`, Payments), switch to that agent, then ask again.',
+          '- For other specialist work (treasury PDFs, yield plans, audits): point them to the marketplace to hire the matching specialist agent.',
+        ].join('\n')
+      : '';
+  return [
+    'You are a Stardorm financial agent.',
+    'Your entire reply MUST be a single JSON object only (no markdown, no prose outside JSON).',
+    `JSON shape: {"text": string, "handler"?: ${handlerIdsForJsonContract()}|null, "params"?: object|null, "rich"?: …}`,
+    'Rules:',
+    '- "text" is user-visible markdown-free summary.',
+    '- When no CTA is needed: omit "handler" and "params", or set both to null.',
+    '- When a CTA is needed: set "handler" and "params" (non-null) so the client can run server-side code.',
+    '- If "handler" is a real id, "params" is required and must validate for that handler.',
+    '- Optional "rich" is a small summary card for the UI; omit if not helpful.',
+    `- You may ONLY propose handlers in this list: ${list}.`,
+    routing,
+    allowed.includes('generate_tax_report')
+      ? '- generate_tax_report params: {"from":{"year","month","day"},"to":{"year","month","day"},"countryCode":"US"} (ISO 3166-1 alpha-2).'
+      : '',
+    allowed.includes('create_x402_payment')
+      ? [
+          '- create_x402_payment (JSON-only): use when the user message explicitly contains every required field: `id`, `amount` (wei integer string), `currency`, `network`, `payTo` (0x…40), plus optional `title`, `resourceUrl`, `decimals`. Never invent values.',
+          '- Checkout form mode (JSON-only): use when anything is missing or ambiguous: params `{"_checkoutForm":true,"supportedAssets":[...], ...}` and matching `rich` type `x402_checkout_form` so the client collects the rest.',
+        ].join('\n')
+      : '',
+    allowed.includes('on_ramp_tokens')
+      ? [
+          '- on_ramp_tokens (JSON-only): use only when the user message already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals`, `tokenSymbol`, `tokenAmountWei` (base units string), `usdAmountCents` (integer cents), and optional `usdValue`. Never invent wallet addresses, token contracts, or amounts.',
+          '- On-ramp checkout form: params `{"_onRampForm":true,"supportedAssets":[...], ...}` and matching `rich` type `on_ramp_checkout_form` when any required field is missing or ambiguous.',
+        ].join('\n')
+      : '',
+    allowed.includes('complete_stripe_kyc')
+      ? '- complete_stripe_kyc params: optional `returnPath` (app path for Stripe return_url); may be `{}`.'
+      : '',
+    allowed.includes('create_credit_card')
+      ? '- create_credit_card params: `firstName`, `lastName`, `line1`, optional `line2`, `city`, `region`, `postalCode`, `countryCode` (ISO 3166-1 alpha-2), optional `cardLabel`, optional `currency` (3-letter ISO, default USD), optional `initialBalanceCents` (non-negative integer). Optional matching `rich` type `credit_card` with title + rows for the same fields. Never invent the user\'s legal name or address.'
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function structuredReplyFromModelContent(
+  content: string,
+  allowedHandlers: readonly HandlerActionId[],
+): AgentComputeReplyWithParams {
+  const raw = parseModelJsonObject(content);
+  const base = agentComputeReplySchema.safeParse(raw);
+  if (!base.success) {
+    return { text: content.trim() || 'No reply.' };
+  }
+  const d = base.data;
+  if (d.handler != null && !agentAllowsHandler(allowedHandlers, d.handler)) {
+    return { text: d.text, ...(d.rich ? { rich: d.rich } : {}) };
+  }
+  return asTypedAgentReply(d);
+}
+
+function defaultHandlerOfferText(handler: HandlerActionId): string {
+  if (handler === 'generate_tax_report') {
+    return 'I can generate that tax report on request.';
+  }
+  if (handler === 'create_x402_payment') {
+    return 'I can create that payment request on request.';
+  }
+  if (handler === 'on_ramp_tokens') {
+    return 'I can open a Stripe checkout so you can pay in USD and receive tokens on-chain.';
+  }
+  if (handler === 'complete_stripe_kyc') {
+    return 'I can start Stripe Identity verification for your account on request.';
+  }
+  if (handler === 'create_credit_card') {
+    return 'I can issue a virtual payment card with the billing profile you confirmed on request.';
+  }
+  return 'I can run that action on request.';
+}
+
+function fmtTaxDatePart(p: { year: number; month: number; day: number }): string {
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}
+
+function agentRichFromTaxReportToolArgs(
+  data: GenerateTaxReportToolArgs,
+): AgentRichCard | undefined {
+  if (data.reportCard === undefined) return undefined;
+  const period = `${fmtTaxDatePart(data.from)} → ${fmtTaxDatePart(data.to)}`;
+  const baseRows = [
+    { label: 'Country', value: data.countryCode },
+    { label: 'Filing period', value: period },
+  ];
+  const extras = data.reportCard.supplementalRows ?? [];
+  const title =
+    data.reportCard.cardTitle ?? `Tax report (${data.countryCode})`;
+  return {
+    type: 'report',
+    title,
+    rows: [...baseRows, ...extras],
+  };
+}
+
+function agentRichFromX402PaymentToolArgs(
+  data: CreateX402PaymentToolArgs,
+): AgentRichCard | undefined {
+  if (data.paymentCard === undefined) return undefined;
+  const payTo = data.payTo;
+  const payToShort = shortenEvmAddress(payTo);
+  const amt = String(data.amount);
+  const rows: Array<{ label: string; value: string }> = [];
+  if (data.decimals != null) {
+    try {
+      const human = trimDecimalZeros(formatUnits(BigInt(amt), data.decimals));
+      rows.push({ label: 'Amount (token units)', value: human });
+    } catch {
+      // ignore
+    }
+  }
+  rows.push({
+    label: rows.length > 0 ? 'Amount (wei)' : 'Amount (base units)',
+    value: formatBase10Integer(amt),
+  });
+  rows.push({
+    label: /^0x[a-fA-F0-9]{40}$/i.test(data.currency)
+      ? 'Token contract'
+      : 'Asset',
+    value: shortenAssetDisplay(data.currency),
+  });
+  rows.push({
+    label: 'Network',
+    value: shortenMiddle(data.network, 48),
+  });
+  rows.push({ label: 'Pay to', value: payToShort });
+  const extras = data.paymentCard.lineItems ?? [];
+  const title =
+    data.paymentCard.invoiceTitle ??
+    data.title ??
+    `Payment · ${data.id.length > 12 ? `${data.id.slice(0, 12)}…` : data.id}`;
+  return {
+    type: 'invoice',
+    title,
+    rows: [...rows, ...extras],
+  };
+}
+
+function agentRichFromOnRampTokensToolArgs(
+  data: CreateOnRampTokensToolArgs,
+): AgentRichCard | undefined {
+  if (data.paymentCard === undefined) return undefined;
+  const amt = String(data.tokenAmountWei);
+  const rows: Array<{ label: string; value: string }> = [];
+  try {
+    const human = trimDecimalZeros(
+      formatUnits(BigInt(amt), data.tokenDecimals),
+    );
+    rows.push({ label: 'Amount (token units)', value: human });
+  } catch {
+    // ignore
+  }
+  rows.push({
+    label: 'Amount (base units)',
+    value: formatBase10Integer(amt),
+  });
+  rows.push({
+    label: 'Token',
+    value: `${data.tokenSymbol} · ${shortenEvmAddress(data.tokenAddress)}`,
+  });
+  rows.push({
+    label: 'Network',
+    value: shortenMiddle(data.network, 48),
+  });
+  rows.push({ label: 'Recipient', value: shortenEvmAddress(data.recipientWallet) });
+  rows.push({
+    label: 'Card charge (USD)',
+    value: `$${(data.usdAmountCents / 100).toFixed(2)}`,
+  });
+  if (data.usdValue !== undefined) {
+    rows.push({
+      label: 'Reference spot (USD)',
+      value: `$${data.usdValue.toFixed(4)}`,
+    });
+  }
+  const extras = data.paymentCard.lineItems ?? [];
+  const title =
+    data.paymentCard.invoiceTitle ?? `On-ramp · ${data.tokenSymbol}`;
+  return {
+    type: 'invoice',
+    title,
+    rows: [...rows, ...extras],
+  };
+}
+
+function agentRichFromCreateCreditCardToolArgs(
+  data: CreateCreditCardToolArgs,
+): AgentRichCard {
+  const holder = `${data.firstName} ${data.lastName}`.trim();
+  const street = [data.line1, data.line2].filter(Boolean).join(', ');
+  const cityLine = [data.city, data.region, data.postalCode, data.countryCode]
+    .filter(Boolean)
+    .join(', ');
+  const rows: Array<{ label: string; value: string }> = [
+    { label: 'Cardholder', value: holder || '—' },
+    { label: 'Street', value: street || '—' },
+    { label: 'City / region / ZIP', value: cityLine || '—' },
+  ];
+  if (data.cardLabel?.trim()) {
+    rows.push({ label: 'Card label', value: data.cardLabel.trim() });
+  }
+  rows.push({
+    label: 'Currency',
+    value: data.currency ?? 'USD',
+  });
+  if (data.initialBalanceCents != null && data.initialBalanceCents > 0) {
+    rows.push({
+      label: 'Opening balance',
+      value: `$${(data.initialBalanceCents / 100).toFixed(2)}`,
+    });
+  }
+  const extras = data.cardPreview?.supplementalRows ?? [];
+  const title =
+    data.cardPreview?.cardTitle ??
+    `Virtual payment card · ${data.countryCode}`;
+  return {
+    type: 'credit_card',
+    title,
+    rows: [...rows, ...extras],
+  };
+}
+
+/**
+ * Build the persisted / API-facing agent turn (text, optional rich card,
+ * optional handler CTA) from a validated assistant message.
+ */
+export function agentReplyFromChatCompletion(
+  assistant: OpenAiCompletionAssistantMessage,
+  allowedHandlers: readonly HandlerActionId[],
+): AgentComputeReplyWithParams {
+  const content = assistant.content;
+  const toolCalls = assistant.tool_calls;
+
+  if (toolCalls?.length) {
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        !name ||
+        !isHandlerActionId(name) ||
+        !agentAllowsHandler(allowedHandlers, name)
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+
+      const text = content.trim() || defaultHandlerOfferText(name);
+
+      if (name === 'generate_tax_report') {
+        const full = generateTaxReportToolArgsSchema.safeParse(rec);
+        if (!full.success) continue;
+        const params = TaxesInputSchema.parse(full.data);
+        const rich = agentRichFromTaxReportToolArgs(full.data);
+        return { text, handler: 'generate_tax_report', params, rich };
+      }
+      if (name === 'create_x402_payment') {
+        const full = createX402PaymentToolArgsSchema.safeParse(rec);
+        if (!full.success) continue;
+        const params = X402InputSchema.parse(full.data);
+        const rich = agentRichFromX402PaymentToolArgs(full.data);
+        return { text, handler: 'create_x402_payment', params, rich };
+      }
+      if (name === 'on_ramp_tokens') {
+        const full = createOnRampTokensToolArgsSchema.safeParse(rec);
+        if (!full.success) continue;
+        const params = onRampTokensInputSchema.parse(full.data);
+        const rich = agentRichFromOnRampTokensToolArgs(full.data);
+        return { text, handler: 'on_ramp_tokens', params, rich };
+      }
+      if (name === 'complete_stripe_kyc') {
+        const full = stripeKycInputSchema.safeParse(rec);
+        if (!full.success) continue;
+        return { text, handler: 'complete_stripe_kyc', params: full.data, rich: undefined };
+      }
+      if (name === 'create_credit_card') {
+        const full = createCreditCardToolArgsSchema.safeParse(rec);
+        if (!full.success) continue;
+        const { cardPreview: _cp, ...rest } = full.data;
+        void _cp;
+        const params = createCreditCardInputSchema.parse(rest);
+        const rich = agentRichFromCreateCreditCardToolArgs(full.data);
+        return { text, handler: 'create_credit_card', params, rich };
+      }
+    }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_X402_CHECKOUT_FORM ||
+        !allowedHandlers.includes('create_x402_payment')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerX402CheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const params = x402CheckoutFormCtaParamsSchema.parse({
+        _checkoutForm: true as const,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks,
+        intro: parsed.data.intro,
+      });
+      const rich = {
+        type: 'x402_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Payment checkout',
+        intro: parsed.data.intro,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks,
+      } as AgentRichCard;
+      const text =
+        content.trim() ||
+        'Choose the asset and enter the amount and recipient in the form below, then tap **Create payment link** to generate a shareable checkout URL.';
+      return { text, handler: 'create_x402_payment', params, rich };
+    }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_ON_RAMP_CHECKOUT_FORM ||
+        !allowedHandlers.includes('on_ramp_tokens')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerOnRampCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const params = onRampFormCtaParamsSchema.parse({
+        _onRampForm: true as const,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks,
+        intro: parsed.data.intro,
+      });
+      const rich = {
+        type: 'on_ramp_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Token on-ramp',
+        intro: parsed.data.intro,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks,
+      } as AgentRichCard;
+      const text =
+        content.trim() ||
+        'Pick a supported token and network, enter the amount to receive and the USD card charge, then tap **Create Stripe checkout** to pay with Stripe and receive tokens after settlement.';
+      return { text, handler: 'on_ramp_tokens', params, rich };
+    }
+  }
+  return structuredReplyFromModelContent(content, allowedHandlers);
+}
+
+/**
+ * System instructions when the model receives `tools` / `tool_choice` for
+ * handler CTAs (see 0G Router chat completions tool calling).
+ */
+export function buildAgentToolCallingSystemPrompt(
+  allowed: readonly HandlerActionId[],
+): string {
+  const toolNames = [
+    ...(allowed.includes('generate_tax_report') ? ['generate_tax_report'] : []),
+    ...(allowed.includes('create_x402_payment')
+      ? ['create_x402_payment', 'offer_x402_checkout_form']
+      : []),
+    ...(allowed.includes('on_ramp_tokens')
+      ? ['on_ramp_tokens', 'offer_on_ramp_checkout_form']
+      : []),
+    ...(allowed.includes('complete_stripe_kyc') ? ['complete_stripe_kyc'] : []),
+    ...(allowed.includes('create_credit_card') ? ['create_credit_card'] : []),
+  ].join(', ');
+  return [
+    'You are Stardorm chat: a concise financial assistant.',
+    'Put the user-visible answer in the message content (plain language).',
+    toolNames
+      ? `When a one-tap server action is appropriate, call at most one function tool from this list: ${toolNames}.`
+      : 'This agent has no callable tools — do not call tools.',
+    'If no action button is needed, do not call tools.',
+    'Tool arguments must match each tool JSON schema. For generate_tax_report you may add optional `reportCard` (tax-specific preview). For create_x402_payment you may add optional `paymentCard` (invoice-style preview). For on_ramp_tokens you may add optional `paymentCard` (invoice-style preview). For create_credit_card you may add optional `cardPreview` (title + supplemental rows for the chat card).',
+    allowed.includes('create_x402_payment')
+      ? [
+          'For x402 checkout: if the user’s message(s) already state every required value — stable `id`, wei `amount` (integer string), `currency` (0x token or symbol), `network`, full `payTo` (0x…40) — call **create_x402_payment** with those exact arguments (optional `paymentCard` for an invoice-style preview).',
+          'If any required value is missing, vague, or would be a guess, call **offer_x402_checkout_form** with `supportedAssets` (and optional `networks`); never invent wei, payTo, or token addresses.',
+          'When a handler CTA appears, remind the user to tap **Create payment link** to obtain the `/pay/...` checkout URL for their payer.',
+        ].join(' ')
+      : '',
+    allowed.includes('on_ramp_tokens')
+      ? [
+          'For on-ramp: if the user already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals`, `tokenSymbol`, `tokenAmountWei` (base units string), `usdAmountCents`, and optional `usdValue`, call **on_ramp_tokens** with those exact arguments (optional `paymentCard`).',
+          'If any required value is missing or ambiguous, call **offer_on_ramp_checkout_form** with `supportedAssets` (and optional `networks`); never invent addresses, wei amounts, or card charge amounts.',
+          'After proposing on_ramp_tokens, remind the user to tap **Create Stripe checkout** to pay with Stripe.',
+        ].join(' ')
+      : '',
+    allowed.includes('complete_stripe_kyc')
+      ? 'For KYC: call **complete_stripe_kyc** with optional `returnPath` or `{}`. Remind the user to tap **Start Identity verification** to open Stripe Identity.'
+      : '',
+    allowed.includes('create_credit_card')
+      ? 'For virtual payment cards: call **create_credit_card** only after the user message states the cardholder legal name, street line(s), city, region/state, postal code, and ISO country code. Optional `initialBalanceCents` when they specify an opening amount. Remind them to tap **Create virtual card** to mint the card and manage funds on the dashboard.'
+      : '',
+    allowed.includes('generate_tax_report')
+      ? 'After proposing generate_tax_report, remind the user they must tap **Generate tax PDF** to run the server job and attach the PDF to the thread.'
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

@@ -1,0 +1,89 @@
+# GraphQL API for clients replacing Mongo-backed agent/reputation reads:
+# query agents, feedback by agentId, validations by requestHash, etc.
+
+type Agent @entity(immutable: false) {
+  id: Bytes!
+  agentId: BigInt!
+  owner: Bytes!
+  uri: String
+  agentWallet: Bytes
+  feePerDay: BigInt
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  metadata: [AgentMetadata!]! @derivedFrom(field: "agent")
+  subscriptions: [UserSubscription!]! @derivedFrom(field: "agent")
+}
+
+type UserSubscription @entity(immutable: false) {
+  id: Bytes!
+  user: Bytes!
+  agent: Agent!
+  agentId: BigInt!
+  endDate: BigInt!
+  paidAmount: BigInt!
+  windowStart: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AgentMetadata @entity(immutable: false) {
+  id: Bytes!
+  agent: Agent!
+  agentId: BigInt!
+  key: String!
+  value: Bytes!
+  updatedBy: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Feedback @entity(immutable: false) {
+  id: Bytes!
+  agentId: BigInt!
+  clientAddress: Bytes!
+  feedbackIndex: BigInt!
+  value: BigInt!
+  valueDecimals: Int!
+  tag1: String!
+  tag2: String!
+  endpoint: String!
+  feedbackURI: String!
+  feedbackHash: Bytes!
+  revoked: Boolean!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  responses: [FeedbackResponse!]! @derivedFrom(field: "feedback")
+}
+
+type FeedbackResponse @entity(immutable: true) {
+  id: Bytes!
+  feedback: Feedback!
+  agentId: BigInt!
+  clientAddress: Bytes!
+  feedbackIndex: BigInt!
+  responder: Bytes!
+  responseURI: String!
+  responseHash: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Validation @entity(immutable: false) {
+  id: Bytes!
+  requestHash: Bytes!
+  validatorAddress: Bytes!
+  agentId: BigInt!
+  requestURI: String!
+  response: Int
+  responseURI: String
+  responseHash: Bytes
+  tag: String
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

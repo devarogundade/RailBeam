@@ -1,0 +1,65 @@
+import { z } from "zod";
+import { stardormChatAttachmentSchema } from "./chat-api.js";
+
+const evmTxHashSchema = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{64}$/i, "Invalid transaction hash");
+
+const evmAddressSchema = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid address");
+
+/**
+ * Body for POST `/payments/:id/pay`.
+ * Either record a broadcast EVM tx (`txHash`), or submit a full x402 `PaymentPayload` for facilitator verify+settle when `X402_FACILITATOR_URL` is configured.
+ */
+export const paymentSettlementBodySchema = z
+  .object({
+    txHash: evmTxHashSchema.optional(),
+    payerAddress: evmAddressSchema.optional(),
+    /** Matches @x402/core `PaymentPayload` (x402Version, accepted, payload, …). */
+    x402PaymentPayload: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.txHash && !val.x402PaymentPayload) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide txHash (direct settlement) or x402PaymentPayload (facilitator).",
+        path: ["txHash"],
+      });
+    }
+  });
+
+export type PaymentSettlementBody = z.infer<typeof paymentSettlementBodySchema>;
+
+export const paymentRequestTypeSchema = z.enum(["on-chain", "x402"]);
+
+export const paymentRequestStatusSchema = z.enum([
+  "pending",
+  "paid",
+  "expired",
+  "cancelled",
+]);
+
+export const publicPaymentRequestSchema = z.object({
+  id: z.string(),
+  type: paymentRequestTypeSchema,
+  status: paymentRequestStatusSchema,
+  title: z.string(),
+  description: z.string().optional(),
+  asset: z.string(),
+  amount: z.string(),
+  payTo: z.string(),
+  network: z.string(),
+  expiresAt: z.string().optional(),
+  resourceId: z.string().optional(),
+  resourceUrl: z.string().max(2048).optional(),
+  decimals: z.number().int().min(0).max(36).optional(),
+  x402Payload: z.record(z.string(), z.unknown()).optional(),
+  attachment: stardormChatAttachmentSchema.optional(),
+  /** Set when status is `paid` (on-chain settlement recorded). */
+  txHash: z.string().optional(),
+  paidByWallet: z.string().optional(),
+});
+
+export type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;

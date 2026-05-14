@@ -1,0 +1,55 @@
+import { beamContractAddressesForChain } from "@/lib/beam-chain-config";
+
+/** First billing window length when hiring via `subscribe` (30 days ≈ one month). */
+export const IDENTITY_SUBSCRIBE_NUM_DAYS = 30n;
+
+/** `getFees` per-day rate and `subscribe` `msg.value` use native smallest units (18 on 0G / EVM). */
+export const IDENTITY_REGISTRY_NATIVE_DECIMALS = 18;
+
+export const identityRegistryAbi = [
+  {
+    type: "function",
+    name: "subscribe",
+    stateMutability: "payable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "numDays", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "unsubscribe",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [
+      { name: "daysLeft", type: "uint256" },
+      { name: "refund", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "getFees",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [{ name: "feePerDay", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "ownerOf",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
+export function getIdentityRegistryAddressForChain(
+  chainId: number | undefined,
+): `0x${string}` | undefined {
+  return beamContractAddressesForChain(chainId).identityRegistry;
+}
+
+/** Uses testnet env fallbacks when `chainId` is unknown (e.g. SSR / no wallet). */
+export function getIdentityRegistryAddress(): `0x${string}` | undefined {
+  return getIdentityRegistryAddressForChain(undefined);
+}

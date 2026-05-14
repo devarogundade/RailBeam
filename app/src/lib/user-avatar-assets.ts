@@ -1,0 +1,8 @@
+import maleAvatar from "@/assets/male_avatar.png";
+import femaleAvatar from "@/assets/female_avatar.png";
+import type { UserAvatarPreset } from "@beam/stardorm-api-contract";
+
+export const USER_AVATAR_URLS: Record<UserAvatarPreset, string> = {
+  male: maleAvatar,
+  female: femaleAvatar,
+};

@@ -1,0 +1,237 @@
+import { z } from 'zod';
+import {
+  x402SupportedAssetSchema,
+  onRampTokensInputSchema,
+  onRampFormCtaParamsSchema,
+  isOnRampFormCtaParams,
+  createCreditCardInputSchema,
+} from '@beam/stardorm-api-contract';
+
+export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
+
+export const taxDatePartSchema = z.object({
+  year: z.number().int().min(2020).max(2030),
+  month: z.number().int().min(1).max(12),
+  day: z.number().int().min(1).max(31),
+});
+
+export type TaxDatePart = z.infer<typeof taxDatePartSchema>;
+
+export function toUtcTaxDate(p: TaxDatePart): Date {
+  return new Date(Date.UTC(p.year, p.month - 1, p.day));
+}
+
+export const TaxesInputSchema = z
+  .object({
+    from: taxDatePartSchema,
+    to: taxDatePartSchema,
+    countryCode: z
+      .string()
+      .length(2)
+      .transform((c) => c.toUpperCase()),
+  })
+  .superRefine((val, ctx) => {
+    const from = toUtcTaxDate(val.from);
+    const to = toUtcTaxDate(val.to);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid calendar date',
+      });
+      return;
+    }
+    if (from > to) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '`from` must be on or before `to`',
+        path: ['from'],
+      });
+    }
+  });
+
+export type TaxesInput = z.infer<typeof TaxesInputSchema>;
+
+const x402AmountSchema = z.union([
+  z
+    .string()
+    .trim()
+    .regex(
+      /^[1-9]\d*$/,
+      'amount must be base units (positive integer string, no decimals)',
+    ),
+  z.number().int().positive().transform((n) => String(n)),
+]);
+
+export const X402InputSchema = z.object({
+  id: z.string().min(1).max(256),
+  amount: x402AmountSchema,
+  currency: z
+    .string()
+    .min(1)
+    .max(66)
+    .transform((s) => {
+      const t = s.trim();
+      return /^0x[a-fA-F0-9]{40}$/i.test(t) ? t.toLowerCase() : t;
+    }),
+  network: z.string().min(1).max(64),
+  payTo: z
+    .string()
+    .min(1)
+    .refine(
+      (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
+      'payTo must be a 0x-prefixed 20-byte address',
+    )
+    .transform((s) => s.trim().toLowerCase()),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(2000).optional(),
+  resourceUrl: z.string().url().max(2048).optional(),
+  expiresAt: z.coerce.date().optional(),
+  decimals: z.number().int().min(0).max(36).optional(),
+});
+
+export type X402Input = z.infer<typeof X402InputSchema>;
+
+/** Optional UI hints for `generate_tax_report` tool calls only (not handler execution input). */
+export const taxReportToolCardSchema = z.object({
+  cardTitle: z.string().min(1).max(120).optional(),
+  supplementalRows: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        value: z.string().min(1).max(400),
+      }),
+    )
+    .max(6)
+    .optional(),
+});
+
+export type TaxReportToolCard = z.infer<typeof taxReportToolCardSchema>;
+
+/** Full tool argument object: tax handler params + optional tax-tailored card. */
+export const generateTaxReportToolArgsSchema = TaxesInputSchema.and(
+  z.object({
+    reportCard: taxReportToolCardSchema.optional(),
+  }),
+);
+
+export type GenerateTaxReportToolArgs = z.infer<
+  typeof generateTaxReportToolArgsSchema
+>;
+
+/** Optional UI hints for `create_x402_payment` tool calls only. */
+export const x402PaymentToolCardSchema = z.object({
+  invoiceTitle: z.string().min(1).max(120).optional(),
+  lineItems: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        value: z.string().min(1).max(400),
+      }),
+    )
+    .max(8)
+    .optional(),
+});
+
+export type X402PaymentToolCard = z.infer<typeof x402PaymentToolCardSchema>;
+
+export const createX402PaymentToolArgsSchema = X402InputSchema.extend({
+  paymentCard: x402PaymentToolCardSchema.optional(),
+});
+
+export type CreateX402PaymentToolArgs = z.infer<
+  typeof createX402PaymentToolArgsSchema
+>;
+
+const x402CheckoutFormNetworksSchema = z
+  .array(
+    z.object({
+      id: z.string().min(1).max(64),
+      label: z.string().min(1).max(120),
+    }),
+  )
+  .max(16)
+  .optional();
+
+/** OpenAI tool `offer_x402_checkout_form` arguments (no payment amounts guessed by the model). */
+export const offerX402CheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: x402CheckoutFormNetworksSchema,
+});
+
+export type OfferX402CheckoutFormToolArgs = z.infer<
+  typeof offerX402CheckoutFormToolArgsSchema
+>;
+
+/** Persisted on the chat CTA row until the user submits the checkout form. */
+export const x402CheckoutFormCtaParamsSchema = z.object({
+  _checkoutForm: z.literal(true),
+  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: x402CheckoutFormNetworksSchema,
+  intro: z.string().max(2000).optional(),
+});
+
+export type X402CheckoutFormCtaParams = z.infer<
+  typeof x402CheckoutFormCtaParamsSchema
+>;
+
+export function isX402CheckoutFormCtaParams(
+  v: unknown,
+): v is X402CheckoutFormCtaParams {
+  return x402CheckoutFormCtaParamsSchema.safeParse(v).success;
+}
+
+export const onRampPaymentToolCardSchema = z.object({
+  invoiceTitle: z.string().min(1).max(120).optional(),
+  lineItems: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        value: z.string().min(1).max(400),
+      }),
+    )
+    .max(8)
+    .optional(),
+});
+
+export type OnRampPaymentToolCard = z.infer<typeof onRampPaymentToolCardSchema>;
+
+export const createOnRampTokensToolArgsSchema = onRampTokensInputSchema.extend({
+  paymentCard: onRampPaymentToolCardSchema.optional(),
+});
+
+export type CreateOnRampTokensToolArgs = z.infer<
+  typeof createOnRampTokensToolArgsSchema
+>;
+
+const creditCardToolPreviewSchema = z.object({
+  cardTitle: z.string().min(1).max(120).optional(),
+  supplementalRows: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        value: z.string().min(1).max(400),
+      }),
+    )
+    .max(10)
+    .optional(),
+});
+
+export type CreditCardToolPreview = z.infer<typeof creditCardToolPreviewSchema>;
+
+export const createCreditCardToolArgsSchema = createCreditCardInputSchema.and(
+  z.object({
+    cardPreview: creditCardToolPreviewSchema.optional(),
+  }),
+);
+
+export type CreateCreditCardToolArgs = z.infer<typeof createCreditCardToolArgsSchema>;
+
+/** Same shape as x402 offer form; used by `offer_on_ramp_checkout_form`. */
+export const offerOnRampCheckoutFormToolArgsSchema =
+  offerX402CheckoutFormToolArgsSchema;
+
+export type OfferOnRampCheckoutFormToolArgs = z.infer<
+  typeof offerOnRampCheckoutFormToolArgsSchema
+>;

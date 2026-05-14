@@ -1,0 +1,15 @@
+/* Based on https://github.com/tsconfig/bases/blob/501da2bcd640cf95c95805783e1012b992338f28/bases/node22.json */
+{
+  "compilerOptions": {
+    "lib": ["es2023"],
+    "module": "ESNext",
+    "target": "es2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "outDir": "dist"
+  },
+  "exclude": ["node_modules", "subgraph"]
+}
