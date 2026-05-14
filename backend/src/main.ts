@@ -2,6 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
+/** Prefix match for CORS_ORIGINS entries (e.g. http://localhost → any port on that host). */
+function originMatchesAllowedPrefix(origin: string, allowed: string): boolean {
+  if (origin === allowed) return true;
+  if (!origin.startsWith(allowed)) return false;
+  const tail = origin.slice(allowed.length);
+  return tail === '' || tail.startsWith(':') || tail.startsWith('/');
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
@@ -19,11 +27,17 @@ async function bootstrap() {
       if (corsOrigins.length === 0 || corsAllowAll) {
         return callback(null, true);
       }
-      return callback(null, corsOrigins.includes(origin));
+      return callback(
+        null,
+        corsOrigins.some((allowed) =>
+          originMatchesAllowedPrefix(origin, allowed),
+        ),
+      );
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    // Omit allowedHeaders so the cors middleware mirrors Access-Control-Request-Headers
+    // (required for client headers like X-Beam-Chain-Id from stardormAxios).
   });
 
   await app.listen(process.env.PORT ?? 3000);
