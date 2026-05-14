@@ -1,3 +1,4 @@
+import * as React from "react";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -19,6 +20,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
 import { MobileSidebarProvider } from "@/lib/mobile-sidebar-context";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
+import { StardormConversationSyncListener } from "@/components/stardorm-conversation-sync-listener";
 import { Toaster } from "@/components/ui/sonner";
 import { isOnboardingComplete } from "@/lib/onboarding";
 
@@ -76,10 +78,14 @@ function isOnboardingPath(pathname: string): boolean {
   return pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 }
 
+function isDocsPath(pathname: string): boolean {
+  return pathname === "/docs" || pathname.startsWith("/docs/");
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
     const pathname = location.pathname;
-    if (isPayPath(pathname) || isOnboardingPath(pathname)) return;
+    if (isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname)) return;
     /** SSR runs this without `window`; the client run redirects before the shell paints. */
     if (typeof window === "undefined") return;
     if (!isOnboardingComplete()) throw redirect({ to: "/onboarding", replace: true });
@@ -120,13 +126,24 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const minimalShell = isPayPath(pathname) || isOnboardingPath(pathname);
+  const scrollResetKey = useRouterState({
+    select: (s) => `${s.location.pathname}${s.location.search}`,
+  });
+  const mainScrollRef = React.useRef<HTMLElement>(null);
+  const minimalShell =
+    isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname);
+
+  React.useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    mainScrollRef.current?.scrollTo(0, 0);
+  }, [scrollResetKey]);
 
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <BeamNetworkProvider>
           <AppProvider>
+            <StardormConversationSyncListener />
             {minimalShell ? (
               <Outlet />
             ) : (
@@ -136,7 +153,10 @@ function RootComponent() {
                     <AppSidebar />
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                       <AppHeader />
-                      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                      <main
+                        ref={mainScrollRef}
+                        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+                      >
                         <Outlet />
                       </main>
                     </div>

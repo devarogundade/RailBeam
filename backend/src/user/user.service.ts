@@ -73,6 +73,8 @@ import { PaymentRequestsService } from 'src/payments/payment-requests.service';
 import { OnRampService } from 'src/stripe/on-ramp.service';
 import { KycStripeService } from 'src/stripe/kyc-stripe.service';
 import type { MulterIncomingFile } from './multer-file.types';
+import { ConversationSyncService } from '../conversations-sync/conversation-sync.service';
+import type { ConversationSyncPayload } from '../conversations-sync/conversation-sync.events';
 
 export type UserUploadResult = {
   rootHash: string;
@@ -214,6 +216,7 @@ export class UserService {
     private readonly onRamp: OnRampService,
     private readonly kycStripe: KycStripeService,
     private readonly financialSnapshots: FinancialSnapshotsService,
+    private readonly conversationSync: ConversationSyncService,
   ) {}
 
   private normalizeWallet(wallet: string): string {
@@ -222,6 +225,10 @@ export class UserService {
       throw new BadRequestException('Invalid wallet address');
     }
     return w;
+  }
+
+  private pushConversationWs(wallet: string, payload: ConversationSyncPayload) {
+    this.conversationSync.notifyWallet(wallet, payload);
   }
 
   /** Virtual card balance fund / withdraw are disabled on 0G mainnet (see product policy). */
@@ -1242,6 +1249,7 @@ export class UserService {
     });
     user.activeConversationId = created._id as Types.ObjectId;
     await user.save();
+    this.pushConversationWs(wallet, { v: 1, op: 'conversations' });
     return this.toConversationSummary(created);
   }
 
@@ -1278,6 +1286,12 @@ export class UserService {
         : undefined;
       await user.save();
     }
+    this.pushConversationWs(wallet, {
+      v: 1,
+      op: 'conversation_deleted',
+      conversationId: tid,
+    });
+    this.pushConversationWs(wallet, { v: 1, op: 'conversations' });
   }
 
   private async resolveConversationForUser(
@@ -1437,9 +1451,11 @@ export class UserService {
     const conv = await this.resolveConversationForUser(user, conversationId);
 
     const userBubbleContent = msg || '';
+    let conversationListChanged = false;
     if (msg && !conv.title?.trim()) {
       conv.title = msg.slice(0, 80).trim();
       await conv.save();
+      conversationListChanged = true;
     }
     await this.chatMessageModel.create({
       conversationId: conv._id,
@@ -1450,6 +1466,14 @@ export class UserService {
       attachments: attachments.length ? attachments : undefined,
       createdAt: Date.now(),
     });
+    this.pushConversationWs(wallet, {
+      v: 1,
+      op: 'thread',
+      conversationId: String(conv._id),
+    });
+    if (conversationListChanged) {
+      this.pushConversationWs(wallet, { v: 1, op: 'conversations' });
+    }
 
     const userLines: string[] = [];
     if (msg) userLines.push(msg);
@@ -1563,6 +1587,12 @@ export class UserService {
     conv.agentKey = agentKey;
     conv.lastMessageAt = new Date();
     await conv.save();
+
+    this.pushConversationWs(wallet, {
+      v: 1,
+      op: 'thread',
+      conversationId: String(conv._id),
+    });
 
     return {
       ...raw,
@@ -1938,6 +1968,11 @@ export class UserService {
     );
     conv.lastMessageAt = new Date();
     await conv.save();
+    this.pushConversationWs(wallet, {
+      v: 1,
+      op: 'thread',
+      conversationId: String(conv._id),
+    });
     return {
       message: result.message,
       attachments: result.attachments,

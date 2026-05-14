@@ -10,6 +10,7 @@ import {
   Send,
   Twitter,
   Github,
+  BookOpen,
 } from "lucide-react";
 import { useApp } from "@/lib/app-state";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -34,6 +35,7 @@ const navItems = [
   { to: "/marketplace", label: "Marketplace", icon: Store },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/agents", label: "My Agents", icon: Users },
+  { to: "/docs", label: "SDK docs", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -64,7 +66,9 @@ function AppSidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               <li key={it.to}>
                 <Link
                   to={it.to}
-                  activeOptions={{ exact: it.to === "/" }}
+                  activeOptions={{
+                    exact: it.to !== "/docs" && it.to !== "/agents",
+                  }}
                   onClick={afterNav}
                   className="group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground data-[status=active]:bg-pill data-[status=active]:text-pill-foreground"
                 >

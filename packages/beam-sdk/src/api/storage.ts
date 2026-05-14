@@ -1,0 +1,26 @@
+import {
+  storageUploadBodySchema,
+  storageUploadResponseSchema,
+  type StorageUploadBody,
+  type StorageUploadResponse,
+} from "@beam/stardorm-api-contract";
+import type { BeamHttpClient } from "../http.js";
+
+export type BeamStorageApi = {
+  /** `GET /storage/:rootHash` — raw bytes from 0G Storage relay. */
+  download: (rootHash: string) => Promise<ArrayBuffer>;
+  /** Authenticated small-string upload (`POST /storage/upload`). */
+  upload: (body: StorageUploadBody) => Promise<StorageUploadResponse>;
+};
+
+export function createBeamStorageApi(http: BeamHttpClient): BeamStorageApi {
+  return {
+    download: (rootHash) =>
+      http.requestBinary("GET", `/storage/${encodeURIComponent(rootHash)}`),
+    upload: (body) =>
+      http.requestJson("POST", "/storage/upload", {
+        body: storageUploadBodySchema.parse(body),
+        parse: storageUploadResponseSchema,
+      }),
+  };
+}

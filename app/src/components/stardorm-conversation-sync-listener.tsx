@@ -1,0 +1,58 @@
+import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { connectBeamConversationSync, type BeamConversationSyncPayload } from "@beam/beam-sdk";
+import { useApp } from "@/lib/app-state";
+import { getStardormApiBase } from "@/lib/stardorm-axios";
+import { buildStardormConversationWsUrl } from "@/lib/stardorm-conversation-ws";
+import { queryKeys } from "@/lib/query-keys";
+
+/**
+ * Keeps TanStack Query chat / conversation caches warm when another client (or this tab’s HTTP path)
+ * mutates data — subscribes to Stardorm `/ws/conversations` while the wallet is signed in.
+ */
+export function StardormConversationSyncListener() {
+  const queryClient = useQueryClient();
+  const { stardormAccessToken, address } = useApp();
+  const userKey = address ? (address.toLowerCase() as `0x${string}`) : null;
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!getStardormApiBase() || !stardormAccessToken || !userKey) return;
+
+    const url = buildStardormConversationWsUrl(stardormAccessToken);
+    if (!url) return;
+
+    const conn = connectBeamConversationSync({
+      url,
+      reconnect: true,
+      onPayload: (payload: BeamConversationSyncPayload) => {
+        if (payload.op === "thread") {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.user.chatMessages(userKey, payload.conversationId),
+          });
+          return;
+        }
+        if (payload.op === "conversations") {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.user.conversations(userKey),
+          });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
+          return;
+        }
+        if (payload.op === "conversation_deleted") {
+          queryClient.removeQueries({
+            queryKey: queryKeys.user.chatMessages(userKey, payload.conversationId),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.user.conversations(userKey),
+          });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(userKey) });
+        }
+      },
+    });
+
+    return () => {
+      conn.close();
+    };
+  }, [queryClient, stardormAccessToken, userKey]);
+}

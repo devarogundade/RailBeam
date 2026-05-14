@@ -7,10 +7,12 @@ import { StripeModule } from '../stripe/stripe.module';
 import { StardormMongoModule } from '../mongo/stardorm-mongo.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
+import { ConversationsSyncModule } from '../conversations-sync/conversations-sync.module';
 
 @Module({
   imports: [
     StardormMongoModule,
+    ConversationsSyncModule,
     AuthModule,
     HandlersModule,
     CreditCardsModule,

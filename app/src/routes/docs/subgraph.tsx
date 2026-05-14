@@ -1,0 +1,71 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { DocCallout } from "@/components/docs/doc-callout";
+import { DocCode } from "@/components/docs/doc-code";
+import { DocPageHero, DocProse, DocSection } from "@/components/docs/doc-page";
+import { DocResult } from "@/components/docs/doc-result";
+
+export const Route = createFileRoute("/docs/subgraph")({
+  component: DocsSubgraph,
+});
+
+function DocsSubgraph() {
+  return (
+    <DocProse>
+      <DocPageHero
+        eyebrow="Indexer"
+        title="Subgraph client"
+        description="GraphQL access to registry agents, feedback, and validations. Pagination helpers mirror the backend service while keeping results strongly typed on the client."
+      />
+
+      <DocSection title="Paged agents">
+        <DocCode title="sdk.subgraph.agents">
+          {`const sdk = new BeamSdk({ network: "testnet" });
+// Ensure BEAM_NETWORK_PRESETS[network].subgraphUrl is set in packages/beam-sdk/src/presets.ts
+
+const rows = await sdk.subgraph.agents(1, 20);
+// page = 1-based, pageSize → The Graph first/skip`}
+        </DocCode>
+        <DocResult title="SubgraphAgent (abridged)">
+          {`[
+  {
+    "id": "0x2a",
+    "agentId": 42,
+    "owner": "0x0000…",
+    "uri": "ipfs://…",
+    "feePerDay": "1000000000000000000",
+    "isCloned": false,
+    "metadata": [
+      { "key": "name", "value": "0x5465616d204265616d", "…": "…" }
+    ]
+  }
+]`}
+        </DocResult>
+      </DocSection>
+
+      <DocSection title="Lookups & history">
+        <DocCode title="Entity + chain id helpers">
+          {`const agent = await sdk.subgraph.agentByChainAgentId(42n);
+
+const fb = await sdk.subgraph.feedbacksByAgentId(42, {
+  first: 10,
+  skip: 0,
+});
+
+const val = await sdk.subgraph.validationByRequestHash(
+  "0x" + "a".repeat(64),
+);`}
+        </DocCode>
+      </DocSection>
+
+      <DocCallout variant="warning" title="Indexer URL lives in presets">
+        <p>
+          <code className="text-foreground">sdk.subgraph</code> reads <code className="text-foreground">subgraphUrl</code> from{" "}
+          <code className="text-foreground">BEAM_NETWORK_PRESETS</code>. Until you paste a GraphQL HTTP endpoint there,
+          subgraph calls throw. For one-off scripts you can instead pass{" "}
+          <code className="text-foreground">overrides: &#123; subgraphUrl: &quot;…&quot; &#125;</code> to{" "}
+          <code className="text-foreground">new BeamSdk(&#123; … &#125;)</code>.
+        </p>
+      </DocCallout>
+    </DocProse>
+  );
+}

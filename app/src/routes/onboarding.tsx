@@ -32,18 +32,18 @@ const STEPS = [
     label: "Start",
     eyebrow: "Step 1 · Welcome",
     title: "Welcome to Beam",
-    lead: "Beam is your workspace for money that moves with AI agents. Balances, hires, and receipts stay in one place so you always know what happened.",
+    lead: "Beam is the workspace where teams hire AI agents to run money and operations—conversation, policy, and settlement meet in one place, with receipts you can stand behind instead of another maze of dashboards and handoffs.",
     icon: Users,
     accent: "from-primary/25 via-primary/5 to-transparent",
     links: [] as const,
     bullets: [
       {
-        title: "Built for agentic finance",
-        body: "Fund work, watch spend, and keep an audit trail while agents operate on your behalf.",
+        title: "From intent to execution",
+        body: "Describe what you need in plain language; Beam routes work to the right specialists with full context so “get this done” becomes action, not another ticket queue.",
       },
       {
-        title: "You stay in control",
-        body: "Nothing runs away in the background without a path you can inspect and reason about.",
+        title: "Operator visibility by default",
+        body: "Agents, activity, and outcomes stay in view together—whether you are closing a loop with finance, serving a customer, or running internal operations.",
       },
     ] as const,
   },
@@ -52,18 +52,18 @@ const STEPS = [
     label: "Pay",
     eyebrow: "Step 2 · Treasury",
     title: "Your payment workspace",
-    lead: "Think of the treasury as home base for wallets and settlements. When agents spend or settle, you see it here instead of scattered across apps.",
+    lead: "Treasury is home base for wallets and settlements. When agents spend or settle, it shows up here with a trail you can explain—so product, finance, and partners can share the same picture instead of reconciling exports from three systems.",
     icon: Wallet,
     accent: "from-chart-2/25 via-primary/8 to-transparent",
     links: [{ to: "/dashboard", label: "Open treasury" }] as const,
     bullets: [
       {
-        title: "One financial dashboard",
-        body: "Balances, agent activity, and settlement status show up together so you can act quickly.",
+        title: "Settlement you can explain",
+        body: "Balances, agent activity, and payment status live together so reviews and exceptions are faster—and each movement stays tied to the work it funded.",
       },
       {
-        title: "Traceable flows",
-        body: "Payments stay tied to the work they paid for, which makes reviews and handoffs easier.",
+        title: "Built for software-led money",
+        body: "Flows are designed to be requested, confirmed, and recorded the way modern products expect—not one-off merchant plumbing for every surface.",
       },
     ] as const,
   },
@@ -72,7 +72,7 @@ const STEPS = [
     label: "Hire",
     eyebrow: "Step 3 · Agents",
     title: "Hire agents by Agent ID",
-    lead: "Every specialist has a standard Agent ID across catalog, chat, and chain. That single ID keeps context and receipts aligned no matter where you work.",
+    lead: "The marketplace is where you discover capability; chat is where you steer it. Every specialist carries a standard Agent ID across catalog, conversation, and chain so context and receipts stay aligned no matter where you work.",
     icon: Bot,
     accent: "from-chart-3/30 via-primary/10 to-transparent",
     links: [
@@ -81,8 +81,8 @@ const STEPS = [
     ] as const,
     bullets: [
       {
-        title: "Match skills to the job",
-        body: "Browse the marketplace, compare capabilities, and hire on-chain when you are ready.",
+        title: "A catalog you can trust",
+        body: "Browse offers, compare capabilities, and hire when you are ready—so procurement and product can point at the same roster instead of shadow spreadsheets.",
       },
       {
         title: "Switch without losing history",
@@ -95,7 +95,7 @@ const STEPS = [
     label: "0G",
     eyebrow: "Step 4 · Trust layer",
     title: "Built on 0G for serious workloads",
-    lead: "Beam is designed for high-trust agentic finance: compute where reasoning should stay private, a chain layer for money movement, and storage that keeps artifacts durable.",
+    lead: "Beam is opinionated where money and agents meet, and careful where identity and sensitive operations belong. Under the hood, 0G is a high-throughput EVM network so discovery and settlement can scale with real usage—plus compute and storage when artifacts need to last.",
     icon: Shield,
     accent: "from-success/25 via-chart-2/15 to-transparent",
     links: [] as const,
@@ -116,7 +116,7 @@ const STEPS = [
     label: "Go",
     eyebrow: "Step 5 · Ready",
     title: "You are set—pick where to start",
-    lead: "The tour is done. Jump straight into treasury, shopping for agents, or your roster. You can reopen any of these from the sidebar anytime.",
+    lead: "Hire agents, run treasury, settle with confidence—the tour is done. Jump into funding, the marketplace, or your roster; you can reopen this walkthrough from the sidebar anytime.",
     icon: Rocket,
     accent: "from-primary/30 via-chart-3/20 to-transparent",
     links: [
@@ -126,8 +126,12 @@ const STEPS = [
     ] as const,
     bullets: [
       {
-        title: "Tip: start with one flow",
-        body: "Fund the treasury first, or hire an agent and return to funding when you need to—either order works.",
+        title: "Try the loop once",
+        body: "Fund the treasury, open a conversation, run a payment or checkout flow, then confirm the receipt in activity—the same path finance can follow in the UI.",
+      },
+      {
+        title: "Either order works",
+        body: "You can hire first and fund when prompted, or fund first and shop the marketplace—pick whichever matches how you like to explore.",
       },
     ] as const,
   },

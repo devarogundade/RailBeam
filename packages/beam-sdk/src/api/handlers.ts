@@ -1,0 +1,21 @@
+import {
+  handlersListResponseSchema,
+  type HandlersListResponse,
+} from "@beam/stardorm-api-contract";
+import type { BeamHttpClient } from "../http.js";
+
+export type BeamHandlersApi = {
+  list: () => Promise<HandlersListResponse>;
+  invoke: (handleId: string, body: unknown) => Promise<unknown>;
+};
+
+export function createBeamHandlersApi(http: BeamHttpClient): BeamHandlersApi {
+  return {
+    list: () =>
+      http.requestJson("GET", "/handlers", { parse: handlersListResponseSchema }),
+    invoke: (handleId, body) =>
+      http.requestJson("POST", `/handlers/${encodeURIComponent(handleId)}`, {
+        body,
+      }),
+  };
+}

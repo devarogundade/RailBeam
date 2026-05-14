@@ -1,0 +1,83 @@
+import type { BeamNetworkId } from "./config.js";
+import { defaultEvmChainIdForNetwork } from "./config.js";
+
+/**
+ * Canonical Beam / Stardorm defaults per logical network.
+ * Update `subgraphUrl` here after you deploy the indexer (Goldsky, Graph Node, etc.).
+ *
+ * Contract addresses match `smart-contracts/ignition/deployments/` for 0G mainnet (16661)
+ * and 0G testnet (16602).
+ */
+export type BeamDeployedContracts = {
+  identityRegistry: `0x${string}`;
+  reputationRegistry: `0x${string}`;
+  validationRegistry: `0x${string}`;
+};
+
+export type BeamNetworkPreset = {
+  /** 0G EVM chain id */
+  chainId: number;
+  /** Public JSON-RPC for `viem` transports */
+  rpcUrl: string;
+  /** Stardorm HTTP API origin (no trailing slash) */
+  apiBaseUrl: string;
+  /**
+   * GraphQL HTTP endpoint for the Beam subgraph.
+   * Leave empty until a public indexer URL exists; `sdk.subgraph` throws until set.
+   */
+  subgraphUrl: string;
+  contracts: BeamDeployedContracts;
+};
+
+export const BEAM_NETWORK_PRESETS: Record<BeamNetworkId, BeamNetworkPreset> = {
+  mainnet: {
+    chainId: defaultEvmChainIdForNetwork("mainnet"),
+    rpcUrl: "https://evmrpc.0g.ai",
+    apiBaseUrl: "http://127.0.0.1:3000",
+    subgraphUrl: "",
+    contracts: {
+      identityRegistry: "0x950Ab17d75b65430a2e5536b0d269abFAD0bc30F",
+      reputationRegistry: "0x8Bc1926c91D7c7031A76FfE23057037694d529eb",
+      validationRegistry: "0x4697B37fDeb796E450a46007591fcFFe8baD8124",
+    },
+  },
+  testnet: {
+    chainId: defaultEvmChainIdForNetwork("testnet"),
+    rpcUrl: "https://evmrpc-testnet.0g.ai",
+    apiBaseUrl: "http://127.0.0.1:3000",
+    subgraphUrl: "",
+    contracts: {
+      identityRegistry: "0xAA7d78F40743fA03AD59CcCb558C968CaE69e337",
+      reputationRegistry: "0x955be54f2169A5Acd3607c647Dbbf6558Cf7907a",
+      validationRegistry: "0x4E768bf6Bf892C9a9c4627C3B68ea90E509e1d11",
+    },
+  },
+};
+
+export type BeamResolvedRuntime = BeamNetworkPreset & {
+  network: BeamNetworkId;
+};
+
+export type BeamSdkRuntimeOverrides = {
+  apiBaseUrl?: string;
+  rpcUrl?: string;
+  subgraphUrl?: string;
+  chainId?: number;
+  contracts?: Partial<BeamDeployedContracts>;
+};
+
+export function resolveBeamRuntime(
+  network: BeamNetworkId,
+  overrides?: BeamSdkRuntimeOverrides,
+): BeamResolvedRuntime {
+  const base = BEAM_NETWORK_PRESETS[network];
+  const contracts = { ...base.contracts, ...overrides?.contracts };
+  return {
+    network,
+    chainId: overrides?.chainId ?? base.chainId,
+    rpcUrl: overrides?.rpcUrl ?? base.rpcUrl,
+    apiBaseUrl: (overrides?.apiBaseUrl ?? base.apiBaseUrl).replace(/\/$/, ""),
+    subgraphUrl: (overrides?.subgraphUrl ?? base.subgraphUrl).trim(),
+    contracts,
+  };
+}

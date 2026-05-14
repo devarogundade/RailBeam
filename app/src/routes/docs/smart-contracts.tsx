@@ -1,0 +1,154 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { DocCallout } from "@/components/docs/doc-callout";
+import { DocCode } from "@/components/docs/doc-code";
+import { DocPageHero, DocProse, DocSection } from "@/components/docs/doc-page";
+import { DocResult } from "@/components/docs/doc-result";
+
+export const Route = createFileRoute("/docs/smart-contracts")({
+  component: DocsSmartContracts,
+});
+
+function DocsSmartContracts() {
+  return (
+    <DocProse>
+      <DocPageHero
+        eyebrow="0G chain"
+        title="Smart contracts & viem"
+        description="The SDK bundles Identity, Reputation, and Validation registry addresses from the Stardorm Ignition deployments, plus the public 0G RPC. Use sdk.chain for cheap reads and gas-bearing writes with any viem LocalAccount."
+      />
+
+      <DocSection title="Baked-in addresses">
+        <p>
+          Import <code className="text-foreground">BEAM_NETWORK_PRESETS</code> to inspect defaults, or call{" "}
+          <code className="text-foreground">sdk.chain.addresses</code> at runtime. Values mirror{" "}
+          <code className="text-foreground">smart-contracts/ignition/deployments/chain-16661</code> (mainnet) and{" "}
+          <code className="text-foreground">chain-16602</code> (testnet).
+        </p>
+        <DocResult title="sdk.chain.addresses (testnet)">
+          {`{
+  "identityRegistry": "0xAA7d78F40743fA03AD59CcCb558C968CaE69e337",
+  "reputationRegistry": "0x955be54f2169A5Acd3607c647Dbbf6558Cf7907a",
+  "validationRegistry": "0x4E768bf6Bf892C9a9c4627C3B68ea90E509e1d11"
+}`}
+        </DocResult>
+      </DocSection>
+
+      <DocSection title="Reads (public RPC)">
+        <DocCode title="Registry reads">
+          {`import { BeamSdk } from "@beam/beam-sdk";
+
+const sdk = new BeamSdk({ network: "testnet" });
+
+const owner = await sdk.chain.read.identity.ownerOf(1n);
+const uri = await sdk.chain.read.identity.tokenURI(1n);
+const walletAddr = await sdk.chain.read.identity.getAgentWallet(1n);
+const meta = await sdk.chain.read.identity.getMetadata(1n, "someKey");
+
+const repSummary = await sdk.chain.read.reputation.getSummary(
+  1n,
+  ["0x0000000000000000000000000000000000000000"],
+  "tag1",
+  "tag2",
+);
+const lastIdx = await sdk.chain.read.reputation.getLastIndex(1n, owner);
+
+const req = "0x…"; // bytes32 request hash
+const valStatus = await sdk.chain.read.validation.getValidationStatus(req);
+const valSummary = await sdk.chain.read.validation.getSummary(1n, [], "");`}
+        </DocCode>
+      </DocSection>
+
+      <DocSection title="Writes (wallet client)">
+        <p>
+          Use <code className="text-foreground">sdk.chain.forAccount(account)</code> for a namespaced write API:{" "}
+          <code className="text-foreground">identity</code>, <code className="text-foreground">reputation</code>, and{" "}
+          <code className="text-foreground">validation</code>, matching the three on-chain registries.
+        </p>
+        <DocCode title="Identity, reputation, validation">
+          {`import { BeamSdk, accountFromPrivateKey } from "@beam/beam-sdk";
+
+const sdk = new BeamSdk({ network: "testnet" });
+const account = accountFromPrivateKey("0x…");
+const w = sdk.chain.forAccount(account);
+
+// Identity: mint, fees, subscription, metadata, ERC-7857 transfer/clone, ERC-721 approvals
+const mintTx = await w.identity.registerWithUri("ipfs://agent.json");
+await w.identity.setFees(1n, 10n ** 15n);
+const feePerDay = await sdk.chain.read.identity.getFees(1n);
+const days = 30n;
+await w.identity.subscribe(1n, days, { value: feePerDay * days });
+await w.identity.setMetadata(1n, "key", "0x");
+await w.identity.setAgentURI(1n, "ipfs://v2.json");
+await w.identity.unsubscribe(1n);
+
+// Reputation: feedback, revoke (same wallet), owner response
+await w.reputation.giveFeedback({
+  agentId: 1n,
+  value: 100n,
+  valueDecimals: 2,
+  tag1: "quality",
+  tag2: "speed",
+  endpoint: "https://example.com",
+  feedbackURI: "ipfs://…",
+  feedbackHash:
+    "0x0000000000000000000000000000000000000000000000000000000000000001",
+});
+await w.reputation.revokeFeedback(1n, 1n);
+await w.reputation.appendResponse(
+  1n,
+  "0x…client…",
+  1n,
+  "ipfs://response",
+  "0x0000000000000000000000000000000000000000000000000000000000000002",
+);
+
+// Validation: agent owner requests; validator responds (0–100)
+const requestHash =
+  "0x00000000000000000000000000000000000000000000000000000000000000ab" as const;
+await w.validation.validationRequest(
+  "0x…validator…",
+  1n,
+  "ipfs://request",
+  requestHash,
+);
+await w.validation.validationResponse(
+  requestHash,
+  95,
+  "ipfs://response",
+  "0x0000000000000000000000000000000000000000000000000000000000000003",
+  "audit",
+);`}
+        </DocCode>
+        <DocCallout variant="warning" title="Value & calldata">
+          <p>
+            <code className="text-foreground">identity.subscribe</code> is payable — compute the required fee via{" "}
+            <code className="text-foreground">sdk.chain.read.identity.getFees(agentId)</code> before broadcasting.
+            <code className="text-foreground">identity.transfer</code> is the ERC-7857 entrypoint (sealed key / proof), not{" "}
+            <code className="text-foreground">transferFrom</code>. Production flows should simulate first (e.g.{" "}
+            <code className="text-foreground">simulateContract</code>).
+          </p>
+        </DocCallout>
+      </DocSection>
+
+      <DocSection title="Advanced overrides">
+        <p>
+          Forks and private deployments can pass <code className="text-foreground">overrides</code> when constructing{" "}
+          <code className="text-foreground">BeamSdk</code> without editing the preset table.
+        </p>
+        <DocCode title="Overrides">
+          {`const sdk = new BeamSdk({
+  network: "testnet",
+  overrides: {
+    apiBaseUrl: "https://staging-api.example.com",
+    rpcUrl: "https://custom-rpc.example.com",
+    subgraphUrl: "https://indexer.example.com/subgraphs/name/beam/gn",
+    contracts: {
+      identityRegistry: "0x…",
+    },
+  },
+});`}
+        </DocCode>
+      </DocSection>
+    </DocProse>
+  );
+}

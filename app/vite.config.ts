@@ -7,6 +7,10 @@ const stardormApiContractRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../packages/stardorm-api-contract",
 );
+const beamSdkRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../packages/beam-sdk",
+);
 
 export default defineConfig({
   tanstackStart: {
@@ -17,6 +21,7 @@ export default defineConfig({
       alias: {
         // Monorepo file: dep can end up incomplete in node_modules; resolve from source tree.
         "@beam/stardorm-api-contract": stardormApiContractRoot,
+        "@beam/beam-sdk": beamSdkRoot,
       },
     },
   },

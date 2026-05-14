@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 
 /** Prefix match for CORS_ORIGINS entries (e.g. http://localhost → any port on that host). */
@@ -14,6 +15,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   const corsOrigins = (process.env.CORS_ORIGINS ?? '*')
     .split(',')

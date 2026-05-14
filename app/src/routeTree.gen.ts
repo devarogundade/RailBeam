@@ -13,9 +13,20 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as AgentsIndexRouteImport } from './routes/agents.index'
 import { Route as PayIdRouteImport } from './routes/pay.$id'
+import { Route as DocsWebsocketRouteImport } from './routes/docs/websocket'
+import { Route as DocsUsersRouteImport } from './routes/docs/users'
+import { Route as DocsSubgraphRouteImport } from './routes/docs/subgraph'
+import { Route as DocsSmartContractsRouteImport } from './routes/docs/smart-contracts'
+import { Route as DocsPaymentsRouteImport } from './routes/docs/payments'
+import { Route as DocsInstallationRouteImport } from './routes/docs/installation'
+import { Route as DocsHandlersStorageRouteImport } from './routes/docs/handlers-storage'
+import { Route as DocsAuthenticationRouteImport } from './routes/docs/authentication'
+import { Route as DocsAgentsRouteImport } from './routes/docs/agents'
 import { Route as AgentsAgentIdRouteImport } from './routes/agents.$agentId'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -38,10 +49,20 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsRouteRoute = DocsRouteRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRouteRoute,
 } as any)
 const AgentsIndexRoute = AgentsIndexRouteImport.update({
   id: '/agents/',
@@ -53,6 +74,51 @@ const PayIdRoute = PayIdRouteImport.update({
   path: '/pay/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsWebsocketRoute = DocsWebsocketRouteImport.update({
+  id: '/websocket',
+  path: '/websocket',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsUsersRoute = DocsUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsSubgraphRoute = DocsSubgraphRouteImport.update({
+  id: '/subgraph',
+  path: '/subgraph',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsSmartContractsRoute = DocsSmartContractsRouteImport.update({
+  id: '/smart-contracts',
+  path: '/smart-contracts',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsPaymentsRoute = DocsPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsInstallationRoute = DocsInstallationRouteImport.update({
+  id: '/installation',
+  path: '/installation',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsHandlersStorageRoute = DocsHandlersStorageRouteImport.update({
+  id: '/handlers-storage',
+  path: '/handlers-storage',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsAuthenticationRoute = DocsAuthenticationRouteImport.update({
+  id: '/authentication',
+  path: '/authentication',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsAgentsRoute = DocsAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
 const AgentsAgentIdRoute = AgentsAgentIdRouteImport.update({
   id: '/agents/$agentId',
   path: '/agents/$agentId',
@@ -61,13 +127,24 @@ const AgentsAgentIdRoute = AgentsAgentIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/marketplace': typeof MarketplaceRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
+  '/docs/agents': typeof DocsAgentsRoute
+  '/docs/authentication': typeof DocsAuthenticationRoute
+  '/docs/handlers-storage': typeof DocsHandlersStorageRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/payments': typeof DocsPaymentsRoute
+  '/docs/smart-contracts': typeof DocsSmartContractsRoute
+  '/docs/subgraph': typeof DocsSubgraphRoute
+  '/docs/users': typeof DocsUsersRoute
+  '/docs/websocket': typeof DocsWebsocketRoute
   '/pay/$id': typeof PayIdRoute
   '/agents/': typeof AgentsIndexRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,31 +153,63 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
+  '/docs/agents': typeof DocsAgentsRoute
+  '/docs/authentication': typeof DocsAuthenticationRoute
+  '/docs/handlers-storage': typeof DocsHandlersStorageRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/payments': typeof DocsPaymentsRoute
+  '/docs/smart-contracts': typeof DocsSmartContractsRoute
+  '/docs/subgraph': typeof DocsSubgraphRoute
+  '/docs/users': typeof DocsUsersRoute
+  '/docs/websocket': typeof DocsWebsocketRoute
   '/pay/$id': typeof PayIdRoute
   '/agents': typeof AgentsIndexRoute
+  '/docs': typeof DocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/marketplace': typeof MarketplaceRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
+  '/docs/agents': typeof DocsAgentsRoute
+  '/docs/authentication': typeof DocsAuthenticationRoute
+  '/docs/handlers-storage': typeof DocsHandlersStorageRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/payments': typeof DocsPaymentsRoute
+  '/docs/smart-contracts': typeof DocsSmartContractsRoute
+  '/docs/subgraph': typeof DocsSubgraphRoute
+  '/docs/users': typeof DocsUsersRoute
+  '/docs/websocket': typeof DocsWebsocketRoute
   '/pay/$id': typeof PayIdRoute
   '/agents/': typeof AgentsIndexRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/docs'
     | '/dashboard'
     | '/marketplace'
     | '/onboarding'
     | '/settings'
     | '/agents/$agentId'
+    | '/docs/agents'
+    | '/docs/authentication'
+    | '/docs/handlers-storage'
+    | '/docs/installation'
+    | '/docs/payments'
+    | '/docs/smart-contracts'
+    | '/docs/subgraph'
+    | '/docs/users'
+    | '/docs/websocket'
     | '/pay/$id'
     | '/agents/'
+    | '/docs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,22 +218,44 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/agents/$agentId'
+    | '/docs/agents'
+    | '/docs/authentication'
+    | '/docs/handlers-storage'
+    | '/docs/installation'
+    | '/docs/payments'
+    | '/docs/smart-contracts'
+    | '/docs/subgraph'
+    | '/docs/users'
+    | '/docs/websocket'
     | '/pay/$id'
     | '/agents'
+    | '/docs'
   id:
     | '__root__'
     | '/'
+    | '/docs'
     | '/dashboard'
     | '/marketplace'
     | '/onboarding'
     | '/settings'
     | '/agents/$agentId'
+    | '/docs/agents'
+    | '/docs/authentication'
+    | '/docs/handlers-storage'
+    | '/docs/installation'
+    | '/docs/payments'
+    | '/docs/smart-contracts'
+    | '/docs/subgraph'
+    | '/docs/users'
+    | '/docs/websocket'
     | '/pay/$id'
     | '/agents/'
+    | '/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocsRouteRoute: typeof DocsRouteRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   MarketplaceRoute: typeof MarketplaceRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -164,12 +295,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRouteRoute
     }
     '/agents/': {
       id: '/agents/'
@@ -185,6 +330,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/websocket': {
+      id: '/docs/websocket'
+      path: '/websocket'
+      fullPath: '/docs/websocket'
+      preLoaderRoute: typeof DocsWebsocketRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/users': {
+      id: '/docs/users'
+      path: '/users'
+      fullPath: '/docs/users'
+      preLoaderRoute: typeof DocsUsersRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/subgraph': {
+      id: '/docs/subgraph'
+      path: '/subgraph'
+      fullPath: '/docs/subgraph'
+      preLoaderRoute: typeof DocsSubgraphRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/smart-contracts': {
+      id: '/docs/smart-contracts'
+      path: '/smart-contracts'
+      fullPath: '/docs/smart-contracts'
+      preLoaderRoute: typeof DocsSmartContractsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/payments': {
+      id: '/docs/payments'
+      path: '/payments'
+      fullPath: '/docs/payments'
+      preLoaderRoute: typeof DocsPaymentsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/installation': {
+      id: '/docs/installation'
+      path: '/installation'
+      fullPath: '/docs/installation'
+      preLoaderRoute: typeof DocsInstallationRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/handlers-storage': {
+      id: '/docs/handlers-storage'
+      path: '/handlers-storage'
+      fullPath: '/docs/handlers-storage'
+      preLoaderRoute: typeof DocsHandlersStorageRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/authentication': {
+      id: '/docs/authentication'
+      path: '/authentication'
+      fullPath: '/docs/authentication'
+      preLoaderRoute: typeof DocsAuthenticationRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/agents': {
+      id: '/docs/agents'
+      path: '/agents'
+      fullPath: '/docs/agents'
+      preLoaderRoute: typeof DocsAgentsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/agents/$agentId': {
       id: '/agents/$agentId'
       path: '/agents/$agentId'
@@ -195,8 +403,39 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DocsRouteRouteChildren {
+  DocsAgentsRoute: typeof DocsAgentsRoute
+  DocsAuthenticationRoute: typeof DocsAuthenticationRoute
+  DocsHandlersStorageRoute: typeof DocsHandlersStorageRoute
+  DocsInstallationRoute: typeof DocsInstallationRoute
+  DocsPaymentsRoute: typeof DocsPaymentsRoute
+  DocsSmartContractsRoute: typeof DocsSmartContractsRoute
+  DocsSubgraphRoute: typeof DocsSubgraphRoute
+  DocsUsersRoute: typeof DocsUsersRoute
+  DocsWebsocketRoute: typeof DocsWebsocketRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteRouteChildren: DocsRouteRouteChildren = {
+  DocsAgentsRoute: DocsAgentsRoute,
+  DocsAuthenticationRoute: DocsAuthenticationRoute,
+  DocsHandlersStorageRoute: DocsHandlersStorageRoute,
+  DocsInstallationRoute: DocsInstallationRoute,
+  DocsPaymentsRoute: DocsPaymentsRoute,
+  DocsSmartContractsRoute: DocsSmartContractsRoute,
+  DocsSubgraphRoute: DocsSubgraphRoute,
+  DocsUsersRoute: DocsUsersRoute,
+  DocsWebsocketRoute: DocsWebsocketRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
+  DocsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocsRouteRoute: DocsRouteRouteWithChildren,
   DashboardRoute: DashboardRoute,
   MarketplaceRoute: MarketplaceRoute,
   OnboardingRoute: OnboardingRoute,
