@@ -50,7 +50,6 @@ import {
   resolveStardormChainAgentId,
   stardormChatRichBlockSchema,
   isOnRampFormCtaParams,
-  isCreditCardFormCtaParams,
   onRampTokensInputSchema,
   stripeKycInputSchema,
   createCreditCardInputSchema,
@@ -65,6 +64,7 @@ import {
 import {
   X402InputSchema,
   isX402CheckoutFormCtaParams,
+  isCreditCardFormCtaParams,
 } from 'src/handlers/handler-inputs.schema';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
 import { CreditCardFundingService } from 'src/credit-cards/credit-card-funding.service';

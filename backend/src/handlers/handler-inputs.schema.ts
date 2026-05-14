@@ -5,17 +5,28 @@ import {
   onRampFormCtaParamsSchema,
   isOnRampFormCtaParams,
   createCreditCardInputSchema,
-  creditCardFormCtaParamsSchema,
-  isCreditCardFormCtaParams,
   isIso3166Alpha2,
 } from '@beam/stardorm-api-contract';
 
-export {
-  onRampFormCtaParamsSchema,
-  isOnRampFormCtaParams,
-  creditCardFormCtaParamsSchema,
-  isCreditCardFormCtaParams,
-};
+export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
+
+/** Mirrors `@beam/stardorm-api-contract` `creditCardFormCtaParamsSchema` (backend avoids stale nested installs). */
+export const creditCardFormCtaParamsSchema = z.object({
+  _creditCardForm: z.literal(true),
+  intro: z.string().max(2000).optional(),
+  defaultCurrency: z
+    .string()
+    .trim()
+    .length(3)
+    .transform((c) => c.toUpperCase())
+    .optional(),
+});
+
+export type CreditCardFormCtaParams = z.infer<typeof creditCardFormCtaParamsSchema>;
+
+export function isCreditCardFormCtaParams(v: unknown): v is CreditCardFormCtaParams {
+  return creditCardFormCtaParamsSchema.safeParse(v).success;
+}
 
 export const taxDatePartSchema = z.object({
   year: z.number().int().min(2020).max(2030),

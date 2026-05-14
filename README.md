@@ -29,21 +29,32 @@ flowchart LR
     API[backend - NestJS]
     Fac[facilitator - x402]
   end
+  subgraph external [External]
+    Stripe[Stripe]
+  end
   subgraph data [Data and chain]
     Mongo[(MongoDB)]
+    Redis[(Redis)]
+    Goldsky[Goldsky]
     Subgraph[The Graph subgraph]
     Chain[0G EVM]
   end
   App -->|REST + JWT| API
+  App -->|WSS| API
   API -->|optional verify/settle| Fac
+  API -->|KYC / cards / on-ramp| Stripe
+  Stripe -->|webhooks| API
   API --> Mongo
+  API --> Redis
+  Chain --> Goldsky
+  Goldsky -->|index / host| Subgraph
   API --> Subgraph
   Fac --> Chain
   App --> Chain
 ```
 
-- The **app** talks to the **backend** (`VITE_STARDORM_API_URL`) for wallet auth, conversations, handlers, and payment APIs. It can read on-chain/agent catalog data from a **subgraph** when `VITE_STARDORM_SUBGRAPH_URL` is set.
-- The **backend** persists state in **MongoDB**, may call **0G** RPCs and SDKs for compute/storage, and calls the **facilitator** when `X402_FACILITATOR_URL` is set and a checkout uses facilitator settlement.
+- The **app** talks to the **backend** (`VITE_STARDORM_API_URL`) for wallet auth, conversations, handlers, and payment APIs. It can read on-chain/agent catalog data from a **subgraph** when `VITE_STARDORM_SUBGRAPH_URL` is set (often a **Goldsky**-hosted GraphQL endpoint; see [`smart-contracts/subgraph/`](smart-contracts/subgraph/)).
+- The **backend** persists state in **MongoDB**, may call **0G** RPCs and SDKs for compute/storage, calls **Stripe** for KYC, card funding, and on-ramp flows (with **webhooks** back into the API), and calls the **facilitator** when `X402_FACILITATOR_URL` is set and a checkout uses facilitator settlement.
 - The **facilitator** holds an EVM private key and uses `@x402/core` + `@x402/evm` to verify and settle payments on the configured 0G network.
 
 ### Default ports (local)

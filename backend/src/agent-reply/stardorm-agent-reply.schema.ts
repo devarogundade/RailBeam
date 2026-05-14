@@ -417,7 +417,7 @@ export function asTypedAgentReply(
           title: 'Virtual payment card',
           intro: formTry.data.intro,
           defaultCurrency: formTry.data.defaultCurrency,
-        } as AgentRichCard);
+        } as unknown as AgentRichCard);
       return {
         text: r.text,
         handler: 'create_credit_card',
@@ -1059,7 +1059,7 @@ export function agentReplyFromChatCompletion(
         title: parsed.data.formTitle ?? 'Virtual payment card',
         intro: parsed.data.intro,
         defaultCurrency: parsed.data.defaultCurrency,
-      } as AgentRichCard;
+      } as unknown as AgentRichCard;
       const text =
         content.trim() ||
         'Enter your legal name and billing address in the form below, then tap **Create virtual card** to issue the card.';
