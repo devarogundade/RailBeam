@@ -140,7 +140,7 @@ function createBeamUsersApi(http2) {
       const q = stardormApiContract.creditCardFundQuoteQuerySchema.parse(query);
       return http2.requestJson("GET", "/users/me/credit-cards/fund-quote", {
         query: { amountCents: q.amountCents },
-        parse: stardormApiContract.creditCardFundQuoteResponseSchema
+        parse: stardormApiContract.creditCardFundQuoteSchema
       });
     },
     creditCardSensitiveDetails: (cardId) => http2.requestJson(
@@ -165,14 +165,6 @@ function createBeamUsersApi(http2) {
     getKycStatus: () => http2.requestJson("GET", "/users/me/kyc-status", {
       parse: stardormApiContract.userKycStatusDocumentSchema
     }),
-    fundCreditCard: (cardId, body) => http2.requestJson(
-      "POST",
-      `/users/me/credit-cards/${encodeURIComponent(cardId)}/fund`,
-      {
-        body: stardormApiContract.creditCardFundBodySchema.parse(body),
-        parse: stardormApiContract.creditCardPublicSchema
-      }
-    ),
     withdrawCreditCard: (cardId, body) => http2.requestJson(
       "POST",
       `/users/me/credit-cards/${encodeURIComponent(cardId)}/withdraw`,

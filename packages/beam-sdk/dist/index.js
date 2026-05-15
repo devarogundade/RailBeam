@@ -1,4 +1,4 @@
-import { conversationSyncPayloadSchema, stardormChatSuccessSchema, executeHandlerResponseSchema, executeHandlerBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardFundBodySchema, userKycStatusDocumentSchema, meOnRampsQuerySchema, onRampsListResponseSchema, mePaymentRequestsQuerySchema, paymentRequestsListResponseSchema, creditCardSensitiveDetailsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardsListResponseSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, deleteConversationResponseSchema, conversationSummarySchema, createConversationBodySchema, conversationsQuerySchema, conversationsPageResponseSchema, userUploadResultSchema, publicUserSchema, updateUserBodySchema, publicPaymentRequestSchema, paymentSettlementBodySchema, handlersListResponseSchema, storageUploadResponseSchema, storageUploadBodySchema, authMeResponseSchema, authVerifyResponseSchema, authVerifyBodySchema, authChallengeResponseSchema, authChallengeBodySchema } from '@railbeam/stardorm-api-contract';
+import { conversationSyncPayloadSchema, stardormChatSuccessSchema, executeHandlerResponseSchema, executeHandlerBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, userKycStatusDocumentSchema, meOnRampsQuerySchema, onRampsListResponseSchema, mePaymentRequestsQuerySchema, paymentRequestsListResponseSchema, creditCardSensitiveDetailsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteSchema, creditCardsListResponseSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, deleteConversationResponseSchema, conversationSummarySchema, createConversationBodySchema, conversationsQuerySchema, conversationsPageResponseSchema, userUploadResultSchema, publicUserSchema, updateUserBodySchema, publicPaymentRequestSchema, paymentSettlementBodySchema, handlersListResponseSchema, storageUploadResponseSchema, storageUploadBodySchema, authMeResponseSchema, authVerifyResponseSchema, authVerifyBodySchema, authChallengeResponseSchema, authChallengeBodySchema } from '@railbeam/stardorm-api-contract';
 import { parseAbi, createPublicClient, http, createWalletClient } from 'viem';
 import { readContract, writeContract } from 'viem/actions';
 import { zeroGTestnet, zeroGMainnet } from 'viem/chains';
@@ -138,7 +138,7 @@ function createBeamUsersApi(http2) {
       const q = creditCardFundQuoteQuerySchema.parse(query);
       return http2.requestJson("GET", "/users/me/credit-cards/fund-quote", {
         query: { amountCents: q.amountCents },
-        parse: creditCardFundQuoteResponseSchema
+        parse: creditCardFundQuoteSchema
       });
     },
     creditCardSensitiveDetails: (cardId) => http2.requestJson(
@@ -163,14 +163,6 @@ function createBeamUsersApi(http2) {
     getKycStatus: () => http2.requestJson("GET", "/users/me/kyc-status", {
       parse: userKycStatusDocumentSchema
     }),
-    fundCreditCard: (cardId, body) => http2.requestJson(
-      "POST",
-      `/users/me/credit-cards/${encodeURIComponent(cardId)}/fund`,
-      {
-        body: creditCardFundBodySchema.parse(body),
-        parse: creditCardPublicSchema
-      }
-    ),
     withdrawCreditCard: (cardId, body) => http2.requestJson(
       "POST",
       `/users/me/credit-cards/${encodeURIComponent(cardId)}/withdraw`,
