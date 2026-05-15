@@ -141,7 +141,7 @@ const createX402PaymentTool: OpenAiChatTool = {
   function: {
     name: 'create_x402_payment',
     description:
-      'Create the x402 payment request immediately when the USER already stated every required value in their message(s): a stable `id`/slug, `amount` as wei (positive integer string, no decimals), `currency` (0x token contract or symbol), `network`, and full `payTo` (0x + 40 hex). If any of these would be inferred or guessed, do NOT call this tool—use offer_x402_checkout_form instead.',
+      'Create the x402 payment request immediately when the USER already stated every required value in their message(s): a stable `id`/slug, `amount` as wei (positive integer string, no decimals), `currency` (USDC.e / USDC.e contract on 0G mainnet only), `network` (`eip155:16661` / 0G mainnet), and full `payTo` (0x + 40 hex). If any of these would be inferred or guessed, do NOT call this tool—use offer_x402_checkout_form instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -156,7 +156,8 @@ const createX402PaymentTool: OpenAiChatTool = {
           type: 'string',
           minLength: 1,
           maxLength: 66,
-          description: 'Token symbol or 0x-prefixed token contract address.',
+          description:
+            'USDC.e only: symbol `USDC.e` / `USDC` or contract 0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E on 0G mainnet.',
         },
         network: { type: 'string', minLength: 1, maxLength: 64 },
         payTo: {
@@ -182,7 +183,7 @@ const offerX402CheckoutFormTool: OpenAiChatTool = {
   function: {
     name: 'offer_x402_checkout_form',
     description:
-      'Show the checkout form when the user wants a shareable /pay link but their message does NOT already spell out every required field (wei `amount`, `payTo` 0x…40, `currency`/token, `network`, and a stable `id`). Pass only `supportedAssets` (and optional `networks`, optional `resourceUrl` for the paywalled HTTPS resource); the user fills missing fields in the UI. Never invent wei, payTo, or token addresses.',
+      'Show the checkout form when the user wants a shareable /pay link but their message does NOT already spell out every required field (wei `amount`, `payTo` 0x…40, USDC.e `currency`, 0G mainnet `network`, and a stable `id`). Pass `supportedAssets` with USDC.e on 0G mainnet only (and optional `networks`, optional `resourceUrl`); the user fills missing fields in the UI. Never invent wei, payTo, or token addresses.',
     parameters: {
       type: 'object',
       properties: {
@@ -207,13 +208,15 @@ const offerX402CheckoutFormTool: OpenAiChatTool = {
         supportedAssets: {
           type: 'array',
           minItems: 1,
-          maxItems: 24,
+          maxItems: 1,
+          description:
+            'USDC.e on 0G mainnet only (0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E).',
           items: x402SupportedAssetJsonSchema,
         },
         networks: {
           type: 'array',
           maxItems: 16,
-          description: 'CAIP-2 or app network ids with labels (e.g. eip155:16602).',
+          description: 'Optional; default 0G mainnet (eip155:16661).',
           items: {
             type: 'object',
             properties: {

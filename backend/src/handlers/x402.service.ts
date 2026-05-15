@@ -10,6 +10,7 @@ import {
   assertBeamUsdcEAsset,
   BEAM_USDC_E_ADDRESS,
   BEAM_USDC_E_DECIMALS,
+  beamUsdcEX402PaymentExtra,
   normalizeBeamUsdcEAsset,
 } from '../beam/beam-usdc-e.config';
 import { normalizeX402Network } from '../payments/payment-required.util';
@@ -111,7 +112,7 @@ export class X402Service implements HandlerService {
           asset: usdcAsset,
           payTo,
           maxTimeoutSeconds: 600,
-          extra: {},
+          extra: beamUsdcEX402PaymentExtra(),
           description: acceptDescription,
         },
       ],

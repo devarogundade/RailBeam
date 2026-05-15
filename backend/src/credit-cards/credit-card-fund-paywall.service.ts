@@ -20,6 +20,7 @@ import { BEAM_EVM_CHAIN_IDS } from '../beam/beam-evm-chain';
 import {
   assertBeamUsdcEAsset,
   BEAM_USDC_E_ADDRESS,
+  beamUsdcEX402PaymentExtra,
   usdcBaseUnitsFromUsdCents,
 } from '../beam/beam-usdc-e.config';
 import { normalizeX402Network } from '../payments/payment-required.util';
@@ -154,7 +155,7 @@ export class CreditCardFundPaywallService {
       amount: input.usdcAmount,
       payTo: input.recipient,
       maxTimeoutSeconds: 600,
-      extra: {},
+      extra: beamUsdcEX402PaymentExtra(),
     };
   }
 

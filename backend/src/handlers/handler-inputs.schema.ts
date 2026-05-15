@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isBeamUsdcEAsset } from '../beam/beam-usdc-e.config';
+import { beamX402CheckoutSupportedAssets } from '../beam/beam-x402-checkout.config';
 import {
   x402SupportedAssetSchema,
   onRampTokensInputSchema,
@@ -224,12 +225,28 @@ const x402CheckoutFormNetworksSchema = z
   .max(16)
   .optional();
 
+/** x402 checkout forms — USDC.e on 0G mainnet only (coerces model output to canonical row). */
+const x402CheckoutSupportedAssetsSchema = z
+  .array(x402SupportedAssetSchema)
+  .min(1)
+  .max(24)
+  .superRefine((assets, ctx) => {
+    if (!assets.every((a) => isBeamUsdcEAsset(a.address))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'x402 payment links only support USDC.e on 0G mainnet (0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E).',
+      });
+    }
+  })
+  .transform(() => beamX402CheckoutSupportedAssets());
+
 /** OpenAI tool `offer_x402_checkout_form` arguments (no payment amounts guessed by the model). */
 export const offerX402CheckoutFormToolArgsSchema = z.object({
   formTitle: z.string().min(1).max(200).optional(),
   intro: z.string().max(2000).optional(),
   resourceUrl: z.string().url().max(2048).optional(),
-  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  supportedAssets: x402CheckoutSupportedAssetsSchema,
   networks: x402CheckoutFormNetworksSchema,
 });
 
@@ -240,7 +257,7 @@ export type OfferX402CheckoutFormToolArgs = z.infer<
 /** Persisted on the chat CTA row until the user submits the checkout form. */
 export const x402CheckoutFormCtaParamsSchema = z.object({
   _checkoutForm: z.literal(true),
-  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  supportedAssets: x402CheckoutSupportedAssetsSchema,
   networks: x402CheckoutFormNetworksSchema,
   intro: z.string().max(2000).optional(),
   resourceUrl: z.string().url().max(2048).optional(),

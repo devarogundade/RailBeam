@@ -117,5 +117,6 @@ export function beamKnownAssetsPromptBlock(): string {
     JSON.stringify({ networks: nets, supportedAssets: assets }, null, 0),
     `USDC.e on 0G mainnet: ${BEAM_USDC_E_ADDRESS} (${BEAM_USDC_E_DECIMALS} decimals).`,
     `Networks: mainnet → ${BEAM_MAINNET_CAIP2}; testnet → ${BEAM_TESTNET_CAIP2}.`,
+    'x402 payment links (`create_x402_payment` / `offer_x402_checkout_form`): USDC.e on 0G mainnet only — never offer other tokens or testnet for x402 checkout.',
   ].join('\n');
 }

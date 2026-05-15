@@ -3,12 +3,11 @@ import type { StardormChatRichBlock } from "@railbeam/stardorm-api-contract";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { parseUnits } from "viem";
-import { cn } from "@/lib/utils";
 import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
 import { toast } from "sonner";
 import { BeamCurrentNetworkNote } from "@/components/beam-current-network-note";
+import { filterX402CheckoutSupportedAssets } from "@/lib/x402-checkout-config";
 
 type X402FormRich = Extract<StardormChatRichBlock, { type: "x402_checkout_form" }>;
 
@@ -24,26 +23,20 @@ export function X402CheckoutFormCard({
   onCreateLink: (params: Record<string, unknown>) => void | Promise<void>;
 }) {
   const { networkId } = useBeamEffectiveCaip2Network();
-
-  const [assetAddr, setAssetAddr] = React.useState(
-    () => rich.supportedAssets[0]?.address ?? "",
+  const supportedAssets = React.useMemo(
+    () => filterX402CheckoutSupportedAssets(rich.supportedAssets),
+    [rich.supportedAssets],
   );
+
+  const selected = supportedAssets[0];
   const [amountHuman, setAmountHuman] = React.useState("");
   const [payTo, setPayTo] = React.useState("");
   const [title, setTitle] = React.useState("");
 
-  React.useEffect(() => {
-    if (!rich.supportedAssets.some((a) => a.address === assetAddr)) {
-      setAssetAddr(rich.supportedAssets[0]?.address ?? "");
-    }
-  }, [rich.supportedAssets, assetAddr]);
-
-  const selected = rich.supportedAssets.find((a) => a.address === assetAddr);
-
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) {
-      toast.error("Pick a token");
+      toast.error("USDC.e is not configured for x402 checkout");
       return;
     }
     const pt = payTo.trim();
@@ -60,7 +53,7 @@ export function X402CheckoutFormCard({
     try {
       amountWei = parseUnits(human, selected.decimals).toString();
     } catch {
-      toast.error("Invalid amount for this token’s decimals");
+      toast.error("Invalid amount for USDC.e decimals");
       return;
     }
     const id = crypto.randomUUID();
@@ -90,8 +83,8 @@ export function X402CheckoutFormCard({
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{rich.intro}</p>
         ) : (
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-            Enter the amount in token units and paste the wallet that should receive the payment.
-            Then create the link to share with your payer.
+            Enter the USDC.e amount and paste the wallet that should receive the payment, then
+            create the link to share with your payer.
           </p>
         )}
         <BeamCurrentNetworkNote className="mt-2" />
@@ -110,48 +103,28 @@ export function X402CheckoutFormCard({
         ) : null}
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs">Asset</Label>
-        <RadioGroup
-          value={assetAddr}
-          onValueChange={setAssetAddr}
-          className="grid gap-2"
-        >
-          {rich.supportedAssets.map((a) => (
-            <label
-              key={a.address}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-lg border border-border px-2.5 py-2 text-sm transition-colors",
-                assetAddr === a.address
-                  ? "border-(--border-medium) bg-(--btn-item-active)"
-                  : "hover:bg-(--btn-secondary-bg)",
-              )}
-            >
-              <RadioGroupItem value={a.address} id={`asset-${a.address}`} />
-              <img
-                src={a.icon}
-                alt=""
-                className="h-8 w-8 rounded-full bg-pill object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">
-                  {a.name}{" "}
-                  <span className="text-muted-foreground">({a.symbol})</span>
-                </div>
-                {a.usdValue != null && (
-                  <div className="text-[11px] text-muted-foreground">
-                    ≈ ${a.usdValue.toFixed(4)} USD
-                  </div>
-                )}
-              </div>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
+      {selected ? (
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-(--btn-secondary-bg)/40 px-2.5 py-2 text-sm">
+          <img
+            src={selected.icon}
+            alt=""
+            className="h-8 w-8 rounded-full bg-pill object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium">
+              {selected.name}{" "}
+              <span className="text-muted-foreground">({selected.symbol})</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              x402 checkout on 0G mainnet · 1:1 USD
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="x402-amt" className="text-xs">
-          Amount ({selected?.symbol ?? "token"} units, not wei)
+          Amount (USDC.e units, not wei)
         </Label>
         <Input
           id="x402-amt"

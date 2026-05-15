@@ -61,6 +61,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
 import { VirtualCardFundsDialog } from "@/components/virtual-card-funds-dialog";
+import { VirtualCardBillingDialog } from "@/components/virtual-card-billing-dialog";
+import { VirtualCardFundsActions } from "@/components/virtual-card-funds-actions";
 import { VirtualCreditCard } from "@/components/virtual-credit-card";
 import { X402PaymentLinkCopyButtons } from "@/components/x402-payment-link-actions";
 
@@ -744,6 +746,7 @@ function CreditCardRow({
 }) {
   const [fundOpen, setFundOpen] = React.useState(false);
   const [withdrawOpen, setWithdrawOpen] = React.useState(false);
+  const [infoOpen, setInfoOpen] = React.useState(false);
   const qc = useQueryClient();
   const [cardDetailsRevealed, setCardDetailsRevealed] = React.useState(false);
   const sensitiveQ = useQuery({
@@ -756,9 +759,6 @@ function CreditCardRow({
     enabled: cardDetailsRevealed,
     staleTime: 60_000,
   });
-  const addr = [card.line1, card.line2, [card.city, card.region, card.postalCode].filter(Boolean).join(", "), card.countryCode]
-    .filter(Boolean)
-    .join(" · ");
   const handleToggleReveal = () => {
     if (cardDetailsRevealed) {
       setCardDetailsRevealed(false);
@@ -790,25 +790,14 @@ function CreditCardRow({
           ) : null}
         </div>
 
-        <div className="min-w-0 flex-1 space-y-4">
-          <div>
-            <p className="text-sm font-medium text-foreground">Billing address</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{addr}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={funding} onClick={() => setFundOpen(true)}>
-              Add funds
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={withdrawing}
-              onClick={() => setWithdrawOpen(true)}
-            >
-              Remove funds
-            </Button>
-          </div>
+        <div className="min-w-0 flex-1">
+          <VirtualCardFundsActions
+            funding={funding}
+            withdrawing={withdrawing}
+            onAddFunds={() => setFundOpen(true)}
+            onRemoveFunds={() => setWithdrawOpen(true)}
+            onMoreInfo={() => setInfoOpen(true)}
+          />
         </div>
       </div>
 
@@ -834,6 +823,7 @@ function CreditCardRow({
           setWithdrawOpen(false);
         }}
       />
+      <VirtualCardBillingDialog open={infoOpen} onOpenChange={setInfoOpen} card={card} />
     </li>
   );
 }

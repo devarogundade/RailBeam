@@ -15,6 +15,7 @@ import {
 } from '../handlers/handler.types';
 import { defaultBeamSwapFormPayload } from '../beam/beam-swap.config';
 import { defaultBeamTransferFormPayload } from '../beam/beam-transfer.config';
+import { defaultBeamX402CheckoutFormPayload } from '../beam/beam-x402-checkout.config';
 import {
   BEAM_MARKETPLACE_SPECIALIST_DEFAULTS,
   marketplaceHireRichFromInput,
@@ -32,7 +33,7 @@ const HANDLER_CTA_LINES: Partial<Record<HandlerActionId, string>> = {
   create_credit_card:
     'Enter your legal name and billing address in the form below, then tap **Create virtual card** to issue the card.',
   create_x402_payment:
-    'Pick the token, amount, and payee in the form below, then tap **Create payment link**.',
+    'Enter the USDC.e amount and payee in the form below, then tap **Create payment link**.',
   on_ramp_tokens:
     'Pick a supported token and network, enter amounts, then tap **Create Stripe checkout**.',
   generate_tax_report:
@@ -161,7 +162,7 @@ export function buildHandlerWorkspaceOffer(
       return { text, handler, params, rich };
     }
     case 'create_x402_payment': {
-      const defaults = defaultBeamTransferFormPayload();
+      const defaults = defaultBeamX402CheckoutFormPayload();
       const params = x402CheckoutFormCtaParamsSchema.parse({
         _checkoutForm: true as const,
         supportedAssets: defaults.supportedAssets,

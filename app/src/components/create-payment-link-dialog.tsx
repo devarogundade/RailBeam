@@ -243,7 +243,7 @@ export function CreatePaymentLinkDialog({
               ? created.checkoutType === "x402"
                 ? "Copy the checkout link for payers, or the x402 API link for agents and backends."
                 : "Copy the checkout link and share it with payers."
-              : "Create a shareable checkout. Amounts use token units (not wei)."}
+              : "Create a shareable checkout. x402 links use USDC.e on 0G mainnet (amounts in token units, not wei)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -396,26 +396,36 @@ function PaymentLinkFormBody(props: {
         </RadioGroup>
       </Field>
 
-      <Field label="Asset">
-        <RadioGroup value={assetAddr} onValueChange={setAssetAddr} className="grid gap-2">
-          {supportedAssets.map((a) => (
-            <label
-              key={a.address}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-lg border border-border px-2.5 py-2 text-sm transition-colors",
-                assetAddr === a.address
-                  ? "border-(--border-medium) bg-(--btn-item-active)"
-                  : "hover:bg-(--btn-secondary-bg)",
-                pending && "pointer-events-none opacity-60",
-              )}
-            >
-              <RadioGroupItem value={a.address} id={`dash-asset-${a.address}`} />
-              <img src={a.icon} alt="" className="h-7 w-7 rounded-full bg-pill object-cover" />
-              <AssetLabel asset={a} />
-            </label>
-          ))}
-        </RadioGroup>
-      </Field>
+      {checkoutType === "x402" && selected ? (
+        <Field label="Asset">
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-(--btn-secondary-bg)/40 px-2.5 py-2 text-sm">
+            <img src={selected.icon} alt="" className="h-7 w-7 rounded-full bg-pill object-cover" />
+            <AssetLabel asset={selected} />
+          </div>
+          <p className="text-[11px] text-muted-foreground">x402 payment links accept USDC.e only.</p>
+        </Field>
+      ) : (
+        <Field label="Asset">
+          <RadioGroup value={assetAddr} onValueChange={setAssetAddr} className="grid gap-2">
+            {supportedAssets.map((a) => (
+              <label
+                key={a.address}
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-lg border border-border px-2.5 py-2 text-sm transition-colors",
+                  assetAddr === a.address
+                    ? "border-(--border-medium) bg-(--btn-item-active)"
+                    : "hover:bg-(--btn-secondary-bg)",
+                  pending && "pointer-events-none opacity-60",
+                )}
+              >
+                <RadioGroupItem value={a.address} id={`dash-asset-${a.address}`} />
+                <img src={a.icon} alt="" className="h-7 w-7 rounded-full bg-pill object-cover" />
+                <AssetLabel asset={a} />
+              </label>
+            ))}
+          </RadioGroup>
+        </Field>
+      )}
 
       <Field label={`Amount (${selected?.symbol ?? "token"} units, not wei)`} htmlFor="pay-amt">
         <Input

@@ -7,6 +7,21 @@ export const BEAM_USDC_E_ADDRESS =
 
 export const BEAM_USDC_E_DECIMALS = 6;
 
+/** EIP-712 domain for x402 `exact` / EIP-3009 signing (from on-chain `name()` / `version()`). */
+export const BEAM_USDC_E_EIP712_NAME = 'Bridged USDC' as const;
+export const BEAM_USDC_E_EIP712_VERSION = '2' as const;
+
+/** x402 `PaymentRequirements.extra` for USDC.e (required by `@x402/evm` payload creation). */
+export function beamUsdcEX402PaymentExtra(): {
+  name: typeof BEAM_USDC_E_EIP712_NAME;
+  version: typeof BEAM_USDC_E_EIP712_VERSION;
+} {
+  return {
+    name: BEAM_USDC_E_EIP712_NAME,
+    version: BEAM_USDC_E_EIP712_VERSION,
+  };
+}
+
 /** App-hosted token icon (served from `app/public/images/usdc.png`). */
 export const BEAM_USDC_E_ICON = '/images/usdc.png' as const;
 

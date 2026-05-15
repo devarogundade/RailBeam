@@ -147,6 +147,18 @@ function timeAgo(t: number) {
   return `${Math.floor(s / 3600)}h ago`;
 }
 
+/** Only treat a pending user bubble as synced when a recent server row likely matches this send. */
+function isPendingUserMessageInServerHistory(pending: Msg, serverMessages: Msg[]): boolean {
+  if (pending.role !== "user" || !pending.content) return false;
+  const pendingAt = typeof pending.createdAt === "number" ? pending.createdAt : 0;
+  const tail = serverMessages.slice(-6);
+  return tail.some((s) => {
+    if (s.role !== "user" || s.content !== pending.content) return false;
+    if (typeof s.createdAt !== "number") return false;
+    return s.createdAt >= pendingAt - 2_000 && s.createdAt <= pendingAt + 30_000;
+  });
+}
+
 function hasOgInferenceMeta(m: Msg): boolean {
   return (
     m.model != null ||
@@ -284,10 +296,9 @@ export function Chat() {
   const displayMessages = React.useMemo(() => {
     if (pendingMessages.length === 0) return serverMessages;
     if (serverMessages.length === 0) return pendingMessages;
-    const pendingOnly = pendingMessages.filter((p) => {
-      if (p.role !== "user" || !p.content) return true;
-      return !serverMessages.some((s) => s.role === "user" && s.content === p.content);
-    });
+    const pendingOnly = pendingMessages.filter(
+      (p) => !isPendingUserMessageInServerHistory(p, serverMessages),
+    );
     return [...serverMessages, ...pendingOnly];
   }, [serverMessages, pendingMessages]);
   const [input, setInput] = React.useState("");
@@ -297,6 +308,12 @@ export function Chat() {
   const hideAgentPicker = isMobile && input.trim().length > 0;
   const [attachments, setAttachments] = React.useState<DraftAttachment[]>([]);
   const [typing, setTyping] = React.useState(false);
+  /** Avoid agent typing before the user's optimistic bubble is on screen. */
+  const showAgentTyping = React.useMemo(() => {
+    if (!typing) return false;
+    if (pendingMessages.some((p) => p.role === "user")) return true;
+    return displayMessages[displayMessages.length - 1]?.role === "user";
+  }, [typing, pendingMessages, displayMessages]);
   const [executingHandlerForId, setExecutingHandlerForId] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
@@ -723,10 +740,9 @@ export function Chat() {
       }
       setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
       setTyping(false);
-      const cacheKey = queryKeys.user.chatMessages(userKey, threadId);
-      if (queryClient.getQueryData(cacheKey) == null) {
-        void queryClient.invalidateQueries({ queryKey: cacheKey });
-      }
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.user.chatMessages(userKey, threadId),
+      });
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
     })();
   };
@@ -969,7 +985,7 @@ export function Chat() {
               ))}
             </>
           )}
-          {typing && (
+          {showAgentTyping && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <img
                 src={activeAgent.avatar}
@@ -992,7 +1008,7 @@ export function Chat() {
         </div>
         {!showHistorySkeleton &&
           showJumpToBottom &&
-          (displayMessages.length > 0 || typing) && (
+          (displayMessages.length > 0 || showAgentTyping) && (
             <Button
               type="button"
               variant="secondary"
@@ -1651,7 +1667,8 @@ function Bubble({
   return (
     <div
       className={cn(
-        "flex animate-fade-in-up items-end gap-2",
+        "flex items-end gap-2",
+        !isUser && "animate-fade-in-up",
         isUser ? "justify-end" : "justify-start",
       )}
     >

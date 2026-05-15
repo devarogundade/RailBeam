@@ -474,15 +474,11 @@ export function VirtualCardsPanelSkeleton() {
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
             <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-[400px] rounded-2xl lg:mx-0" />
-            <div className="min-w-0 flex-1 space-y-4">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-3 w-full max-w-md" />
-                <Skeleton className="h-3 w-4/5 max-w-sm" />
-              </div>
-              <div className="flex gap-2">
-                <Skeleton className="h-9 w-24 rounded-md" />
-                <Skeleton className="h-9 w-28 rounded-md" />
+            <div className="min-w-0 flex-1">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Skeleton className="h-[4.25rem] rounded-xl" />
+                <Skeleton className="h-[4.25rem] rounded-xl" />
+                <Skeleton className="h-[4.25rem] rounded-xl sm:col-span-2" />
               </div>
             </div>
           </div>

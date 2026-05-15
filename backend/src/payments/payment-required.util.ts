@@ -6,6 +6,8 @@ import type {
 import type { PaymentRequestDocument } from '../mongo/schemas/payment-request.schema';
 import {
   assertBeamUsdcEAsset,
+  beamUsdcEX402PaymentExtra,
+  isBeamUsdcEAsset,
   normalizeBeamUsdcEAsset,
 } from '../beam/beam-usdc-e.config';
 
@@ -58,12 +60,19 @@ export function buildPaymentRequirementsFromDoc(
       ? a0.maxTimeoutSeconds
       : 600;
 
-  const extra =
+  let extra: Record<string, unknown> =
     typeof a0.extra === 'object' &&
     a0.extra !== null &&
     !Array.isArray(a0.extra)
-      ? (a0.extra as Record<string, unknown>)
+      ? { ...(a0.extra as Record<string, unknown>) }
       : {};
+  if (
+    doc.type === 'x402' &&
+    isBeamUsdcEAsset(asset) &&
+    (typeof extra.name !== 'string' || typeof extra.version !== 'string')
+  ) {
+    extra = { ...beamUsdcEX402PaymentExtra(), ...extra };
+  }
 
   return {
     scheme,

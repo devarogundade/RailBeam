@@ -673,8 +673,8 @@ export function buildAgentOutputContract(
       : '',
     allowed.includes('create_x402_payment')
       ? [
-          '- create_x402_payment (JSON-only): use when the user message explicitly contains every required field: `id`, `amount` (wei integer string), `currency`, `network`, `payTo` (0x…40), plus optional `title`, `resourceUrl`, `decimals`. Never invent values.',
-          '- Checkout form mode (JSON-only): use when anything is missing or ambiguous: params `{"_checkoutForm":true,"supportedAssets":[...], ...}` (optional `resourceUrl` for the paywalled resource) and matching `rich` type `x402_checkout_form` so the client collects the rest.',
+          '- create_x402_payment (JSON-only): use when the user message explicitly contains every required field: `id`, `amount` (wei integer string), `currency` (USDC.e only), `network` (0G mainnet `eip155:16661`), `payTo` (0x…40), plus optional `title`, `resourceUrl`, `decimals`. Never invent values.',
+          '- Checkout form mode (JSON-only): use when anything is missing or ambiguous: params `{"_checkoutForm":true,"supportedAssets":[USDC.e only], ...}` (optional `resourceUrl`) and matching `rich` type `x402_checkout_form` so the client collects the rest.',
         ].join('\n')
       : '',
     allowed.includes('on_ramp_tokens')
@@ -1171,7 +1171,7 @@ export function agentReplyFromChatCompletion(
       } as AgentRichCard;
       const text =
         content.trim() ||
-        'Choose the asset and enter the amount and recipient in the form below, then tap **Create payment link** to generate a shareable checkout URL.';
+        'Enter the USDC.e amount and recipient in the form below, then tap **Create payment link** to generate a shareable checkout URL.';
       return { text, handler: 'create_x402_payment', params, rich };
     }
 
@@ -1409,8 +1409,8 @@ export function buildAgentToolCallingSystemPrompt(
     'Tool arguments must match each tool JSON schema. For generate_tax_report you may add optional `reportCard` (tax-specific preview). For create_x402_payment you may add optional `paymentCard` (invoice-style preview). For on_ramp_tokens you may add optional `paymentCard` (invoice-style preview). For create_credit_card you may add optional `cardPreview` (title + supplemental rows for the chat card).',
     allowed.includes('create_x402_payment')
       ? [
-          'For x402 checkout: if the user’s message(s) already state every required value — stable `id`, wei `amount` (integer string), `currency` (0x token or symbol), `network`, full `payTo` (0x…40) — call **create_x402_payment** with those exact arguments (optional `paymentCard` for an invoice-style preview).',
-          'If any required value is missing, vague, or would be a guess, call **offer_x402_checkout_form** with `supportedAssets` (and optional `networks`, optional `resourceUrl`); never invent wei, payTo, or token addresses.',
+          'For x402 checkout: if the user’s message(s) already state every required value — stable `id`, wei `amount` (integer string), `currency` (USDC.e only on 0G mainnet), `network` (`eip155:16661`), full `payTo` (0x…40) — call **create_x402_payment** with those exact arguments (optional `paymentCard` for an invoice-style preview).',
+          'If any required value is missing, vague, or would be a guess, call **offer_x402_checkout_form** with USDC.e-only `supportedAssets` (and optional `resourceUrl`); never invent wei, payTo, or other tokens.',
           'When a handler CTA appears, remind the user to tap **Create payment link** to obtain the `/pay/...` checkout URL for their payer.',
         ].join(' ')
       : '',
