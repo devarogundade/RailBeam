@@ -646,17 +646,28 @@ export function Chat() {
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
         return;
       }
-      try {
-        await queryClient.refetchQueries({
-          queryKey: queryKeys.user.chatMessages(userKey, threadId),
-        });
-      } catch {
-        toast.error("Thread sync failed", {
-          description: "Could not reload messages from the server.",
-        });
-      } finally {
-        setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
-        setTyping(false);
+      setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
+      setTyping(false);
+      const cacheKey = queryKeys.user.chatMessages(userKey, threadId);
+      const hasThread = queryClient.getQueryData(cacheKey) != null;
+      if (!hasThread) {
+        try {
+          await queryClient.fetchQuery({
+            queryKey: cacheKey,
+            queryFn: () =>
+              fetchStardormChatMessages({
+                limit: CHAT_PAGE_SIZE,
+                conversationId: threadId ?? undefined,
+              }).then((r) => {
+                if (!r) throw new Error("Could not load messages");
+                return r;
+              }),
+          });
+        } catch {
+          toast.error("Thread sync failed", {
+            description: "Could not reload messages from the server.",
+          });
+        }
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
     })();
