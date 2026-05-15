@@ -208,10 +208,24 @@ pnpm dev
 
 ### Build and preview
 
+From the repository root (builds workspace packages, then the app):
+
 ```bash
+pnpm install
+pnpm run build:app
+```
+
+From `app/` only (after workspace packages are built):
+
+```bash
+cd app
 pnpm run build
 pnpm run preview
 ```
+
+### Netlify
+
+Deploy from the **repository root** (leave **Base directory** empty in the Netlify UI). Root [`netlify.toml`](netlify.toml) runs `pnpm run build:app`, which builds `@railbeam/stardorm-api-contract`, `@railbeam/beam-sdk`, then the app, and publishes `app/dist/client`. Requires **Node 22+** (TanStack Start Netlify plugin).
 
 ### Lint / format
 

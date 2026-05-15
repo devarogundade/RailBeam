@@ -12,8 +12,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@railbeam/beam-sdk": "^0.0.2",
-    "@railbeam/stardorm-api-contract": "^0.0.1",
+    "@railbeam/beam-sdk": "workspace:*",
+    "@railbeam/stardorm-api-contract": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
