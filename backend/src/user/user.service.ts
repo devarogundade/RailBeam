@@ -1999,7 +1999,7 @@ export class UserService {
       hash: a.rootHash,
     }));
     const persistAgentKey = issuingAgentKey;
-    await this.chatMessageModel.create({
+    const handlerReply = await this.chatMessageModel.create({
       conversationId: conv._id,
       userId: user._id,
       role: 'agent',
@@ -2020,11 +2020,9 @@ export class UserService {
     );
     conv.lastMessageAt = new Date();
     await conv.save();
-    this.pushConversationWs(wallet, {
-      v: 1,
-      op: 'thread',
-      conversationId: String(conv._id),
-    });
+    this.pushThreadMessages(wallet, String(conv._id), [
+      this.persistedRowToHistoryMessage(handlerReply),
+    ]);
     return {
       message: result.message,
       attachments: result.attachments,

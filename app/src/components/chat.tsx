@@ -81,6 +81,7 @@ import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { useUserAvatarPreset } from "@/lib/hooks/use-user-avatar-preset";
 import { USER_AVATAR_URLS } from "@/lib/user-avatar-assets";
 import { queryKeys } from "@/lib/query-keys";
+import { chatCacheHasMessageIds } from "@/lib/chat-query-cache";
 import { invalidateBeamHttpDashboardLists } from "@/lib/query-invalidation";
 import { resolveCatalogAgentForChatBubble } from "@/lib/resolve-catalog-agent";
 import { CLONED_AGENT_AVATAR_RING_CLASS } from "@/lib/cloned-agent-avatar";
@@ -517,10 +518,15 @@ export function Chat() {
         }
         if (!("message" in res)) return;
         invalidateBeamHttpDashboardLists(queryClient);
-        if (userKey && openConversationId) {
-          await queryClient.invalidateQueries({
-            queryKey: queryKeys.user.chatMessages(userKey, openConversationId),
-          });
+        if (userKey && openConversationId && res.message?.id) {
+          const synced = chatCacheHasMessageIds(queryClient, userKey, openConversationId, [
+            res.message.id,
+          ]);
+          if (!synced) {
+            await queryClient.invalidateQueries({
+              queryKey: queryKeys.user.chatMessages(userKey, openConversationId),
+            });
+          }
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

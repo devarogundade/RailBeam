@@ -4,11 +4,12 @@ import { connectBeamConversationSync, type BeamConversationSyncPayload } from "@
 import { useApp } from "@/lib/app-state";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { buildStardormConversationWsUrl } from "@/lib/stardorm-conversation-ws";
+import { appendThreadMessagesToChatCache } from "@/lib/chat-query-cache";
 import { queryKeys } from "@/lib/query-keys";
 
 /**
- * Keeps TanStack Query chat / conversation caches warm when another client (or this tab’s HTTP path)
- * mutates data — subscribes to Stardorm `/ws/conversations` while the wallet is signed in.
+ * Keeps TanStack Query chat / conversation caches in sync via Stardorm `/ws/conversations`.
+ * Thread updates merge message payloads in-place; list changes still invalidate lightly.
  */
 export function StardormConversationSyncListener() {
   const queryClient = useQueryClient();
@@ -26,6 +27,18 @@ export function StardormConversationSyncListener() {
       url,
       reconnect: true,
       onPayload: (payload: BeamConversationSyncPayload) => {
+        if (payload.op === "thread_messages") {
+          appendThreadMessagesToChatCache(
+            queryClient,
+            userKey,
+            payload.conversationId,
+            payload.messages,
+          );
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.user.conversations(userKey),
+          });
+          return;
+        }
         if (payload.op === "thread") {
           void queryClient.invalidateQueries({
             queryKey: queryKeys.user.chatMessages(userKey, payload.conversationId),
