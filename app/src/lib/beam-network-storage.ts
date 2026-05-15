@@ -1,16 +1,20 @@
-import { BEAM_CHAIN_IDS, type BeamNetworkId } from "@/lib/beam-chain-config";
+import {
+  BEAM_CHAIN_IDS,
+  BEAM_DEFAULT_NETWORK,
+  type BeamNetworkId,
+} from "@/lib/beam-chain-config";
 
 export const BEAM_PREFERRED_NETWORK_STORAGE_KEY = "beam-preferred-network";
 
 export function readStoredBeamNetwork(): BeamNetworkId {
-  if (typeof window === "undefined") return "testnet";
+  if (typeof window === "undefined") return BEAM_DEFAULT_NETWORK;
   try {
     const raw = localStorage.getItem(BEAM_PREFERRED_NETWORK_STORAGE_KEY);
     if (raw === "mainnet" || raw === "testnet") return raw;
   } catch {
     // ignore
   }
-  return "testnet";
+  return BEAM_DEFAULT_NETWORK;
 }
 
 export function writeStoredBeamNetwork(n: BeamNetworkId) {

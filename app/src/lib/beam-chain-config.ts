@@ -3,6 +3,9 @@ import { zeroGMainnet, zeroGTestnet } from "viem/chains";
 /** Logical Beam / 0G deployment tier (not the same as viem's `chain.testnet` flag). */
 export type BeamNetworkId = "mainnet" | "testnet";
 
+/** Default when no wallet chain and no stored preference (see `beam-network-storage`). */
+export const BEAM_DEFAULT_NETWORK: BeamNetworkId = "mainnet";
+
 export const BEAM_NETWORK_IDS: readonly BeamNetworkId[] = ["mainnet", "testnet"];
 
 export const BEAM_CHAIN_IDS = {
@@ -98,6 +101,6 @@ export const BEAM_CONTRACT_ADDRESSES: {
 };
 
 export function beamContractAddressesForChain(chainId: number | undefined): BeamContractAddresses {
-  const tier = beamNetworkFromChainId(chainId) ?? "testnet";
+  const tier = beamNetworkFromChainId(chainId) ?? BEAM_DEFAULT_NETWORK;
   return tier === "mainnet" ? BEAM_CONTRACT_ADDRESSES.mainnet : BEAM_CONTRACT_ADDRESSES.testnet;
 }

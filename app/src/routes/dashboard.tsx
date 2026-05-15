@@ -770,35 +770,30 @@ function CreditCardRow({
 
   return (
     <li className="rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
-        <div className="mx-auto w-full shrink-0 lg:mx-0">
-          <VirtualCreditCard
-            card={card}
-            revealed={cardDetailsRevealed && Boolean(sensitiveQ.data)}
-            revealLoading={cardDetailsRevealed && sensitiveQ.isPending}
-            sensitive={sensitiveQ.data ?? null}
-            onToggleReveal={handleToggleReveal}
-          />
-          {cardDetailsRevealed && sensitiveQ.isError ? (
-            <p className="mt-2 text-center text-[11px] text-destructive">
-              {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
-            </p>
-          ) : !cardDetailsRevealed ? (
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Tap the eye icon on the card to reveal the full number, expiry, and CVV for checkout.
-            </p>
-          ) : null}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <VirtualCardFundsActions
-            funding={funding}
-            withdrawing={withdrawing}
-            onAddFunds={() => setFundOpen(true)}
-            onRemoveFunds={() => setWithdrawOpen(true)}
-            onMoreInfo={() => setInfoOpen(true)}
-          />
-        </div>
+      <div className="mx-auto flex w-full max-w-[400px] flex-col gap-4">
+        <VirtualCreditCard
+          card={card}
+          revealed={cardDetailsRevealed && Boolean(sensitiveQ.data)}
+          revealLoading={cardDetailsRevealed && sensitiveQ.isPending}
+          sensitive={sensitiveQ.data ?? null}
+          onToggleReveal={handleToggleReveal}
+        />
+        {cardDetailsRevealed && sensitiveQ.isError ? (
+          <p className="text-[11px] text-destructive">
+            {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
+          </p>
+        ) : !cardDetailsRevealed ? (
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Use the eye on the card to show the full number, expiry, and CVV at checkout.
+          </p>
+        ) : null}
+        <VirtualCardFundsActions
+          funding={funding}
+          withdrawing={withdrawing}
+          onAddFunds={() => setFundOpen(true)}
+          onRemoveFunds={() => setWithdrawOpen(true)}
+          onMoreInfo={() => setInfoOpen(true)}
+        />
       </div>
 
       <VirtualCardFundsDialog

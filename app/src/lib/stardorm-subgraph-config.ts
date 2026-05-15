@@ -1,4 +1,4 @@
-import { beamNetworkFromChainId } from "@/lib/beam-chain-config";
+import { BEAM_DEFAULT_NETWORK, beamNetworkFromChainId } from "@/lib/beam-chain-config";
 
 /** Env helpers shared by subgraph GraphQL client and UI. */
 
@@ -6,7 +6,7 @@ import { beamNetworkFromChainId } from "@/lib/beam-chain-config";
 export function getStardormSubgraphUrlForChain(chainId: number | undefined): string | undefined {
   const main = import.meta.env.VITE_STARDORM_SUBGRAPH_URL_MAINNET?.trim();
   const test = import.meta.env.VITE_STARDORM_SUBGRAPH_URL_TESTNET?.trim();
-  const tier = beamNetworkFromChainId(chainId) ?? "testnet";
+  const tier = beamNetworkFromChainId(chainId) ?? BEAM_DEFAULT_NETWORK;
   if (tier === "mainnet") return main || undefined;
   return test || undefined;
 }

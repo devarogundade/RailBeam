@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 import type { BeamNetworkId } from "@/lib/beam-chain-config";
 
 const NETWORK_OPTIONS: { id: BeamNetworkId; label: string }[] = [
-  { id: "testnet", label: "Testnet" },
   { id: "mainnet", label: "Mainnet" },
+  { id: "testnet", label: "Testnet" },
 ];
 
 function NetworkToggle() {

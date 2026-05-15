@@ -59,6 +59,7 @@ import {
   draftTokenSwapInputSchema,
   chatHandlerResultSchema,
   type ChatHandlerResult,
+  type UserKycStatus,
   type CreditCardFundQuote,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
@@ -81,7 +82,10 @@ import { CreditCardFundingService } from 'src/credit-cards/credit-card-funding.s
 import { FinancialSnapshotsService } from 'src/mongo/financial-snapshots.service';
 import { PaymentRequestsService } from 'src/payments/payment-requests.service';
 import { OnRampService } from 'src/stripe/on-ramp.service';
-import { KycStripeService } from 'src/stripe/kyc-stripe.service';
+import {
+  KycStripeService,
+  kycReportRichCard,
+} from 'src/stripe/kyc-stripe.service';
 import type { MulterIncomingFile } from './multer-file.types';
 import { ConversationSyncService } from '../conversations-sync/conversation-sync.service';
 import type { ConversationSyncPayload } from '../conversations-sync/conversation-sync.events';
@@ -641,17 +645,17 @@ export class UserService {
       typeof data.verificationSessionId === 'string'
         ? data.verificationSessionId
         : '—';
-    return {
-      type: 'report',
-      title: 'Stripe Identity',
-      rows: [
-        { label: 'Session', value: UserService.shortenMiddleText(sessionId, 36) },
-        {
-          label: 'Next step',
-          value: 'Open the verification link below and complete capture.',
-        },
-      ],
-    };
+    const statusRaw = data.kycStatus;
+    const status: UserKycStatus =
+      statusRaw === 'verified' ||
+      statusRaw === 'processing' ||
+      statusRaw === 'requires_input' ||
+      statusRaw === 'canceled' ||
+      statusRaw === 'pending' ||
+      statusRaw === 'not_started'
+        ? statusRaw
+        : 'pending';
+    return kycReportRichCard(sessionId, status);
   }
 
   private richFromCreditCardData(
@@ -2120,6 +2124,12 @@ export class UserService {
       handlerResultData: serverResult,
       createdAt: Date.now(),
     });
+    if (body.handler === 'complete_stripe_kyc') {
+      await this.kycStripe.linkSourceChatMessage(
+        wallet,
+        String(handlerReply._id),
+      );
+    }
     await this.chatMessageModel.updateOne(
       {
         _id: new Types.ObjectId(ctaId),

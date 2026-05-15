@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowDownToLine, ArrowUpToLine } from "lucide-react";
+import { ArrowDownToLine, Plus } from "lucide-react";
 import type { CreditCardPublic } from "@railbeam/stardorm-api-contract";
 import {
   Dialog,
@@ -94,7 +94,7 @@ export function VirtualCardFundsDialog({
               <DialogTitle className="flex items-center gap-2">
                 {isFund ? (
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <ArrowUpToLine className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </span>
                 ) : (
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">

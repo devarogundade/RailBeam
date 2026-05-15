@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { toast } from "sonner";
 import type { UpdateUserBody, UserAvatarPreset } from "@railbeam/stardorm-api-contract";
+import { beamNetworkLabelFromChainId } from "@/lib/beam-chain-config";
+import { useBeamNetwork } from "@/lib/beam-network-context";
 import { formatAddress, useApp } from "@/lib/app-state";
 import { fetchStardormMe, patchStardormUser } from "@/lib/stardorm-user-api";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/settings")({
 
 function Settings() {
   const { address, balance, disconnect, isStardormAuthed } = useApp();
+  const { effectiveChainId } = useBeamNetwork();
   const queryClient = useQueryClient();
   const userKey = address ? (address.toLowerCase() as `0x${string}`) : null;
   const apiConfigured = Boolean(getStardormApiBase());
@@ -165,7 +168,7 @@ function Settings() {
                   <div className="text-sm">Not connected</div>
                 )}
                 <div className="text-sm text-muted-foreground">
-                  Network · 0G testnet
+                  Network · {beamNetworkLabelFromChainId(effectiveChainId)}
                 </div>
               </div>
               <div className="flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-sm">

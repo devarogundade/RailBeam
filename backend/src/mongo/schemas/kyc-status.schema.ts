@@ -25,6 +25,10 @@ export class KycStatus {
   @Prop({ index: true, sparse: true })
   stripeVerificationSessionId?: string;
 
+  /** Agent chat bubble created by `complete_stripe_kyc` (updated from Identity webhooks). */
+  @Prop({ index: true, sparse: true })
+  sourceChatMessageId?: string;
+
   @Prop()
   lastStripeEventType?: string;
 

@@ -163,7 +163,9 @@ export function VirtualCreditCard({
     >
       <div
         className={cn(
-          "relative aspect-[1.586/1] overflow-hidden rounded-2xl border border-white/10 shadow-xl",
+          // ISO card ratio would fix height from width; that clips when PAN / footer need more room.
+          "relative flex min-h-[14.25rem] flex-col overflow-hidden rounded-2xl border border-white/10 shadow-xl sm:min-h-[15.75rem]",
+          compact && "min-h-[12.25rem] sm:min-h-[13rem]",
           "bg-linear-to-br",
           theme.gradient,
           frozen && "opacity-75 saturate-50",
@@ -177,7 +179,7 @@ export function VirtualCreditCard({
         />
         <div className="pointer-events-none absolute -bottom-12 -left-6 h-36 w-36 rounded-full bg-white/5 blur-2xl" />
 
-        <div className="relative flex h-full flex-col justify-between p-5 text-white sm:p-6">
+        <div className="relative flex flex-1 flex-col gap-4 p-5 text-white sm:gap-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-white/55">
@@ -185,37 +187,35 @@ export function VirtualCreditCard({
               </p>
               <p className="mt-0.5 text-xs font-medium text-white/80">Beam · Virtual</p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {onToggleReveal ? (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full bg-black/20 text-white hover:bg-black/30 hover:text-white"
-                  disabled={revealLoading}
-                  onClick={onToggleReveal}
-                  aria-label={revealed ? "Hide card details" : "Reveal card details"}
-                >
-                  {revealLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : revealed ? (
-                    <EyeOff className="h-3.5 w-3.5" />
-                  ) : (
-                    <Eye className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              ) : null}
-              <div className="pt-0.5">{theme.logo}</div>
+            {onToggleReveal ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 rounded-full bg-black/20 text-white hover:bg-black/30 hover:text-white"
+                disabled={revealLoading}
+                onClick={onToggleReveal}
+                aria-label={revealed ? "Hide card details" : "Reveal card details"}
+              >
+                {revealLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : revealed ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="flex flex-1 flex-col justify-center gap-4">
+            <div className="flex items-center gap-3">
+              <CardChip />
+              <ContactlessMark />
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <CardChip />
-            <ContactlessMark />
-          </div>
-
-          <div>
-            <p
+            <div className="min-w-0">
+              <p
               className={cn(
                 "font-mono tracking-[0.12em] text-white",
                 compact ? "text-base sm:text-lg" : "text-lg sm:text-xl",
@@ -253,9 +253,10 @@ export function VirtualCreditCard({
                 </div>
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 border-t border-white/10 pt-3">
+          <div className="mt-auto flex shrink-0 items-end justify-between gap-2 border-t border-white/10 pt-3">
             <div>
               <p className="text-[9px] font-medium uppercase tracking-widest text-white/45">
                 Available
@@ -264,7 +265,10 @@ export function VirtualCreditCard({
                 {balance}
               </p>
             </div>
-            <p className="text-[10px] text-white/40">Debit · {card.currency}</p>
+            <div className="flex flex-col items-end gap-1">
+              <div className="origin-bottom-right scale-90 opacity-95">{theme.logo}</div>
+              <p className="text-[10px] text-white/40">Debit · {card.currency}</p>
+            </div>
           </div>
         </div>
 
@@ -291,7 +295,8 @@ export function VirtualCreditCardSkeleton({
   return (
     <div
       className={cn(
-        "aspect-[1.586/1] w-full animate-pulse rounded-2xl bg-muted/60",
+        "min-h-[14.25rem] w-full animate-pulse rounded-2xl bg-muted/60 sm:min-h-[15.75rem]",
+        compact && "min-h-[12.25rem] sm:min-h-[13rem]",
         compact ? "max-w-[320px]" : "max-w-[400px]",
         className,
       )}
