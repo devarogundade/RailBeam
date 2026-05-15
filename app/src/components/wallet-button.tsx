@@ -48,7 +48,14 @@ export function WalletButton() {
         className="font-semibold"
       >
         {!loading ? <Wallet className="h-4 w-4" /> : null}
-        {loading ? "Opening…" : "Connect Wallet"}
+        {loading ? (
+          "Opening…"
+        ) : (
+          <>
+            <span className="md:hidden">Connect</span>
+            <span className="hidden md:inline">Connect Wallet</span>
+          </>
+        )}
       </Button>
     );
   }

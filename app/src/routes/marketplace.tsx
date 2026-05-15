@@ -120,21 +120,21 @@ function Marketplace() {
         </div>
 
         {/* Toolbar */}
-        <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
+        <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:p-4 md:flex-row md:items-center md:gap-4">
+          <div className="relative min-w-0 w-full flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search agents, skills, categories…"
-              className="h-10 border-transparent bg-surface-elevated pl-9"
+              className="h-10 w-full border-transparent bg-surface-elevated pl-9"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2 text-sm">
-              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Max</span>
-              <div className="w-28">
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center md:w-auto md:shrink-0">
+            <div className="flex min-h-10 w-full min-w-0 items-center gap-2 rounded-md border border-border px-2.5 py-2 text-sm sm:flex-1 md:w-auto md:min-w-[12rem] md:flex-initial lg:min-w-[14rem]">
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="shrink-0 text-muted-foreground">Max</span>
+              <div className="min-w-0 flex-1 px-0.5">
                 <Slider
                   value={[Math.min(maxPrice, priceCeiling)]}
                   onValueChange={(v) => setMaxPrice(v[0])}
@@ -143,7 +143,7 @@ function Marketplace() {
                   step={0.01}
                 />
               </div>
-              <span className="flex items-center gap-1 font-medium">
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap font-medium tabular-nums">
                 <CoinIcon className="h-3.5 w-3.5 shrink-0" />
                 {Math.min(maxPrice, priceCeiling)} 0G
               </span>
@@ -151,7 +151,8 @@ function Marketplace() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as typeof sort)}
-              className="rounded-md border border-border bg-surface-elevated px-2 py-2 text-sm"
+              aria-label="Sort agents"
+              className="h-10 w-full shrink-0 rounded-md border border-border bg-surface-elevated px-3 text-sm sm:w-auto sm:min-w-[10.5rem]"
             >
               <option value="reputation">Reputation</option>
               <option value="price">Price</option>
@@ -161,13 +162,13 @@ function Marketplace() {
         </div>
 
         {/* Categories */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
           {categoryOptions.map((c) => (
             <button
               key={c}
               onClick={() => setCat(c as AgentCategory | "All")}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                "shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors",
                 cat === c
                   ? "border-(--border-medium) bg-pill text-pill-foreground"
                   : "border-border text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground",

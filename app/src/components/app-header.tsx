@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
+import { BeamLogo } from "./icons";
 import { WalletButton } from "./wallet-button";
 import { Button } from "@/components/ui/button";
 import { useBeamNetwork } from "@/lib/beam-network-context";
@@ -54,6 +55,14 @@ export function AppHeader() {
       >
         <Menu className="h-5 w-5" />
       </Button>
+      <Link
+        to="/"
+        className="flex shrink-0 items-center gap-2 text-foreground hover:opacity-90 md:hidden"
+        aria-label="Beam home"
+      >
+        <BeamLogo className="h-8 w-8" />
+        <span className="text-sm font-semibold tracking-tight">Beam</span>
+      </Link>
       <nav className="hidden md:flex items-center gap-1 text-sm">
         {[
           { to: "/", label: "Home", exact: true },

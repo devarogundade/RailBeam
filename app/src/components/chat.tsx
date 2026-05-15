@@ -26,6 +26,7 @@ import {
 } from "@/components/transfer-draft-handler-cta";
 import { SwapCheckoutFormCard } from "@/components/swap-checkout-form-card";
 import { SwapHandlerCtaRow, isTokenSwapHandler } from "@/components/swap-handler-cta";
+import { ChatMessageContent } from "@/components/chat-message-content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -60,7 +61,6 @@ import {
   Copy,
   ExternalLink,
   Info,
-  Menu,
   Plus,
   Trash2,
   MessageSquare,
@@ -715,7 +715,7 @@ export function Chat() {
               className="shrink-0"
               aria-label="Open conversations"
             >
-              <Menu className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="flex w-[min(100vw-2rem,22rem)] flex-col gap-0 p-0 sm:max-w-md">
@@ -1043,9 +1043,10 @@ export function Chat() {
                 size="sm"
                 className="shrink-0 touch-manipulation font-semibold max-md:min-h-10 max-md:px-3"
                 disabled={!apiOn || typing}
+                aria-label="Send message"
               >
                 <Send className="h-3.5 w-3.5" />
-                Send
+                <span className="hidden md:inline">Send</span>
               </Button>
             </div>
           </div>
@@ -1578,11 +1579,15 @@ function Bubble({
           >
             {!isUser && hasOgInferenceMeta(m) ? (
               <div className="flex items-start gap-1.5">
-                <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">{m.content}</div>
+                <ChatMessageContent
+                  content={m.content}
+                  variant={isUser ? "user" : "agent"}
+                  className="min-w-0 flex-1"
+                />
                 <OgInferenceMetaButton m={m} />
               </div>
             ) : (
-              m.content
+              <ChatMessageContent content={m.content} variant={isUser ? "user" : "agent"} />
             )}
           </div>
         )}

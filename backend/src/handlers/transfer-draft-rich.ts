@@ -1,10 +1,13 @@
-import { formatUnits } from 'ethers';
 import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
 import type {
   DraftErc20TransferInput,
   DraftNativeTransferInput,
   DraftNftTransferInput,
 } from '@beam/stardorm-api-contract';
+import {
+  humanAmountFromBaseUnits,
+  humanNativeGasAmount,
+} from './rich-amount-format';
 
 function shortenEvm(addr: string): string {
   const t = addr.trim().toLowerCase();
@@ -19,11 +22,6 @@ function shortenCaip2(s: string, max = 40): string {
   return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
 }
 
-function trimDecimalZeros(s: string): string {
-  if (!s.includes('.')) return s;
-  return s.replace(/0+$/, '').replace(/\.$/, '');
-}
-
 export function txRichFromNativeDraft(
   d: DraftNativeTransferInput,
 ): StardormChatRichBlock {
@@ -33,7 +31,7 @@ export function txRichFromNativeDraft(
     rows: [
       { label: 'Network', value: shortenCaip2(d.network) },
       { label: 'To', value: shortenEvm(d.to) },
-      { label: 'Value (wei)', value: d.valueWei },
+      { label: 'Amount', value: humanNativeGasAmount(d.valueWei) },
       ...(d.note?.trim() ? [{ label: 'Note', value: d.note.trim() }] : []),
     ],
   };
@@ -42,13 +40,8 @@ export function txRichFromNativeDraft(
 export function txRichFromErc20Draft(
   d: DraftErc20TransferInput,
 ): StardormChatRichBlock {
-  let human = '—';
-  try {
-    human = trimDecimalZeros(formatUnits(BigInt(d.amountWei), d.tokenDecimals));
-  } catch {
-    /* keep dash */
-  }
   const sym = d.tokenSymbol?.trim() || 'Token';
+  const human = humanAmountFromBaseUnits(d.amountWei, d.tokenDecimals);
   return {
     type: 'tx',
     title: `ERC-20 transfer · ${sym}`,
@@ -56,7 +49,7 @@ export function txRichFromErc20Draft(
       { label: 'Network', value: shortenCaip2(d.network) },
       { label: 'Token', value: shortenEvm(d.token) },
       { label: 'To', value: shortenEvm(d.to) },
-      { label: 'Amount', value: `${human} (${d.amountWei} wei)` },
+      { label: `Amount (${sym})`, value: human },
       ...(d.note?.trim() ? [{ label: 'Note', value: d.note.trim() }] : []),
     ],
   };
@@ -72,7 +65,7 @@ export function txRichFromNftDraft(d: DraftNftTransferInput): StardormChatRichBl
     { label: 'To', value: shortenEvm(d.to) },
   ];
   if (d.standard === 'erc1155' && d.amount) {
-    rows.push({ label: 'Amount', value: d.amount });
+    rows.push({ label: 'Quantity', value: d.amount });
   }
   if (d.note?.trim()) {
     rows.push({ label: 'Note', value: d.note.trim() });

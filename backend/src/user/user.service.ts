@@ -462,11 +462,6 @@ export class UserService {
         ? decimalsRaw
         : undefined;
 
-    const weiDisplay =
-      amountRaw && /^\d+$/.test(amountRaw)
-        ? UserService.formatBase10Integer(amountRaw)
-        : '—';
-
     const rows: Array<{ label: string; value: string }> = [];
 
     if (decimals != null && amountRaw && /^\d+$/.test(amountRaw)) {
@@ -474,15 +469,13 @@ export class UserService {
         const human = UserService.trimDecimalZeros(
           formatUnits(BigInt(amountRaw), decimals),
         );
-        rows.push({ label: 'Amount (token units)', value: human });
+        rows.push({ label: 'Amount', value: human });
       } catch {
-        // ignore invalid amount/decimals pair
+        rows.push({ label: 'Amount', value: '—' });
       }
+    } else {
+      rows.push({ label: 'Amount', value: '—' });
     }
-    rows.push({
-      label: rows.length > 0 ? 'Amount (wei)' : 'Amount (base units)',
-      value: weiDisplay,
-    });
 
     const tokenLabel =
       assetRaw && /^0x[a-fA-F0-9]{40}$/i.test(assetRaw)
@@ -530,14 +523,31 @@ export class UserService {
       typeof usdCentsRaw === 'number' && Number.isFinite(usdCentsRaw)
         ? usdCentsRaw
         : null;
+    const tokenDecimalsRaw = data.tokenDecimals;
+    const tokenDecimals =
+      typeof tokenDecimalsRaw === 'number' &&
+      Number.isInteger(tokenDecimalsRaw) &&
+      tokenDecimalsRaw >= 0 &&
+      tokenDecimalsRaw <= 36
+        ? tokenDecimalsRaw
+        : undefined;
+    let amountDisplay = '—';
+    if (tokenAmountWei && /^\d+$/.test(tokenAmountWei)) {
+      if (tokenDecimals != null) {
+        try {
+          amountDisplay = UserService.trimDecimalZeros(
+            formatUnits(BigInt(tokenAmountWei), tokenDecimals),
+          );
+        } catch {
+          amountDisplay = '—';
+        }
+      }
+    }
     const rows: Array<{ label: string; value: string }> = [
       { label: 'Token', value: tokenSymbol },
       {
-        label: 'Amount (base units)',
-        value:
-          tokenAmountWei && /^\d+$/.test(tokenAmountWei)
-            ? UserService.formatBase10Integer(tokenAmountWei)
-            : '—',
+        label: `Amount (${tokenSymbol})`,
+        value: amountDisplay,
       },
       { label: 'Network', value: UserService.shortenMiddleText(network, 48) },
       {

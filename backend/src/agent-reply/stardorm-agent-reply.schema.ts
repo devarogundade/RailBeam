@@ -777,15 +777,13 @@ function agentRichFromX402PaymentToolArgs(
   if (data.decimals != null) {
     try {
       const human = trimDecimalZeros(formatUnits(BigInt(amt), data.decimals));
-      rows.push({ label: 'Amount (token units)', value: human });
+      rows.push({ label: 'Amount', value: human });
     } catch {
-      // ignore
+      rows.push({ label: 'Amount', value: '—' });
     }
+  } else {
+    rows.push({ label: 'Amount', value: '—' });
   }
-  rows.push({
-    label: rows.length > 0 ? 'Amount (wei)' : 'Amount (base units)',
-    value: formatBase10Integer(amt),
-  });
   rows.push({
     label: /^0x[a-fA-F0-9]{40}$/i.test(data.currency)
       ? 'Token contract'
@@ -819,14 +817,13 @@ function agentRichFromOnRampTokensToolArgs(
     const human = trimDecimalZeros(
       formatUnits(BigInt(amt), data.tokenDecimals),
     );
-    rows.push({ label: 'Amount (token units)', value: human });
+    rows.push({
+      label: `Amount (${data.tokenSymbol})`,
+      value: human,
+    });
   } catch {
-    // ignore
+    rows.push({ label: `Amount (${data.tokenSymbol})`, value: '—' });
   }
-  rows.push({
-    label: 'Amount (base units)',
-    value: formatBase10Integer(amt),
-  });
   rows.push({
     label: 'Token',
     value: `${data.tokenSymbol} · ${shortenEvmAddress(data.tokenAddress)}`,
