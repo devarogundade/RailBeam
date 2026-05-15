@@ -38,10 +38,6 @@ interface WalletState {
   /** JWT from `POST /auth/verify` (Bearer for Stardorm API). */
   stardormAccessToken: string | null;
   isStardormAuthed: boolean;
-  /** Request challenge, `signMessage`, verify — stores JWT. Requires `VITE_STARDORM_API_URL`. */
-  stardormSignIn: () => Promise<boolean>;
-  /** Clears JWT only (wallet may stay connected). */
-  stardormSignOut: () => void;
 }
 
 interface AgentsState {
@@ -208,15 +204,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     invalidateAfterIdentityRegistryWrite(queryClient, effectiveChainId);
   }, [queryClient, effectiveChainId]);
 
-  const skipAutoStardormSignInRef = React.useRef(false);
-
-  const stardormSignOut = () => {
-    skipAutoStardormSignInRef.current = true;
-    clearStardormAccessToken();
-    setStardormAccessTokenState(null);
-    queryClient.removeQueries({ queryKey: queryKeys.user.all });
-  };
-
   const stardormSignIn = React.useCallback(async (): Promise<boolean> => {
     if (!address) {
       toast.error("Connect a wallet first");
@@ -254,7 +241,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setStardormAccessTokenState(token);
       const w = address.toLowerCase() as `0x${string}`;
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(w) });
-      toast.success("Signed in to Stardorm");
       return true;
     } catch (e: unknown) {
       if (axios.isAxiosError(e)) {
@@ -283,7 +269,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (prev && address && prev !== address) {
       clearStardormAccessToken();
       setStardormAccessTokenState(null);
-      skipAutoStardormSignInRef.current = false;
     }
     prevAddressRef.current = address;
   }, [address]);
@@ -291,12 +276,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!address) {
       pendingAutoStardormSignIn.clear();
-      skipAutoStardormSignInRef.current = false;
       return;
     }
     if (!getStardormApiBase()) return;
     if (getStardormAccessToken()) return;
-    if (skipAutoStardormSignInRef.current) return;
     const norm = address.toLowerCase();
     if (pendingAutoStardormSignIn.has(norm)) return;
     pendingAutoStardormSignIn.add(norm);
@@ -387,8 +370,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     disconnect,
     stardormAccessToken,
     isStardormAuthed: Boolean(stardormAccessToken),
-    stardormSignIn,
-    stardormSignOut,
     hiredIds,
     hire,
     fire,

@@ -557,7 +557,7 @@ export function Chat() {
     if (!apiOn) {
       toast.error("Chat unavailable", {
         description:
-          "Configure VITE_STARDORM_API_URL, connect your wallet, and complete sign-in so messages load from the server.",
+          "Configure VITE_STARDORM_API_URL, connect your wallet, and approve the signature when prompted so messages load from the server.",
       });
       return;
     }
@@ -733,7 +733,7 @@ export function Chat() {
                   <EmptyState
                     icon={AlertCircle}
                     title="Could not load conversations"
-                    description="Check your connection and try opening the menu again. If the problem persists, sign out and sign back in."
+                    description="Check your connection and try opening the menu again. If the problem persists, disconnect and reconnect your wallet."
                   />
                 </div>
               ) : flatConversations.length === 0 ? (
@@ -870,7 +870,7 @@ export function Chat() {
                     <EmptyState
                       icon={Wallet}
                       title="Connect to use chat"
-                      description="Connect your wallet and complete Beam sign-in so agents can run with your account context."
+                      description="Connect your wallet and approve the signature when prompted so agents can run with your account context."
                     />
                   )}
                 </div>
@@ -1034,7 +1034,7 @@ export function Chat() {
                 placeholder={
                   apiOn
                     ? `Message ${activeAgent.name}…`
-                    : "Sign in to send messages…"
+                    : "Connect wallet and sign to send messages…"
                 }
                 className="max-h-40 min-h-[40px] min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
               />

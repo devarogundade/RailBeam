@@ -15,8 +15,8 @@ importers:
         specifier: ^1.2.9
         version: 1.2.9(bufferutil@4.1.0)(ethers@6.13.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@beam/stardorm-api-contract':
-        specifier: file:../packages/stardorm-api-contract
-        version: file:../packages/stardorm-api-contract
+        specifier: link:../packages/stardorm-api-contract
+        version: link:../packages/stardorm-api-contract
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -360,9 +360,6 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
-
-  '@beam/stardorm-api-contract@file:../packages/stardorm-api-contract':
-    resolution: {directory: ../packages/stardorm-api-contract, type: directory}
 
   '@borewit/text-codec@0.2.2':
     resolution: {integrity: sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ==}
@@ -4331,10 +4328,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@bcoe/v8-coverage@0.2.3': {}
-
-  '@beam/stardorm-api-contract@file:../packages/stardorm-api-contract':
-    dependencies:
-      zod: 3.25.76
 
   '@borewit/text-codec@0.2.2': {}
 

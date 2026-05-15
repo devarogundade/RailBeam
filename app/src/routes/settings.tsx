@@ -138,7 +138,7 @@ function Settings() {
 
         {apiConfigured && !isStardormAuthed && address ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Sign in with your wallet on the Beam API to sync profile and preferences to your account.
+            Approve the wallet signature when prompted to sync profile and preferences to your account.
           </p>
         ) : null}
         {!apiConfigured ? (
@@ -148,7 +148,7 @@ function Settings() {
         ) : null}
         {isStardormAuthed && meQuery.isError ? (
           <p className="mt-3 text-sm text-destructive">
-            Could not load your account from the server. Try signing out and signing in again.
+            Could not load your account from the server. Try disconnecting and reconnecting your wallet.
           </p>
         ) : null}
 

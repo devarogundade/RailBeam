@@ -10,21 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CoinIcon } from "./icons";
-import { Copy, KeyRound, Loader2, LogOut, Wallet } from "lucide-react";
+import { Copy, LogOut, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export function WalletButton() {
-  const {
-    address,
-    balance,
-    connect,
-    disconnect,
-    isStardormAuthed,
-    stardormSignIn,
-    stardormSignOut,
-  } = useApp();
+  const { address, balance, connect, disconnect } = useApp();
   const [loading, setLoading] = React.useState(false);
-  const [signingIn, setSigningIn] = React.useState(false);
 
   if (!address) {
     return (
@@ -79,38 +70,8 @@ export function WalletButton() {
             {balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}{" "}
             <span className="text-muted-foreground text-sm font-normal">on this network</span>
           </div>
-          {import.meta.env.VITE_STARDORM_API_URL && (
-            <div className="mt-2 rounded-md border border-border bg-background/50 px-2 py-1.5 text-[11px] text-muted-foreground">
-              Stardorm: {isStardormAuthed ? "signed in" : "not signed in"}
-            </div>
-          )}
         </div>
         <DropdownMenuSeparator />
-        {import.meta.env.VITE_STARDORM_API_URL && (
-          <>
-            {!isStardormAuthed ? (
-              <DropdownMenuItem
-                disabled={signingIn}
-                onClick={() => {
-                  setSigningIn(true);
-                  void stardormSignIn().finally(() => setSigningIn(false));
-                }}
-              >
-                {signingIn ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                ) : (
-                  <KeyRound className="h-4 w-4" />
-                )}{" "}
-                {signingIn ? "Signing…" : "Sign in to Stardorm"}
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => stardormSignOut()}>
-                <KeyRound className="h-4 w-4" /> Sign out of Stardorm
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-          </>
-        )}
         <DropdownMenuItem
           onClick={() => {
             navigator.clipboard.writeText(address);
