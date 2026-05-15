@@ -1174,13 +1174,13 @@ export function Chat() {
               type="button"
               variant="default"
               onClick={() => void send()}
-              loading={typing}
               className={cn(
                 "size-9 shrink-0 touch-manipulation rounded-lg px-0 font-semibold",
                 "md:h-9 md:w-auto md:gap-1.5 md:px-4 md:shadow-md",
                 "md:border md:border-white/15 md:hover:shadow-lg md:active:translate-y-px",
               )}
               disabled={!apiOn || typing}
+              aria-busy={typing || undefined}
               aria-label="Send message"
             >
               <Send className="h-3.5 w-3.5 md:h-4 md:w-4" />
