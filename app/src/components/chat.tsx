@@ -280,6 +280,7 @@ export function Chat() {
   const [inputFocused, setInputFocused] = React.useState(false);
   const isMobile = useIsMobile();
   const composerCompact = isMobile && (inputFocused || input.trim().length > 0);
+  const hideAgentPicker = isMobile && input.trim().length > 0;
   const [attachments, setAttachments] = React.useState<DraftAttachment[]>([]);
   const [typing, setTyping] = React.useState(false);
   const [executingHandlerForId, setExecutingHandlerForId] = React.useState<string | null>(null);
@@ -921,6 +922,7 @@ export function Chat() {
               <div
                 className={cn(
                   "mb-2 flex flex-wrap gap-2 md:mb-3",
+                  "max-md:-mx-3 max-md:max-h-28 max-md:overflow-x-auto max-md:overflow-y-auto max-md:px-3 max-md:overscroll-x-contain max-md:overscroll-y-contain",
                   composerCompact && "max-md:hidden",
                 )}
               >
@@ -930,7 +932,7 @@ export function Chat() {
                     type="button"
                     disabled={typing}
                     onClick={() => void send(s)}
-                    className="inline-flex gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs md:text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex shrink-0 gap-2 whitespace-nowrap rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
                   >
                     {s}
                   </button>
@@ -1004,7 +1006,7 @@ export function Chat() {
           )}
 
           <div className="flex flex-row items-center gap-1 rounded-2xl border border-border bg-surface p-1.5 focus-within:border-(--border-medium) md:items-end md:gap-2 md:p-2">
-            {!composerCompact && (
+            {!hideAgentPicker && (
               <AgentDropdown
                 agents={workspaceAgents}
                 activeId={activeAgentId}
@@ -1052,7 +1054,7 @@ export function Chat() {
                     : `Message ${activeAgent.name}…`
                   : "Connect wallet and send messages…"
               }
-              className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-sm leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
+              className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-base leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
             />
             <Button
               onClick={() => void send()}
