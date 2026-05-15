@@ -107,12 +107,15 @@ export function X402PaymentLinkActions({
   payPath,
   apiBase,
   showOpenCheckout = true,
+  showAgentApi = true,
   className,
 }: {
   paymentRequestId: string;
   payPath?: string;
   apiBase?: string;
   showOpenCheckout?: boolean;
+  /** When false, only the human checkout link is shown (plain on-chain checkouts). */
+  showAgentApi?: boolean;
   className?: string;
 }) {
   const resolvedApiBase = apiBase ?? getStardormApiBase() ?? undefined;
@@ -130,19 +133,21 @@ export function X402PaymentLinkActions({
         url={humanCheckoutUrl}
         onCopy={() => copyText("Checkout link", humanCheckoutUrl)}
       />
-      {agentApiUrl ? (
-        <LinkRow
-          label="Agent / x402 API"
-          description="For agents and backends — GET returns payment requirements (x402Payload)."
-          url={agentApiUrl}
-          onCopy={() => copyText("x402 API link", agentApiUrl)}
-        />
-      ) : (
-        <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-          Set <code className="text-foreground">VITE_STARDORM_API_URL</code> to copy the x402 API link (
-          <code className="text-foreground">GET /payments/:id</code>).
-        </p>
-      )}
+      {showAgentApi ? (
+        agentApiUrl ? (
+          <LinkRow
+            label="Agent / x402 API"
+            description="For agents and backends — GET returns payment requirements (x402Payload)."
+            url={agentApiUrl}
+            onCopy={() => copyText("x402 API link", agentApiUrl)}
+          />
+        ) : (
+          <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+            Set <code className="text-foreground">VITE_STARDORM_API_URL</code> to copy the x402 API link (
+            <code className="text-foreground">GET /payments/:id</code>).
+          </p>
+        )
+      ) : null}
       {showOpenCheckout ? (
         <div className="flex flex-wrap gap-2 pt-1">
           <Button

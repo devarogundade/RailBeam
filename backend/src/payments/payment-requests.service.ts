@@ -173,6 +173,26 @@ export class PaymentRequestsService {
     return created;
   }
 
+  async createOnChainPayment(fields: {
+    title: string;
+    description?: string;
+    attachment?: PaymentRequestDocument['attachment'];
+    asset: string;
+    amount: string;
+    payTo: string;
+    network: string;
+    expiresAt?: Date;
+    createdByWallet?: string;
+    decimals?: number;
+  }): Promise<PaymentRequestDocument> {
+    const created = await this.model.create({
+      type: 'on-chain',
+      status: 'pending',
+      ...fields,
+    });
+    return created;
+  }
+
   /**
    * Marks a pending checkout as paid after direct on-chain settlement (`txHash`) or after
    * facilitator verify+settle (`x402PaymentPayload` when `X402_FACILITATOR_URL` is set).

@@ -24,6 +24,7 @@ export class X402Service implements HandlerService {
       throw new BadRequestException(parsed.error.flatten());
     }
     const {
+      checkoutType,
       id,
       amount,
       currency,
@@ -38,13 +39,45 @@ export class X402Service implements HandlerService {
     } = parsed.data;
 
     const payer = ctx.walletAddress.trim().toLowerCase();
-    const resourceKey = `${network}:${id}`;
-    const displayTitle = title ?? `Resource ${id}`;
+    const displayTitle = title ?? (checkoutType === 'on-chain' ? 'Payment' : `Resource ${id?.trim() ?? ''}`);
+
+    if (checkoutType === 'on-chain') {
+      const row = await this.paymentRequests.createOnChainPayment({
+        title: displayTitle,
+        description,
+        attachment,
+        asset: currency,
+        amount,
+        payTo,
+        network,
+        expiresAt,
+        createdByWallet: payer,
+        decimals,
+      });
+
+      const paymentRequestId = row._id.toHexString();
+
+      return {
+        message:
+          'Your checkout link is ready. Share it so payers can complete the transfer from a crypto wallet.',
+        data: {
+          checkoutType: 'on-chain',
+          paymentRequestId,
+          payPath: `/pay/${paymentRequestId}`,
+        },
+      };
+    }
+
+    const resourceId = id?.trim();
+    if (!resourceId) {
+      throw new BadRequestException('id is required for x402 checkouts');
+    }
+    const resourceKey = `${network}:${resourceId}`;
 
     const handlerData: Record<string, unknown> = {
       x402Version: 1,
       resource: {
-        id,
+        id: resourceId,
         key: resourceKey,
         title: displayTitle,
         resourceUrl,
@@ -65,7 +98,7 @@ export class X402Service implements HandlerService {
           asset: currency,
           payTo,
           resource: resourceKey,
-          description: description ?? title ?? `Payment for ${id}`,
+          description: description ?? title ?? `Payment for ${resourceId}`,
         },
       ],
     };
@@ -79,7 +112,7 @@ export class X402Service implements HandlerService {
       payTo,
       network,
       expiresAt,
-      resourceId: id,
+      resourceId,
       resourceUrl,
       createdByWallet: payer,
       decimals,
@@ -93,6 +126,7 @@ export class X402Service implements HandlerService {
         'Your payment checkout is ready. Use the buttons below to open or copy the pay link ' +
         'so you or someone else can pay from a crypto wallet.',
       data: {
+        checkoutType: 'x402',
         ...handlerData,
         ...(decimals !== undefined ? { decimals } : {}),
         paymentRequestId,

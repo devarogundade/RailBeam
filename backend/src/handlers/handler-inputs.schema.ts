@@ -88,33 +88,44 @@ const x402AmountSchema = z.union([
   z.number().int().positive().transform((n) => String(n)),
 ]);
 
-export const X402InputSchema = z.object({
-  id: z.string().min(1).max(256),
-  amount: x402AmountSchema,
-  currency: z
-    .string()
-    .min(1)
-    .max(66)
-    .transform((s) => {
-      const t = s.trim();
-      return /^0x[a-fA-F0-9]{40}$/i.test(t) ? t.toLowerCase() : t;
-    }),
-  network: z.string().min(1).max(64),
-  payTo: z
-    .string()
-    .min(1)
-    .refine(
-      (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
-      'payTo must be a 0x-prefixed 20-byte address',
-    )
-    .transform((s) => s.trim().toLowerCase()),
-  title: z.string().min(1).max(200).optional(),
-  description: z.string().min(1).max(2000).optional(),
-  resourceUrl: z.string().url().max(2048).optional(),
-  expiresAt: z.coerce.date().optional(),
-  decimals: z.number().int().min(0).max(36).optional(),
-  attachment: stardormChatAttachmentSchema.optional(),
-});
+export const X402InputSchema = z
+  .object({
+    checkoutType: z.enum(['x402', 'on-chain']).optional().default('x402'),
+    id: z.string().min(1).max(256).optional(),
+    amount: x402AmountSchema,
+    currency: z
+      .string()
+      .min(1)
+      .max(66)
+      .transform((s) => {
+        const t = s.trim();
+        return /^0x[a-fA-F0-9]{40}$/i.test(t) ? t.toLowerCase() : t;
+      }),
+    network: z.string().min(1).max(64),
+    payTo: z
+      .string()
+      .min(1)
+      .refine(
+        (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
+        'payTo must be a 0x-prefixed 20-byte address',
+      )
+      .transform((s) => s.trim().toLowerCase()),
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().min(1).max(2000).optional(),
+    resourceUrl: z.string().url().max(2048).optional(),
+    expiresAt: z.coerce.date().optional(),
+    decimals: z.number().int().min(0).max(36).optional(),
+    attachment: stardormChatAttachmentSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.checkoutType !== 'on-chain' && !val.id?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'id is required for x402 checkouts',
+        path: ['id'],
+      });
+    }
+  });
 
 export type X402Input = z.infer<typeof X402InputSchema>;
 

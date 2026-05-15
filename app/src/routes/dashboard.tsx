@@ -701,11 +701,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
             Virtual payment cards
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Cards issued by the Capita agent hold a spend balance in USD cents. When the API has a treasury
-            address configured, adding funds sends native 0G from your wallet and removing funds sends native
-            0G back from the treasury to your wallet; amounts use the configured spot{" "}
-            <span className="font-medium text-foreground">usdValue</span> per 1 0G (same reference as on-ramp
-            hints). Otherwise balance changes are demo-only.
+            USD spend balance on cards from the Capita agent. Add or remove funds with native 0G.
           </p>
         </div>
       </div>

@@ -36,7 +36,7 @@ function ChatMessageRowSkeleton({
           <Skeleton
             className={cn(
               "rounded-2xl rounded-bl-sm border border-border px-3.5 py-2.5",
-              wide ? "h-20 w-[min(100%,20rem)]" : "h-14 w-48",
+              wide ? "h-20 w-full max-w-md" : "h-14 w-full max-w-xs",
             )}
           />
         </>
@@ -45,7 +45,7 @@ function ChatMessageRowSkeleton({
           <Skeleton
             className={cn(
               "rounded-2xl rounded-br-sm border border-(--border-medium) px-3.5 py-2.5",
-              wide ? "h-20 w-[min(100%,20rem)]" : "h-14 w-44",
+              wide ? "h-20 w-full max-w-md" : "h-14 w-full max-w-xs",
             )}
           />
           <div className="flex justify-end px-1">
@@ -57,7 +57,7 @@ function ChatMessageRowSkeleton({
   );
 
   return (
-    <div className={cn("flex items-end gap-2", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full items-end gap-2", isUser ? "justify-end" : "justify-start")}>
       {!isUser ? (
         <>
           <Skeleton className="h-7 w-7 shrink-0 rounded-full" />
@@ -76,7 +76,7 @@ function ChatMessageRowSkeleton({
 export function ChatHistorySkeleton() {
   return (
     <div
-      className="mx-auto flex max-w-3xl flex-col gap-4 py-6"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4 py-6"
       aria-busy="true"
       aria-label="Loading conversation"
     >
@@ -367,14 +367,14 @@ export function AgentCardGridSkeleton({
 
 export function ConversationListSkeleton() {
   return (
-    <ul className="flex flex-col gap-1 px-1 py-2" aria-hidden>
+    <ul className="flex flex-col gap-1" aria-hidden>
       {Array.from({ length: 6 }).map((_, i) => (
         <li key={i} className="flex gap-0.5">
-          <div className="flex min-h-11 flex-1 flex-col justify-center gap-1 rounded-lg border border-transparent px-3 py-2.5">
-            <Skeleton className="h-4 w-[min(100%,14rem)]" />
-            <Skeleton className="h-3 w-28" />
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 rounded-lg border border-transparent px-3 py-2.5">
+            <Skeleton className="h-4 w-full max-w-[92%]" />
+            <Skeleton className="h-3 w-28 max-w-[70%]" />
           </div>
-          <Skeleton className="w-10 shrink-0 self-stretch rounded-lg" />
+          <Skeleton className="h-10 w-10 shrink-0 self-stretch rounded-lg" />
         </li>
       ))}
     </ul>

@@ -4,7 +4,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { parseUnits } from "viem";
 import { Link2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
-import type { StardormChatAttachment, X402SupportedAsset } from "@railbeam/stardorm-api-contract";
+import type {
+  PublicPaymentRequest,
+  StardormChatAttachment,
+  X402SupportedAsset,
+} from "@railbeam/stardorm-api-contract";
 import {
   Dialog,
   DialogContent,
@@ -36,9 +40,29 @@ import {
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
+type PaymentCheckoutType = PublicPaymentRequest["type"];
+
+const CHECKOUT_TYPE_OPTIONS: {
+  value: PaymentCheckoutType;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "x402",
+    label: "x402",
+    description: "Agents, APIs, and paywalled resources.",
+  },
+  {
+    value: "on-chain",
+    label: "On-chain",
+    description: "Hosted wallet checkout link only.",
+  },
+];
+
 type CreatedCheckout = {
   paymentRequestId: string;
   payPath: string;
+  checkoutType: PaymentCheckoutType;
 };
 
 function parseCreatedCheckout(data: Record<string, unknown> | undefined): CreatedCheckout | null {
@@ -47,7 +71,9 @@ function parseCreatedCheckout(data: Record<string, unknown> | undefined): Create
     typeof data.paymentRequestId === "string" ? data.paymentRequestId : null;
   const payPath = typeof data.payPath === "string" ? data.payPath : null;
   if (!paymentRequestId || !payPath) return null;
-  return { paymentRequestId, payPath };
+  const checkoutType: PaymentCheckoutType =
+    data.checkoutType === "on-chain" ? "on-chain" : "x402";
+  return { paymentRequestId, payPath, checkoutType };
 }
 
 export function CreatePaymentLinkDialog({
@@ -61,6 +87,7 @@ export function CreatePaymentLinkDialog({
   const queryClient = useQueryClient();
   const supportedAssets = React.useMemo(() => x402CheckoutSupportedAssets(), []);
 
+  const [checkoutType, setCheckoutType] = React.useState<PaymentCheckoutType>("x402");
   const [resourceId, setResourceId] = React.useState<string>(() => crypto.randomUUID());
   const [assetAddr, setAssetAddr] = React.useState<string>(
     () => supportedAssets[0]?.address ?? "native",
@@ -82,6 +109,7 @@ export function CreatePaymentLinkDialog({
   const selected = supportedAssets.find((a) => a.address === assetAddr);
 
   const resetForm = React.useCallback(() => {
+    setCheckoutType("x402");
     setResourceId(crypto.randomUUID());
     setAssetAddr(supportedAssets[0]?.address ?? "native");
     setNetworkId(X402_CHECKOUT_NETWORKS[0]?.id ?? "");
@@ -122,7 +150,7 @@ export function CreatePaymentLinkDialog({
       }
       if (!networkId.trim()) throw new Error("Pick a network");
       const rid = resourceId.trim();
-      if (!rid) throw new Error("Resource id is required");
+      if (checkoutType === "x402" && !rid) throw new Error("Resource id is required");
 
       let attachment: StardormChatAttachment | undefined;
       if (attachmentFile) {
@@ -141,19 +169,22 @@ export function CreatePaymentLinkDialog({
         selected.address === "native" ? "native" : selected.address.trim().toLowerCase();
 
       const params: Record<string, unknown> = {
-        id: rid,
+        checkoutType,
         amount: amountWei,
         currency,
         network: networkId.trim(),
         payTo: pt.toLowerCase(),
         decimals: selected.decimals,
       };
+      if (checkoutType === "x402") params.id = rid;
       const t = title.trim();
       if (t) params.title = t;
       const d = description.trim();
       if (d) params.description = d;
-      const ru = resourceUrl.trim();
-      if (ru) params.resourceUrl = ru;
+      if (checkoutType === "x402") {
+        const ru = resourceUrl.trim();
+        if (ru) params.resourceUrl = ru;
+      }
       if (expiresAt.trim()) {
         const exp = new Date(expiresAt);
         if (Number.isNaN(exp.getTime())) throw new Error("Invalid expiry date");
@@ -206,7 +237,7 @@ export function CreatePaymentLinkDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="flex max-h-[min(90dvh,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-4 w-4" />
@@ -214,8 +245,10 @@ export function CreatePaymentLinkDialog({
           </DialogTitle>
           <DialogDescription>
             {created
-              ? "Copy the checkout link for payers, or the x402 API link for agents and backends."
-              : "Configure an on-chain x402 checkout. Amounts are stored in smallest token units (wei)."}
+              ? created.checkoutType === "x402"
+                ? "Copy the checkout link for payers, or the x402 API link for agents and backends."
+                : "Copy the checkout link and share it with payers."
+              : "Create a shareable checkout. Amounts use token units (not wei)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -223,6 +256,7 @@ export function CreatePaymentLinkDialog({
           <CheckoutSuccessBody
             paymentRequestId={created.paymentRequestId}
             payPath={created.payPath}
+            checkoutType={created.checkoutType}
             onClose={() => onOpenChange(false)}
             onCreateAnother={() => {
               setCreated(null);
@@ -230,8 +264,10 @@ export function CreatePaymentLinkDialog({
             }}
           />
         ) : (
-          <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PaymentLinkFormBody
+              checkoutType={checkoutType}
+              setCheckoutType={setCheckoutType}
               supportedAssets={supportedAssets}
               assetAddr={assetAddr}
               setAssetAddr={setAssetAddr}
@@ -276,6 +312,8 @@ export function CreatePaymentLinkDialog({
 }
 
 function PaymentLinkFormBody(props: {
+  checkoutType: PaymentCheckoutType;
+  setCheckoutType: (v: PaymentCheckoutType) => void;
   supportedAssets: X402SupportedAsset[];
   assetAddr: string;
   setAssetAddr: (v: string) => void;
@@ -305,6 +343,8 @@ function PaymentLinkFormBody(props: {
   pending: boolean;
 }) {
   const {
+    checkoutType,
+    setCheckoutType,
     supportedAssets,
     assetAddr,
     setAssetAddr,
@@ -335,7 +375,38 @@ function PaymentLinkFormBody(props: {
   } = props;
 
   return (
-    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
+      <Field label="Checkout type">
+        <RadioGroup
+          value={checkoutType}
+          onValueChange={(v) => setCheckoutType(v as PaymentCheckoutType)}
+          className="grid gap-2"
+        >
+          {CHECKOUT_TYPE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-lg border border-border px-2.5 py-2 text-sm transition-colors",
+                checkoutType === option.value
+                  ? "border-(--border-medium) bg-(--btn-item-active)"
+                  : "hover:bg-(--btn-secondary-bg)",
+                pending && "pointer-events-none opacity-60",
+              )}
+            >
+              <RadioGroupItem
+                value={option.value}
+                id={`checkout-type-${option.value}`}
+                className="mt-0.5"
+              />
+              <div className="min-w-0">
+                <div className="font-medium">{option.label}</div>
+                <p className="text-[11px] text-muted-foreground">{option.description}</p>
+              </div>
+            </label>
+          ))}
+        </RadioGroup>
+      </Field>
+
       <Field label="Asset">
         <RadioGroup value={assetAddr} onValueChange={setAssetAddr} className="grid gap-2">
           {supportedAssets.map((a) => (
@@ -399,13 +470,15 @@ function PaymentLinkFormBody(props: {
         />
       </Field>
 
-      <Field
-        label="Resource id (x402)"
-        htmlFor="pay-resource-id"
-        hint="Stable id for the paywalled resource; included in x402 accepts metadata."
-      >
-        <ResourceIdRow resourceId={resourceId} setResourceId={setResourceId} disabled={pending} />
-      </Field>
+      {checkoutType === "x402" ? (
+        <Field
+          label="Resource id (x402)"
+          htmlFor="pay-resource-id"
+          hint="Stable id for the paywalled resource; included in x402 accepts metadata."
+        >
+          <ResourceIdRow resourceId={resourceId} setResourceId={setResourceId} disabled={pending} />
+        </Field>
+      ) : null}
 
       <Collapsible open={optionalOpen} onOpenChange={setOptionalOpen}>
         <CollapsibleTrigger asChild>
@@ -435,16 +508,18 @@ function PaymentLinkFormBody(props: {
             />
           </Field>
 
-          <Field label="Resource URL (paywalled HTTPS resource)" htmlFor="pay-resource-url">
-            <Input
-              id="pay-resource-url"
-              type="url"
-              placeholder="https://api.example.com/v1/premium"
-              value={resourceUrl}
-              onChange={(e) => setResourceUrl(e.target.value)}
-              disabled={pending}
-            />
-          </Field>
+          {checkoutType === "x402" ? (
+            <Field label="Resource URL (paywalled HTTPS resource)" htmlFor="pay-resource-url">
+              <Input
+                id="pay-resource-url"
+                type="url"
+                placeholder="https://api.example.com/v1/premium"
+                value={resourceUrl}
+                onChange={(e) => setResourceUrl(e.target.value)}
+                disabled={pending}
+              />
+            </Field>
+          ) : null}
 
           <Field label="Expires at" htmlFor="pay-expires" hint="Leave empty for no expiry.">
             <Input
@@ -528,17 +603,19 @@ function ResourceIdRow({
 function CheckoutSuccessBody({
   paymentRequestId,
   payPath,
+  checkoutType,
   onClose,
   onCreateAnother,
 }: {
   paymentRequestId: string;
   payPath: string;
+  checkoutType: PaymentCheckoutType;
   onClose: () => void;
   onCreateAnother: () => void;
 }) {
   return (
-    <>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-6 py-4">
         <p className="text-sm text-muted-foreground">
           Checkout id <span className="font-mono text-foreground">{paymentRequestId}</span>
         </p>
@@ -546,6 +623,7 @@ function CheckoutSuccessBody({
           paymentRequestId={paymentRequestId}
           payPath={payPath}
           apiBase={getStardormApiBase() ?? undefined}
+          showAgentApi={checkoutType === "x402"}
         />
       </div>
       <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
@@ -556,7 +634,7 @@ function CheckoutSuccessBody({
           Done
         </Button>
       </DialogFooter>
-    </>
+    </div>
   );
 }
 
