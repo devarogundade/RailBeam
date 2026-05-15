@@ -202,10 +202,20 @@ function OgInferenceMetaButton({ m }: { m: Msg }) {
 
 const CONV_PAGE_SIZE = 20;
 const CHAT_PAGE_SIZE = 35;
+/** Distance from the bottom (px) still treated as "following" the latest messages. */
+const CHAT_SCROLL_SLACK_PX = 200;
 
 export function Chat() {
   const queryClient = useQueryClient();
-  const { workspaceAgents, activeAgentId, setActiveAgentId, address, stardormAccessToken } = useApp();
+  const {
+    workspaceAgents,
+    activeAgentId,
+    setActiveAgentId,
+    openConversationId,
+    setOpenConversationId,
+    address,
+    stardormAccessToken,
+  } = useApp();
   const userKey = address ? (address.toLowerCase() as `0x${string}`) : null;
   const apiOn = isStardormInferenceEnabled();
   const { data: catalog, isError: catalogError } = useStardormCatalog();
@@ -217,8 +227,6 @@ export function Chat() {
     catalogAgents.find((a: Agent) => a.id === "beam-default") ??
     catalogAgents[0];
 
-  /** Which thread is open in the UI; `null` means none (blank composer) until the user picks one or sends a message. */
-  const [openConversationId, setOpenConversationId] = React.useState<string | null>(null);
   const convChatKey = openConversationId ?? "_none";
 
   const convInfinite = useInfiniteQuery({
@@ -285,10 +293,14 @@ export function Chat() {
   const [typing, setTyping] = React.useState(false);
   const [executingHandlerForId, setExecutingHandlerForId] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
   const convScrollRef = React.useRef<HTMLDivElement>(null);
   const convListEndRef = React.useRef<HTMLDivElement>(null);
   const chatTopSentinelRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  /** When true, new messages at the end pin the viewport to the latest bubble. */
+  const stickToBottomRef = React.useRef(true);
+  const [showJumpToBottom, setShowJumpToBottom] = React.useState(false);
 
   /** Full-thread skeleton only on cold load — not while sending or syncing optimistic bubbles. */
   const showHistorySkeleton = Boolean(
@@ -302,6 +314,52 @@ export function Chat() {
   const prevOpenConversationIdRef = React.useRef(openConversationId);
   const prevLastMessageIdRef = React.useRef<string | undefined>(undefined);
 
+  const scrollToBottom = React.useCallback(() => {
+    const end = chatEndRef.current;
+    if (end) {
+      end.scrollIntoView({ block: "end" });
+      return;
+    }
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
+  const jumpToLatest = React.useCallback(() => {
+    stickToBottomRef.current = true;
+    setShowJumpToBottom(false);
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  const updateScrollFollowState = React.useCallback((el: HTMLDivElement) => {
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distanceFromBottom <= CHAT_SCROLL_SLACK_PX;
+    const canScroll = el.scrollHeight > el.clientHeight + 1;
+    stickToBottomRef.current = nearBottom;
+    setShowJumpToBottom((prev) => {
+      const next = canScroll && !nearBottom;
+      return prev === next ? prev : next;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => updateScrollFollowState(el);
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [openConversationId, updateScrollFollowState]);
+
+  React.useEffect(() => {
+    setShowJumpToBottom(false);
+  }, [openConversationId]);
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollFollowState(el);
+  }, [displayMessages, typing, showHistorySkeleton, updateScrollFollowState]);
+
   /**
    * Pin to the latest bubbles when new messages land at the end, without breaking
    * infinite-scroll (prepend older history: last id unchanged) or yanking scroll
@@ -309,12 +367,13 @@ export function Chat() {
    */
   React.useLayoutEffect(() => {
     if (showHistorySkeleton) return;
-    const el = scrollRef.current;
-    if (!el) return;
+    if (!scrollRef.current) return;
 
     if (prevOpenConversationIdRef.current !== openConversationId) {
       prevOpenConversationIdRef.current = openConversationId;
       prevLastMessageIdRef.current = undefined;
+      stickToBottomRef.current = true;
+      setShowJumpToBottom(false);
     }
 
     const hadNoLast = prevLastMessageIdRef.current === undefined;
@@ -323,23 +382,19 @@ export function Chat() {
     const lastIdChanged = lastId !== prevLastMessageIdRef.current;
     prevLastMessageIdRef.current = lastId;
 
-    const slackPx = 200;
-    const nearBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight <= slackPx;
-
-    const needTypingScroll = typing && nearBottom;
+    const needTypingScroll = typing && stickToBottomRef.current;
     const needMessageScroll =
       lastIdChanged &&
-      (nearBottom ||
+      (stickToBottomRef.current ||
         lastMsg?.role === "user" ||
         (Boolean(lastId) && hadNoLast));
 
     if (!needTypingScroll && !needMessageScroll) return;
 
     requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(scrollToBottom);
     });
-  }, [displayMessages, typing, showHistorySkeleton, openConversationId]);
+  }, [displayMessages, typing, showHistorySkeleton, openConversationId, scrollToBottom]);
 
   React.useEffect(() => {
     const root = convScrollRef.current;
@@ -585,6 +640,7 @@ export function Chat() {
       createdAt: Date.now(),
       status: "sent",
     };
+    stickToBottomRef.current = true;
     setPendingMessages((p) => [...p, userMsg]);
     setInput("");
     setAttachments([]);
@@ -830,7 +886,8 @@ export function Chat() {
       </div>
 
       {/* messages */}
-      <div ref={scrollRef} className="bg-dots flex-1 overflow-y-auto px-4 py-6 md:px-10">
+      <div className="relative min-h-0 flex-1">
+        <div ref={scrollRef} className="bg-dots h-full overflow-y-auto px-4 py-6 md:px-10">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           {showHistorySkeleton ? (
             <ChatHistorySkeleton />
@@ -909,7 +966,27 @@ export function Chat() {
               </div>
             </div>
           )}
+          <div ref={chatEndRef} className="h-px w-full shrink-0" aria-hidden />
         </div>
+        </div>
+        {!showHistorySkeleton &&
+          showJumpToBottom &&
+          (displayMessages.length > 0 || typing) && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className={cn(
+                "absolute bottom-5 left-1/2 z-10 h-9 w-9 -translate-x-1/2 rounded-full shadow-md",
+                "border border-border bg-card/95 backdrop-blur-sm",
+                "animate-in fade-in slide-in-from-bottom-2 duration-200",
+              )}
+              aria-label="Jump to latest messages"
+              onClick={jumpToLatest}
+            >
+              <ChevronDown className="h-5 w-5" />
+            </Button>
+          )}
       </div>
 
       {/* composer */}

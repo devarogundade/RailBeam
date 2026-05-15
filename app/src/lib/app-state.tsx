@@ -56,6 +56,9 @@ interface AgentsState {
 interface AppState extends WalletState, AgentsState {
   activeAgentId: string;
   setActiveAgentId: (id: string) => void;
+  /** Open chat thread; survives in-app navigation until reload or sign-out. */
+  openConversationId: string | null;
+  setOpenConversationId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const Ctx = React.createContext<AppState | null>(null);
@@ -105,6 +108,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const activeAgentIdRef = React.useRef(activeAgentId);
   activeAgentIdRef.current = activeAgentId;
 
+  const [openConversationId, setOpenConversationIdState] = React.useState<string | null>(null);
+  const appliedServerConversationOnce = React.useRef(false);
+
   const meQuery = useQuery({
     queryKey: queryKeys.user.me(userKey),
     queryFn: fetchStardormMe,
@@ -123,6 +129,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!stardormAccessToken || !userKey) {
       appliedServerAgentOnce.current = false;
+      appliedServerConversationOnce.current = false;
+      setOpenConversationIdState(null);
     }
   }, [stardormAccessToken, userKey]);
 
@@ -134,6 +142,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (meQuery.isError) appliedServerAgentOnce.current = true;
+  }, [meQuery.isError]);
+
+  React.useEffect(() => {
+    if (!meQuery.isSuccess || !meQuery.data || appliedServerConversationOnce.current) return;
+    appliedServerConversationOnce.current = true;
+    setOpenConversationIdState(
+      (prev) => prev ?? meQuery.data.activeConversationId ?? null,
+    );
+  }, [meQuery.isSuccess, meQuery.data]);
+
+  React.useEffect(() => {
+    if (meQuery.isError) appliedServerConversationOnce.current = true;
   }, [meQuery.isError]);
 
   const setActiveAgentId = React.useCallback(
@@ -305,6 +325,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setStardormAccessTokenState(null);
     queryClient.removeQueries({ queryKey: queryKeys.user.all });
     setActiveAgentIdState("beam-default");
+    appliedServerAgentOnce.current = false;
+    setOpenConversationIdState(null);
+    appliedServerConversationOnce.current = false;
     wagmiDisconnect();
   };
 
@@ -379,6 +402,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     workspaceAgents,
     activeAgentId,
     setActiveAgentId,
+    openConversationId,
+    setOpenConversationId: setOpenConversationIdState,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
