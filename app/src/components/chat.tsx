@@ -65,7 +65,6 @@ import {
   Inbox,
   Wallet,
   AlertCircle,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
@@ -266,10 +265,15 @@ export function Chat() {
 
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [pendingMessages, setPendingMessages] = React.useState<Msg[]>([]);
-  const displayMessages = React.useMemo(
-    () => [...serverMessages, ...pendingMessages],
-    [serverMessages, pendingMessages],
-  );
+  const displayMessages = React.useMemo(() => {
+    if (pendingMessages.length === 0) return serverMessages;
+    if (serverMessages.length === 0) return pendingMessages;
+    const pendingOnly = pendingMessages.filter((p) => {
+      if (p.role !== "user" || !p.content) return true;
+      return !serverMessages.some((s) => s.role === "user" && s.content === p.content);
+    });
+    return [...serverMessages, ...pendingOnly];
+  }, [serverMessages, pendingMessages]);
   const [input, setInput] = React.useState("");
   const [attachments, setAttachments] = React.useState<DraftAttachment[]>([]);
   const [typing, setTyping] = React.useState(false);
@@ -280,8 +284,13 @@ export function Chat() {
   const chatTopSentinelRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
-  const historyLoading = Boolean(
-    openConversationId && chatInfinite.isPending && !chatInfinite.data,
+  /** Full-thread skeleton only on cold load — not while sending or syncing optimistic bubbles. */
+  const showHistorySkeleton = Boolean(
+    openConversationId &&
+      chatInfinite.isPending &&
+      !chatInfinite.data &&
+      pendingMessages.length === 0 &&
+      !typing,
   );
   const sendInFlightRef = React.useRef(false);
   const prevOpenConversationIdRef = React.useRef(openConversationId);
@@ -293,7 +302,7 @@ export function Chat() {
    * for typing-only updates while the user has scrolled up.
    */
   React.useLayoutEffect(() => {
-    if (historyLoading) return;
+    if (showHistorySkeleton) return;
     const el = scrollRef.current;
     if (!el) return;
 
@@ -324,7 +333,7 @@ export function Chat() {
     requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
     });
-  }, [displayMessages, typing, historyLoading, openConversationId]);
+  }, [displayMessages, typing, showHistorySkeleton, openConversationId]);
 
   React.useEffect(() => {
     const root = convScrollRef.current;
@@ -618,15 +627,16 @@ export function Chat() {
           }
         }
       } finally {
-        setTyping(false);
         sendInFlightRef.current = false;
       }
 
       if (!userKey) {
+        setTyping(false);
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
         return;
       }
       if (chatFailed || !threadId) {
+        setTyping(false);
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
         return;
       }
@@ -640,6 +650,7 @@ export function Chat() {
         });
       } finally {
         setPendingMessages((p) => p.filter((x) => x.id !== userMsg.id));
+        setTyping(false);
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.conversations(userKey) });
     })();
@@ -820,7 +831,7 @@ export function Chat() {
       {/* messages */}
       <div ref={scrollRef} className="bg-dots flex-1 overflow-y-auto px-4 py-6 md:px-10">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
-          {historyLoading ? (
+          {showHistorySkeleton ? (
             <ChatHistorySkeleton />
           ) : (
             <>
@@ -904,7 +915,7 @@ export function Chat() {
       <div className="border-t border-border bg-background px-4 py-4 md:px-10">
         <div className="mx-auto max-w-3xl">
           {apiOn &&
-            !historyLoading &&
+            !showHistorySkeleton &&
             displayMessages.length === 0 &&
             suggestions.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
@@ -916,7 +927,6 @@ export function Chat() {
                     onClick={() => void send(s)}
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {typing ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden /> : null}
                     {s}
                   </button>
                 ))}
@@ -1035,17 +1045,15 @@ export function Chat() {
                 onClick={() => void send()}
                 size="sm"
                 className="shrink-0 touch-manipulation font-semibold max-md:min-h-10 max-md:px-3"
-                loading={typing}
                 disabled={!apiOn || typing}
               >
-                {!typing ? <Send className="h-3.5 w-3.5" /> : null}
-                {typing ? "Sending…" : "Send"}
+                <Send className="h-3.5 w-3.5" />
+                Send
               </Button>
             </div>
           </div>
-          <div className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span className="max-md:hidden">Shift + Enter for newline</span>
-            <span className="md:hidden">Enter sends · Shift+Enter newline</span>
+          <div className="mt-2 hidden flex-col gap-1 text-[11px] text-muted-foreground md:flex sm:flex-row sm:items-center sm:justify-between">
+            <span>Shift + Enter for newline</span>
             <Link
               to="/marketplace"
               className="inline-flex items-center gap-1 hover:text-foreground"

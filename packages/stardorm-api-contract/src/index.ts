@@ -99,6 +99,16 @@ export {
   type DeleteConversationResponse,
 } from "./conversation.js";
 export {
+  conversationSyncPayloadSchema,
+  conversationSyncThreadSchema,
+  conversationSyncThreadMessagesSchema,
+  conversationSyncConversationsSchema,
+  conversationSyncConversationDeletedSchema,
+  type ConversationSyncPayload,
+  type ConversationSyncThreadPayload,
+  type ConversationSyncThreadMessagesPayload,
+} from "./conversation-sync.js";
+export {
   agentOnchainFeedbackItemSchema,
   agentFeedbacksQuerySchema,
   agentFeedbacksPageResponseSchema,

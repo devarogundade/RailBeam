@@ -22,7 +22,7 @@ import { MobileSidebarProvider } from "@/lib/mobile-sidebar-context";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
 import { StardormConversationSyncListener } from "@/components/stardorm-conversation-sync-listener";
 import { Toaster } from "@/components/ui/sonner";
-import { isOnboardingComplete } from "@/lib/onboarding";
+import { isOnboardingComplete, prefetchOnboardingRoute } from "@/lib/onboarding";
 
 function NotFoundComponent() {
   return (
@@ -87,7 +87,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const pathname = location.pathname;
     if (isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname)) return;
     if (typeof window === "undefined") return;
-    if (!isOnboardingComplete()) throw redirect({ to: "/onboarding", replace: true });
+    if (!isOnboardingComplete()) {
+      prefetchOnboardingRoute();
+      throw redirect({ to: "/onboarding", replace: true });
+    }
   },
   head: () => ({
     meta: [
@@ -129,8 +132,12 @@ function RootComponent() {
     select: (s) => `${s.location.pathname}${s.location.searchStr}`,
   });
   const mainScrollRef = React.useRef<HTMLElement>(null);
+  const onboardingComplete = isOnboardingComplete();
   const minimalShell =
     isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname);
+  const useMinimalChrome = minimalShell || !onboardingComplete;
+  const awaitingOnboarding =
+    !onboardingComplete && !isOnboardingPath(pathname);
 
   React.useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -143,25 +150,25 @@ function RootComponent() {
         <BeamNetworkProvider>
           <AppProvider>
             <StardormConversationSyncListener />
-            {minimalShell ? (
+            {awaitingOnboarding ? (
+              <OnboardingRedirect />
+            ) : useMinimalChrome ? (
               <Outlet />
             ) : (
-              <OnboardingRedirect>
-                <MobileSidebarProvider>
-                  <div className="flex h-dvh min-h-0 w-full overflow-hidden">
-                    <AppSidebar />
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <AppHeader />
-                      <main
-                        ref={mainScrollRef}
-                        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-                      >
-                        <Outlet />
-                      </main>
-                    </div>
+              <MobileSidebarProvider>
+                <div className="flex h-dvh min-h-0 w-full overflow-hidden">
+                  <AppSidebar />
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <AppHeader />
+                    <main
+                      ref={mainScrollRef}
+                      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+                    >
+                      <Outlet />
+                    </main>
                   </div>
-                </MobileSidebarProvider>
-              </OnboardingRedirect>
+                </div>
+              </MobileSidebarProvider>
             )}
             <Toaster richColors position="bottom-right" theme="dark" />
           </AppProvider>

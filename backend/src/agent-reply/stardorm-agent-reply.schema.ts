@@ -1122,7 +1122,7 @@ export function buildAgentToolCallingSystemPrompt(
         ].join(' ')
       : '',
     allowed.includes('complete_stripe_kyc')
-      ? 'For KYC: call **complete_stripe_kyc** with optional `returnPath` or `{}`. Remind the user to tap **Start Identity verification** to open Stripe Identity.'
+      ? 'For KYC: when the user asks to start, continue, or complete identity verification, you MUST call **complete_stripe_kyc** (params `{}` or optional `returnPath` only). Never answer with prose alone—always emit the tool so the chat shows **Start Identity verification**.'
       : '',
     allowed.includes('create_credit_card')
       ? [
@@ -1163,7 +1163,7 @@ export function buildAgentToolCallingSystemPrompt(
 
 /** User message hints they want Beam Stripe Identity / KYC, not generic “verify email”. */
 const KYC_USER_INTENT_RE =
-  /\b(kyc|stripe\s+identity|identity\s+verification|verify\s+(?:my\s+)?identity|document\s+verification|start\s+identity\s+verification|verify\s+my\s+account)\b/i;
+  /\b(?:kyc|stripe\s+identity|identity\s+verification|verify\s+(?:my\s+)?(?:identity|account)|document\s+verification|start(?:\s+the)?\s+(?:stripe\s+)?identity(?:\s+verification)?)\b/i;
 
 function looksLikeToolDenialAssistantText(text: string): boolean {
   const t = text.toLowerCase();
@@ -1226,4 +1226,43 @@ export function enrichAgentReplyWithMarketplaceRouting(args: {
   }
 
   return reply;
+}
+
+/**
+ * When the active agent can run a handler but the model replied with prose only,
+ * attach the handler CTA so the client shows the one-tap button.
+ */
+function enrichAgentReplyWithHandlerCta(args: {
+  userContent: string;
+  allowedHandlers: readonly HandlerActionId[];
+  reply: AgentComputeReplyWithParams;
+}): AgentComputeReplyWithParams {
+  const reply = enrichAgentReplyWithMarketplaceRouting(args);
+  if (reply.handler != null) return reply;
+
+  const u = args.userContent.trim();
+  if (!u) return reply;
+
+  if (
+    args.allowedHandlers.includes('complete_stripe_kyc') &&
+    KYC_USER_INTENT_RE.test(u)
+  ) {
+    const ctaLine =
+      'Tap **Start Identity verification** below to open Stripe Identity and upload your documents.';
+    const text = reply.text.trim() ? `${reply.text.trim()}\n\n${ctaLine}` : ctaLine;
+    return {
+      text,
+      handler: 'complete_stripe_kyc',
+      params: {},
+    };
+  }
+
+  return reply;
+}
+
+/** Post-process model output before persisting an agent chat bubble. */
+export function enrichAgentReplyForChat(
+  args: Parameters<typeof enrichAgentReplyWithMarketplaceRouting>[0],
+): AgentComputeReplyWithParams {
+  return enrichAgentReplyWithHandlerCta(args);
 }

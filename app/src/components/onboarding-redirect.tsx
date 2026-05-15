@@ -1,19 +1,22 @@
 import * as React from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { isOnboardingComplete } from "@/lib/onboarding";
+import { useNavigate } from "@tanstack/react-router";
+import { PageRoutePending } from "@/components/page-shimmer";
+import { isOnboardingComplete, prefetchOnboardingRoute } from "@/lib/onboarding";
 
-/** Sends first-time visitors to `/onboarding` before they use the main shell. */
-export function OnboardingRedirect({ children }: { children: React.ReactNode; }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+/**
+ * Fallback when root `beforeLoad` has not committed yet — shows the same chrome as
+ * `/onboarding` pending state and navigates without mounting the main app shell.
+ */
+export function OnboardingRedirect() {
   const navigate = useNavigate();
 
   React.useLayoutEffect(() => {
     if (isOnboardingComplete()) return;
+    prefetchOnboardingRoute();
     void navigate({ to: "/onboarding", replace: true });
-  }, [pathname, navigate]);
+  }, [navigate]);
 
-  /** Root `beforeLoad` normally redirects first; keep a cheap fallback without an extra full-screen skeleton. */
-  if (!isOnboardingComplete()) return null;
+  if (isOnboardingComplete()) return null;
 
-  return <>{children}</>;
+  return <PageRoutePending variant="narrow" />;
 }

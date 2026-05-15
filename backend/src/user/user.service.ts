@@ -34,7 +34,7 @@ import {
   buildAgentOutputContract,
   buildAgentToolCallingSystemPrompt,
   agentReplyFromChatCompletion,
-  enrichAgentReplyWithMarketplaceRouting,
+  enrichAgentReplyForChat,
   type AgentComputeReplyWithParams,
   type AgentRichCard,
 } from 'src/agent-reply/stardorm-agent-reply.schema';
@@ -60,6 +60,7 @@ import {
   type CreditCardFundQuoteResponse,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
+  type ChatHistoryMessage,
 } from '@beam/stardorm-api-contract';
 import {
   X402InputSchema,
@@ -696,6 +697,17 @@ export class UserService {
     } catch {
       return false;
     }
+  }
+
+  /** Stored KYC CTA params may omit `returnPath`; the client adds it at click time. */
+  private static stripeKycCtaParamsMatch(
+    stored: { returnPath?: string },
+    exec: { returnPath?: string },
+  ): boolean {
+    if (stored.returnPath != null && stored.returnPath !== exec.returnPath) {
+      return false;
+    }
+    return true;
   }
 
   private followUpFromPersistedMessage(row: {
@@ -1534,7 +1546,7 @@ export class UserService {
       conv.inferenceConversationId = raw.openAiConversationId.trim();
       await conv.save();
     }
-    const structured = enrichAgentReplyWithMarketplaceRouting({
+    const structured = enrichAgentReplyForChat({
       userContent: userBubbleContent,
       allowedHandlers,
       reply: agentReplyFromChatCompletion(
@@ -1836,14 +1848,20 @@ export class UserService {
       }
       execParams = parsed.data;
     } else if (body.handler === 'complete_stripe_kyc') {
+      const parsedStored = stripeKycInputSchema.safeParse(
+        storedParams && typeof storedParams === 'object' ? storedParams : {},
+      );
       const parsed = stripeKycInputSchema.safeParse(
         execParams && typeof execParams === 'object' ? execParams : {},
       );
+      if (!parsedStored.success) {
+        throw new BadRequestException(parsedStored.error.flatten());
+      }
       if (!parsed.success) {
         throw new BadRequestException(parsed.error.flatten());
       }
       execParams = parsed.data;
-      if (!UserService.jsonParamsEqual(storedParams, execParams)) {
+      if (!UserService.stripeKycCtaParamsMatch(parsedStored.data, parsed.data)) {
         throw new BadRequestException('Params do not match this chat action');
       }
     } else if (creditCardFormCta) {

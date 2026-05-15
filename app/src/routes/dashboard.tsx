@@ -230,7 +230,7 @@ function Dashboard() {
                     return (
                       <li key={row.id} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
-                          <div className="font-medium">Employee · {agentUri?.name}</div>
+                          <div className="font-medium">{agentUri?.name}</div>
                           <div className="text-[11px] text-muted-foreground">
                             {shortenHex(row.user)} ·{" "}
                             <span title={abs} className="cursor-default">
@@ -304,7 +304,7 @@ function onRampBadgeVariant(
   return "secondary";
 }
 
-function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
+function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.paymentRequests(),
     queryFn: () => fetchStardormPaymentRequests({ limit: 25 }),
@@ -373,7 +373,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean }) {
   );
 }
 
-function DashboardKyc({ enabled }: { enabled: boolean }) {
+function DashboardKyc({ enabled }: { enabled: boolean; }) {
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.kycStatus(),
     queryFn: () => fetchStardormKycStatus(),
@@ -427,7 +427,7 @@ function DashboardKyc({ enabled }: { enabled: boolean }) {
   );
 }
 
-function DashboardOnRamps({ enabled }: { enabled: boolean }) {
+function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.onRamps(),
     queryFn: () => fetchStardormOnRamps({ limit: 25 }),
@@ -523,7 +523,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
+function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
   const qc = useQueryClient();
   const api = Boolean(getStardormApiBase());
   const { address } = useAccount();
@@ -541,7 +541,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean }) {
   });
 
   const fundMut = useMutation({
-    mutationFn: async ({ id, dollars }: { id: string; dollars: string }) => {
+    mutationFn: async ({ id, dollars }: { id: string; dollars: string; }) => {
       const cents = dollarsToCents(dollars);
       if (cents == null) throw new Error("Enter a positive dollar amount.");
       const quote = await fetchCreditCardFundQuote(cents);

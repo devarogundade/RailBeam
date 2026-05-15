@@ -6,7 +6,7 @@ import { docsNavSections } from "@/lib/docs-nav";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { ArrowLeft, Menu, X } from "lucide-react";
 
 export function DocsShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -48,8 +48,9 @@ export function DocsShell() {
           </div>
           <Link
             to="/"
-            className="hidden shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-(--bg-hover) hover:text-foreground sm:inline-flex"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-(--bg-hover) hover:text-foreground sm:px-3"
           >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0 md:hidden" aria-hidden />
             Back to app
           </Link>
         </div>

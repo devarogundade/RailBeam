@@ -26,6 +26,12 @@ export function isOnboardingComplete(): boolean {
   }
 }
 
+/** Warm the onboarding route chunk before navigation so the redirect does not hitch. */
+export function prefetchOnboardingRoute(): void {
+  if (typeof window === "undefined") return;
+  void import("@/routes/onboarding");
+}
+
 /** Persists completion in localStorage and a lightweight cookie (SSR-friendly follow-up visits). */
 export function setOnboardingComplete(): void {
   if (typeof window === "undefined") return;

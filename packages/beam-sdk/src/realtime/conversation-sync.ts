@@ -3,11 +3,13 @@
  * Auth: JWT in `?token=` (browsers cannot set `Authorization` on WebSocket handshakes).
  */
 
+import {
+  conversationSyncPayloadSchema,
+  type ConversationSyncPayload,
+} from "@railbeam/stardorm-api-contract";
+
 /** Mirrors backend `ConversationSyncPayload`. */
-export type BeamConversationSyncPayload =
-  | { v: 1; op: "thread"; conversationId: string }
-  | { v: 1; op: "conversations" }
-  | { v: 1; op: "conversation_deleted"; conversationId: string };
+export type BeamConversationSyncPayload = ConversationSyncPayload;
 
 /** Backend closes with 4401 when JWT is missing or invalid. */
 export const BEAM_WS_CLOSE_UNAUTHORIZED = 4401;
@@ -37,18 +39,8 @@ export function buildBeamConversationsWebSocketUrl(
 export function parseBeamConversationSyncPayload(raw: string): BeamConversationSyncPayload | null {
   try {
     const o = JSON.parse(raw) as unknown;
-    if (!o || typeof o !== "object") return null;
-    const v = (o as { v?: unknown }).v;
-    if (v !== 1) return null;
-    const op = (o as { op?: unknown }).op;
-    if (op === "conversations") return { v: 1, op: "conversations" };
-    const cid = (o as { conversationId?: unknown }).conversationId;
-    if (typeof cid !== "string" || !cid.trim()) return null;
-    if (op === "thread") return { v: 1, op: "thread", conversationId: cid.trim() };
-    if (op === "conversation_deleted") {
-      return { v: 1, op: "conversation_deleted", conversationId: cid.trim() };
-    }
-    return null;
+    const parsed = conversationSyncPayloadSchema.safeParse(o);
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
