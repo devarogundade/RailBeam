@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { toast } from "sonner";
 import type { UpdateUserBody, UserAvatarPreset } from "@railbeam/stardorm-api-contract";
-import { useApp } from "@/lib/app-state";
+import { formatAddress, useApp } from "@/lib/app-state";
 import { fetchStardormMe, patchStardormUser } from "@/lib/stardorm-user-api";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { queryKeys } from "@/lib/query-keys";
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CoinIcon } from "@/components/icons";
+import { Copy } from "lucide-react";
 import { PageRoutePending, SettingsProfileFieldsSkeleton } from "@/components/page-shimmer";
 
 export const Route = createFileRoute("/settings")({
@@ -156,7 +157,13 @@ function Settings() {
           <Card title="Wallet">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm">{address ?? "Not connected"}</div>
+                {address ? (
+                  <div className="font-mono text-sm text-foreground" title={address}>
+                    {formatAddress(address)}
+                  </div>
+                ) : (
+                  <div className="text-sm">Not connected</div>
+                )}
                 <div className="text-sm text-muted-foreground">
                   Network · 0G testnet
                 </div>
@@ -167,7 +174,25 @@ function Settings() {
               </div>
             </div>
             {address && (
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(address).then(
+                      () => toast.success("Address copied"),
+                      () =>
+                        toast.error("Could not copy", {
+                          description: "Clipboard permission denied or unavailable.",
+                        }),
+                    )
+                  }
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy address
+                </Button>
                 <Button variant="outline" size="sm" onClick={disconnect}>
                   Disconnect
                 </Button>

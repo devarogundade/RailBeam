@@ -1134,13 +1134,19 @@ export function Chat() {
               className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-base leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
             />
             <Button
+              type="button"
+              variant="default"
               onClick={() => void send()}
-              size="sm"
-              className="size-9 shrink-0 touch-manipulation px-0 font-semibold md:size-auto md:min-h-0 md:px-3"
+              loading={typing}
+              className={cn(
+                "size-9 shrink-0 touch-manipulation rounded-lg px-0 font-semibold",
+                "md:h-9 md:w-auto md:gap-1.5 md:px-4 md:shadow-md",
+                "md:border md:border-white/15 md:hover:shadow-lg md:active:translate-y-px",
+              )}
               disabled={!apiOn || typing}
               aria-label="Send message"
             >
-              <Send className="h-3.5 w-3.5" />
+              <Send className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden md:inline">Send</span>
             </Button>
           </div>

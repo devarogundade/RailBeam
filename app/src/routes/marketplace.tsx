@@ -8,6 +8,13 @@ import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { CoinIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { EmptyState } from "@/components/empty-state";
@@ -22,6 +29,79 @@ export const Route = createFileRoute("/marketplace")({
 /** Registry token #1 is the default Beam agent (`beam-default`, subgraph `chain-1`); not hireable on marketplace. */
 function marketplaceAgents(list: Agent[]) {
   return list.filter((a) => !isRegistryTokenIdOneAgent(a) && a.isCloned !== true);
+}
+
+type MarketplaceSort = "reputation" | "price" | "hires";
+
+const SORT_OPTIONS: { value: MarketplaceSort; label: string }[] = [
+  { value: "reputation", label: "Reputation" },
+  { value: "price", label: "Price" },
+  { value: "hires", label: "Most employers" },
+];
+
+function MarketplaceSortSelect({
+  value,
+  onChange,
+  triggerClassName,
+}: {
+  value: MarketplaceSort;
+  onChange: (value: MarketplaceSort) => void;
+  triggerClassName?: string;
+}) {
+  const activeLabel = SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Sort";
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as MarketplaceSort)}>
+      <SelectTrigger
+        aria-label="Sort agents"
+        className={cn(
+          "h-8 w-full gap-1 border-border bg-surface-elevated px-2.5 text-xs font-medium shadow-none",
+          triggerClassName,
+        )}
+      >
+        <SelectValue>{activeLabel}</SelectValue>
+      </SelectTrigger>
+      <SelectContent align="end">
+        {SORT_OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="text-xs">
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function MarketplaceCategorySelect({
+  value,
+  options,
+  onChange,
+  triggerClassName,
+}: {
+  value: AgentCategory | "All";
+  options: readonly (AgentCategory | "All")[];
+  onChange: (value: AgentCategory | "All") => void;
+  triggerClassName?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as AgentCategory | "All")}>
+      <SelectTrigger
+        aria-label="Filter by category"
+        className={cn(
+          "h-8 w-full gap-1 border-border bg-surface-elevated px-2.5 text-xs font-medium shadow-none",
+          triggerClassName,
+        )}
+      >
+        <SelectValue>{value}</SelectValue>
+      </SelectTrigger>
+      <SelectContent align="start">
+        {options.map((c) => (
+          <SelectItem key={c} value={c} className="text-xs">
+            {c}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function Marketplace() {
@@ -54,7 +134,7 @@ function Marketplace() {
   const [q, setQ] = React.useState("");
   const [cat, setCat] = React.useState<AgentCategory | "All">("All");
   const [maxPrice, setMaxPrice] = React.useState(30);
-  const [sort, setSort] = React.useState<"reputation" | "price" | "hires">("reputation");
+  const [sort, setSort] = React.useState<MarketplaceSort>("reputation");
   const [hireTarget, setHireTarget] = React.useState<Agent | null>(null);
 
   React.useEffect(() => {
@@ -119,19 +199,47 @@ function Marketplace() {
           </p>
         </div>
 
-        {/* Toolbar */}
-        <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:p-4 md:flex-row md:items-center md:gap-4">
+        {/* Filters: 2 lines on mobile; single row on desktop */}
+        <div className="mt-6 flex flex-col gap-2 rounded-xl border border-border bg-surface p-2.5 sm:gap-3 sm:p-4 md:flex-row md:items-center md:gap-4">
           <div className="relative min-w-0 w-full flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground md:left-3 md:h-4 md:w-4" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search agents, skills, categories…"
-              className="h-10 w-full border-transparent bg-surface-elevated pl-9"
+              className="h-9 w-full border-transparent bg-surface-elevated pl-8 text-sm md:h-10 md:pl-9"
             />
           </div>
-          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center md:w-auto md:shrink-0">
-            <div className="flex min-h-10 w-full min-w-0 items-center gap-2 rounded-md border border-border px-2.5 py-2 text-sm sm:flex-1 md:w-auto md:min-w-[12rem] md:flex-initial lg:min-w-[14rem]">
+          <div className="flex min-w-0 flex-col gap-2 md:hidden">
+            <div className="grid grid-cols-2 gap-2">
+              <MarketplaceCategorySelect
+                value={cat}
+                options={categoryOptions}
+                onChange={setCat}
+              />
+              <MarketplaceSortSelect value={sort} onChange={setSort} />
+            </div>
+            <div className="flex min-h-8 w-full min-w-0 items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs">
+              <SlidersHorizontal className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="shrink-0 text-muted-foreground">Max</span>
+              <div className="min-w-0 flex-1 px-0.5">
+                <Slider
+                  value={[Math.min(maxPrice, priceCeiling)]}
+                  onValueChange={(v) => setMaxPrice(v[0])}
+                  min={0}
+                  max={priceCeiling}
+                  step={0.01}
+                />
+              </div>
+              <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap font-medium tabular-nums">
+                <CoinIcon className="h-3 w-3 shrink-0" />
+                {Math.min(maxPrice, priceCeiling)} 0G
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden w-full min-w-0 shrink-0 items-center gap-3 md:flex md:w-auto">
+            <div className="flex min-h-10 min-w-[12rem] items-center gap-2 rounded-md border border-border px-2.5 py-2 text-sm lg:min-w-[14rem]">
               <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span className="shrink-0 text-muted-foreground">Max</span>
               <div className="min-w-0 flex-1 px-0.5">
@@ -148,21 +256,16 @@ function Marketplace() {
                 {Math.min(maxPrice, priceCeiling)} 0G
               </span>
             </div>
-            <select
+            <MarketplaceSortSelect
               value={sort}
-              onChange={(e) => setSort(e.target.value as typeof sort)}
-              aria-label="Sort agents"
-              className="h-10 w-full shrink-0 rounded-md border border-border bg-surface-elevated px-3 text-sm sm:w-auto sm:min-w-[10.5rem]"
-            >
-              <option value="reputation">Reputation</option>
-              <option value="price">Price</option>
-              <option value="hires">Most employers</option>
-            </select>
+              onChange={setSort}
+              triggerClassName="h-10 w-[10.5rem] text-sm"
+            />
           </div>
         </div>
 
-        {/* Categories */}
-        <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
+        {/* Categories — chips on desktop only */}
+        <div className="mt-4 hidden flex-wrap gap-2 md:flex">
           {categoryOptions.map((c) => (
             <button
               key={c}

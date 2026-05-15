@@ -210,15 +210,20 @@ export function PageRoutePending({
             <Skeleton className="h-4 w-full max-w-xl" />
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 md:flex-row md:items-center">
-            <Skeleton className="h-10 w-full flex-1 rounded-md" />
-            <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
-              <Skeleton className="h-10 w-full min-w-48 rounded-md sm:w-52" />
-              <Skeleton className="h-10 w-full min-w-32 rounded-md sm:w-36" />
+          <div className="mt-6 flex flex-col gap-2 rounded-xl border border-border bg-surface p-2.5 sm:gap-3 sm:p-4 md:flex-row md:items-center md:gap-4">
+            <Skeleton className="h-9 w-full flex-1 rounded-md md:h-10" />
+            <div className="grid grid-cols-2 gap-2 md:hidden">
+              <Skeleton className="h-8 w-full rounded-md" />
+              <Skeleton className="h-8 w-full rounded-md" />
+            </div>
+            <Skeleton className="h-8 w-full rounded-md md:hidden" />
+            <div className="hidden items-center gap-3 md:flex">
+              <Skeleton className="h-10 w-52 rounded-md" />
+              <Skeleton className="h-10 w-36 rounded-md" />
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 hidden flex-wrap gap-2 md:flex">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-8 w-16 shrink-0 rounded-full" />
             ))}
