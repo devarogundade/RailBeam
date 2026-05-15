@@ -232,6 +232,101 @@ export class UserService {
     this.conversationSync.notifyWallet(wallet, payload);
   }
 
+  private pushThreadMessages(
+    wallet: string,
+    conversationId: string,
+    messages: ChatHistoryMessage[],
+  ) {
+    if (messages.length === 0) return;
+    this.pushConversationWs(wallet, {
+      v: 1,
+      op: 'thread_messages',
+      conversationId,
+      messages,
+    });
+  }
+
+  private persistedRowToHistoryMessage(row: {
+    _id: Types.ObjectId;
+    role?: string;
+    agentKey?: string;
+    content?: string;
+    createdAt?: number;
+    attachments?: Array<{
+      id: string;
+      mimeType: string;
+      name: string;
+      hash: string;
+      size?: string;
+    }>;
+    rich?: unknown;
+    handlerCta?: { handler: string; params: Record<string, unknown> };
+    handlerResultData?: unknown;
+    model?: string;
+    verified?: boolean;
+    chatId?: string;
+    provider?: string;
+  }): ChatHistoryMessage {
+    const id = String(row._id);
+    const role: 'user' | 'agent' =
+      row.role === 'user' || row.role === 'agent' ? row.role : 'agent';
+    const atts = Array.isArray(row.attachments)
+      ? row.attachments.map((a) => ({
+          id: String(a.id),
+          mimeType: String(a.mimeType),
+          name: String(a.name),
+          hash: String(a.hash),
+          ...(a.size != null ? { size: String(a.size) } : {}),
+        }))
+      : undefined;
+    const richParsed = row.rich
+      ? stardormChatRichBlockSchema.safeParse(row.rich)
+      : undefined;
+    const rich =
+      richParsed && richParsed.success ? richParsed.data : undefined;
+    const handlerCta =
+      row.handlerCta &&
+      typeof row.handlerCta.handler === 'string' &&
+      isHandlerActionId(row.handlerCta.handler) &&
+      row.handlerCta.params != null &&
+      typeof row.handlerCta.params === 'object'
+        ? {
+            handler: row.handlerCta.handler,
+            params: row.handlerCta.params as Record<string, unknown>,
+          }
+        : undefined;
+    const computeMeta =
+      role === 'agent' &&
+      (row.model != null ||
+        row.verified != null ||
+        row.chatId != null ||
+        row.provider != null)
+        ? {
+            ...(typeof row.model === 'string' ? { model: row.model } : {}),
+            ...(typeof row.verified === 'boolean'
+              ? { verified: row.verified }
+              : {}),
+            ...(typeof row.chatId === 'string' ? { chatId: row.chatId } : {}),
+            ...(typeof row.provider === 'string'
+              ? { provider: row.provider }
+              : {}),
+          }
+        : {};
+    const followUp = this.followUpFromPersistedMessage(row);
+    return {
+      id,
+      role,
+      agentKey: row.agentKey,
+      content: typeof row.content === 'string' ? row.content : '',
+      createdAt: typeof row.createdAt === 'number' ? row.createdAt : Date.now(),
+      ...(atts?.length ? { attachments: atts } : {}),
+      ...(rich ? { rich } : {}),
+      ...(handlerCta ? { handlerCta } : {}),
+      ...(followUp ? { followUp } : {}),
+      ...computeMeta,
+    };
+  }
+
   /** Virtual card balance fund / withdraw are disabled on 0G mainnet (see product policy). */
   private assertVirtualCardFundsNotBlockedOnMainnet(
     clientEvmChainId?: number,
@@ -1469,7 +1564,7 @@ export class UserService {
       await conv.save();
       conversationListChanged = true;
     }
-    await this.chatMessageModel.create({
+    const userBubble = await this.chatMessageModel.create({
       conversationId: conv._id,
       userId: user._id,
       role: 'user',
@@ -1478,11 +1573,9 @@ export class UserService {
       attachments: attachments.length ? attachments : undefined,
       createdAt: Date.now(),
     });
-    this.pushConversationWs(wallet, {
-      v: 1,
-      op: 'thread',
-      conversationId: String(conv._id),
-    });
+    this.pushThreadMessages(wallet, String(conv._id), [
+      this.persistedRowToHistoryMessage(userBubble),
+    ]);
     if (conversationListChanged) {
       this.pushConversationWs(wallet, { v: 1, op: 'conversations' });
     }
@@ -1581,7 +1674,7 @@ export class UserService {
           }
         : undefined;
 
-    await this.chatMessageModel.create({
+    const agentBubble = await this.chatMessageModel.create({
       conversationId: conv._id,
       userId: user._id,
       role: 'agent',
@@ -1600,11 +1693,9 @@ export class UserService {
     conv.lastMessageAt = new Date();
     await conv.save();
 
-    this.pushConversationWs(wallet, {
-      v: 1,
-      op: 'thread',
-      conversationId: String(conv._id),
-    });
+    this.pushThreadMessages(wallet, String(conv._id), [
+      this.persistedRowToHistoryMessage(agentBubble),
+    ]);
 
     return {
       ...raw,
@@ -1693,66 +1784,9 @@ export class UserService {
     const pageDesc = hasMoreOlder ? rowsDesc.slice(0, capped) : rowsDesc;
     const chronological = [...pageDesc].reverse();
 
-    const messages = chronological.map((row) => {
-      const id = String(row._id);
-      const role: 'user' | 'agent' =
-        row.role === 'user' || row.role === 'agent' ? row.role : 'agent';
-      const atts = Array.isArray(row.attachments)
-        ? row.attachments.map((a) => ({
-            id: String(a.id),
-            mimeType: String(a.mimeType),
-            name: String(a.name),
-            hash: String(a.hash),
-            ...(a.size != null ? { size: String(a.size) } : {}),
-          }))
-        : undefined;
-      const richParsed = row.rich
-        ? stardormChatRichBlockSchema.safeParse(row.rich)
-        : undefined;
-      const rich =
-        richParsed && richParsed.success ? richParsed.data : undefined;
-      const handlerCta =
-        row.handlerCta &&
-        typeof row.handlerCta.handler === 'string' &&
-        isHandlerActionId(row.handlerCta.handler) &&
-        row.handlerCta.params != null &&
-        typeof row.handlerCta.params === 'object'
-          ? {
-              handler: row.handlerCta.handler,
-              params: row.handlerCta.params as Record<string, unknown>,
-            }
-          : undefined;
-      const computeMeta =
-        role === 'agent' &&
-        (row.model != null ||
-          row.verified != null ||
-          row.chatId != null ||
-          row.provider != null)
-          ? {
-              ...(typeof row.model === 'string' ? { model: row.model } : {}),
-              ...(typeof row.verified === 'boolean'
-                ? { verified: row.verified }
-                : {}),
-              ...(typeof row.chatId === 'string' ? { chatId: row.chatId } : {}),
-              ...(typeof row.provider === 'string'
-                ? { provider: row.provider }
-                : {}),
-            }
-          : {};
-      const followUp = this.followUpFromPersistedMessage(row);
-      return {
-        id,
-        role,
-        agentKey: row.agentKey,
-        content: typeof row.content === 'string' ? row.content : '',
-        createdAt: typeof row.createdAt === 'number' ? row.createdAt : Date.now(),
-        ...(atts?.length ? { attachments: atts } : {}),
-        ...(rich ? { rich } : {}),
-        ...(handlerCta ? { handlerCta } : {}),
-        ...(followUp ? { followUp } : {}),
-        ...computeMeta,
-      };
-    });
+    const messages = chronological.map((row) =>
+      this.persistedRowToHistoryMessage(row),
+    );
 
     const oldest = chronological[0];
     const nextCursorOlder =
