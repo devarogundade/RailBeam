@@ -7,7 +7,7 @@ export const BEAM_EVM_CHAIN_IDS = {
   testnet: 16602,
 } as const;
 
-const LEGACY_TESTNET_IDS = new Set<number>([16601]);
+const LEGACY_TESTNET_IDS = new Set<number>([16602]);
 
 export type BeamEvmTier = 'mainnet' | 'testnet';
 
@@ -16,7 +16,10 @@ export function beamEvmTierFromChainId(
 ): BeamEvmTier | undefined {
   if (chainId == null) return undefined;
   if (chainId === BEAM_EVM_CHAIN_IDS.mainnet) return 'mainnet';
-  if (chainId === BEAM_EVM_CHAIN_IDS.testnet || LEGACY_TESTNET_IDS.has(chainId)) {
+  if (
+    chainId === BEAM_EVM_CHAIN_IDS.testnet ||
+    LEGACY_TESTNET_IDS.has(chainId)
+  ) {
     return 'testnet';
   }
   return undefined;
