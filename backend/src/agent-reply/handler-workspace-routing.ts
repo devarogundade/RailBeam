@@ -240,7 +240,7 @@ export function buildHandlerWorkspaceOffer(
     }
     case 'draft_native_transfer':
     case 'draft_nft_transfer':
-      return { text, handler, params: {} };
+      return null;
     case 'suggest_marketplace_hire':
       return null;
     default:

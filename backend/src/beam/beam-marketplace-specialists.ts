@@ -151,7 +151,7 @@ export function marketplaceHireRichFromInput(
     specialistName,
     specialistAgentKey: key,
     ...(category ? { category } : {}),
-    ...(capability ? { capability } : {} }),
+    ...(capability ? { capability } : {}),
     ...(input.userTask?.trim() ? { userTask: input.userTask.trim() } : {}),
     marketplacePath: '/marketplace',
     ...(profilePath ? { agentProfilePath: profilePath } : {}),
