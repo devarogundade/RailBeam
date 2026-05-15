@@ -154,7 +154,9 @@ var HANDLER_ACTION_IDS = [
   /** Confirms an ERC-20 transfer draft; user signs in their wallet / Beam Send. */
   "draft_erc20_transfer",
   /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
-  "draft_nft_transfer"
+  "draft_nft_transfer",
+  /** Confirms a Uniswap V3 single-hop swap on 0G mainnet; user signs approve + router in wallet. */
+  "draft_token_swap"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -236,6 +238,20 @@ var stardormChatRichBlockSchema = zod.z.discriminatedUnion("type", [
     type: zod.z.literal("credit_card"),
     title: zod.z.string().min(1),
     rows: stardormChatRichRows
+  }),
+  zod.z.object({
+    type: zod.z.literal("swap_checkout_form"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
+    networks: zod.z.array(
+      zod.z.object({
+        id: zod.z.string().min(1).max(64),
+        label: zod.z.string().min(1).max(120)
+      })
+    ).max(16).optional(),
+    /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
+    defaultPoolFee: zod.z.union([zod.z.literal(500), zod.z.literal(3e3), zod.z.literal(1e4)]).optional()
   })
 ]);
 var stardormChatJsonBodySchema = zod.z.object({
@@ -910,6 +926,48 @@ var draftNftTransferInputSchema = zod.z.object({
     });
   }
 });
+var swapFormNetworkOptionSchema = zod.z.object({
+  id: zod.z.string().min(1).max(64),
+  label: zod.z.string().min(1).max(120)
+});
+var swapFormCtaParamsSchema = zod.z.object({
+  _swapForm: zod.z.literal(true),
+  supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: zod.z.array(swapFormNetworkOptionSchema).max(16).optional(),
+  intro: zod.z.string().max(2e3).optional(),
+  /** Default Uniswap V3 pool fee tier (500, 3000, or 10000). */
+  defaultPoolFee: zod.z.union([zod.z.literal(500), zod.z.literal(3e3), zod.z.literal(1e4)]).optional()
+});
+function isSwapFormCtaParams(v) {
+  return swapFormCtaParamsSchema.safeParse(v).success;
+}
+var caip2Eip1552 = zod.z.string().min(8).max(64).regex(/^eip155:\d+$/, "network must be CAIP-2 form eip155:<chainId>");
+var evmAddress202 = zod.z.string().trim().refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), "must be a 0x-prefixed 20-byte EVM address").transform((s) => s.trim().toLowerCase());
+var positiveWeiString2 = zod.z.string().trim().regex(/^[1-9]\d*$/, "must be a positive integer decimal string (base units)");
+var nonNegativeWeiString = zod.z.string().trim().regex(/^\d+$/, "must be a non-negative integer decimal string (base units)");
+var poolFeeSchema = zod.z.union([
+  zod.z.literal(500),
+  zod.z.literal(3e3),
+  zod.z.literal(1e4)
+]);
+var draftTokenSwapInputSchema = zod.z.object({
+  network: caip2Eip1552,
+  tokenIn: evmAddress202,
+  tokenInSymbol: zod.z.string().min(1).max(32).optional(),
+  tokenInDecimals: zod.z.number().int().min(0).max(36),
+  tokenOut: evmAddress202,
+  tokenOutSymbol: zod.z.string().min(1).max(32).optional(),
+  tokenOutDecimals: zod.z.number().int().min(0).max(36),
+  amountInWei: positiveWeiString2,
+  /** Slippage floor in `tokenOut` base units; `0` accepts any output. */
+  amountOutMinimumWei: nonNegativeWeiString.default("0"),
+  poolFee: poolFeeSchema.default(3e3),
+  /** Filled server-side from deployment when omitted. */
+  router: evmAddress202.optional(),
+  /** Unix seconds; wallet may refresh if expired. */
+  deadlineUnix: zod.z.number().int().positive().optional(),
+  note: zod.z.string().max(500).optional()
+});
 
 exports.HANDLER_ACTION_IDS = HANDLER_ACTION_IDS;
 exports.ISO_3166_1_ALPHA2_CODES = ISO_3166_1_ALPHA2_CODES;
@@ -962,6 +1020,7 @@ exports.deleteConversationResponseSchema = deleteConversationResponseSchema;
 exports.draftErc20TransferInputSchema = draftErc20TransferInputSchema;
 exports.draftNativeTransferInputSchema = draftNativeTransferInputSchema;
 exports.draftNftTransferInputSchema = draftNftTransferInputSchema;
+exports.draftTokenSwapInputSchema = draftTokenSwapInputSchema;
 exports.executeHandlerBodySchema = executeHandlerBodySchema;
 exports.executeHandlerResponseSchema = executeHandlerResponseSchema;
 exports.generateFinancialActivityReportInputSchema = generateFinancialActivityReportInputSchema;
@@ -972,6 +1031,7 @@ exports.isCreditCardFormCtaParams = isCreditCardFormCtaParams;
 exports.isHandlerActionId = isHandlerActionId;
 exports.isIso3166Alpha2 = isIso3166Alpha2;
 exports.isOnRampFormCtaParams = isOnRampFormCtaParams;
+exports.isSwapFormCtaParams = isSwapFormCtaParams;
 exports.isoCountryDisplayName = isoCountryDisplayName;
 exports.meOnRampsQuerySchema = meOnRampsQuerySchema;
 exports.mePaymentRequestsQuerySchema = mePaymentRequestsQuerySchema;
@@ -1002,6 +1062,8 @@ exports.stardormChatSuccessSchema = stardormChatSuccessSchema;
 exports.storageUploadBodySchema = storageUploadBodySchema;
 exports.storageUploadResponseSchema = storageUploadResponseSchema;
 exports.stripeKycInputSchema = stripeKycInputSchema;
+exports.swapFormCtaParamsSchema = swapFormCtaParamsSchema;
+exports.swapFormNetworkOptionSchema = swapFormNetworkOptionSchema;
 exports.taxRateForCountry = taxRateForCountry;
 exports.updateUserBodySchema = updateUserBodySchema;
 exports.userAvatarPresetSchema = userAvatarPresetSchema;

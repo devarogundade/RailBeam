@@ -111,11 +111,18 @@ export function AgentCard({
         ))}
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3 text-sm">
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <Users className="h-3 w-3" />
-          {agent.hires != null ? agent.hires.toLocaleString() : "—"}
-        </span>
+      <div
+        className={cn(
+          "mt-auto flex items-center gap-3 border-t border-border pt-3 text-sm",
+          agent.isCloned ? "justify-end" : "justify-between",
+        )}
+      >
+        {!agent.isCloned ? (
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Users className="h-3 w-3" />
+            {agent.hires != null ? agent.hires.toLocaleString() : "—"}
+          </span>
+        ) : null}
         <span className="flex items-center gap-1 text-foreground">
           <CoinIcon className="h-3.5 w-3.5" />
           <span className="font-medium">{priceLabel ?? "—"}</span>

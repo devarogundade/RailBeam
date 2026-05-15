@@ -110,7 +110,7 @@ function AgentDetail() {
             : agent.rating.toFixed(1),
       });
     }
-    if (agent.hires != null) {
+    if (agent.hires != null && !agent.isCloned) {
       rows.push({
         icon: <Users className="h-3.5 w-3.5 text-muted-foreground" />,
         label: "Employers",
@@ -339,7 +339,8 @@ function AgentDetail() {
   );
 }
 
-const REGISTRY_ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+const REGISTRY_BURN_ADDRESS =
+  "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as const;
 
 function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChainId: number }) {
   const navigate = useNavigate();
@@ -392,7 +393,7 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
       toast.error("That recipient is already you");
       return;
     }
-    if (recipient === REGISTRY_ZERO_ADDRESS) {
+    if (recipient.toLowerCase() === REGISTRY_BURN_ADDRESS) {
       toast.error('Use "Burn this clone" to destroy the token');
       return;
     }
@@ -441,14 +442,14 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
           address: registry,
           abi: identityRegistryAbi,
           functionName: "transferFrom",
-          args: [address, REGISTRY_ZERO_ADDRESS, BigInt(tokenId)],
+          args: [address, REGISTRY_BURN_ADDRESS, BigInt(tokenId)],
         });
         await waitForWriteContractReceipt(publicClient, hash);
       });
       setBurnDialogOpen(false);
       invalidateCatalog();
       toast.success("Clone burned", {
-        description: `Registry token #${tokenId} was destroyed (sent to the zero address).`,
+        description: `Registry token #${tokenId} was sent to the burn address.`,
       });
       void navigate({ to: "/agents" });
     } catch (e) {
@@ -474,7 +475,7 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
         <h2 className="text-sm font-semibold">Registry token</h2>
         <p className="mt-1 text-[11px] text-muted-foreground">
           Transfer full ERC-721 ownership to another wallet, or burn this clone by transferring it
-          to the zero address (cannot be undone).
+          to the burn address (cannot be undone).
         </p>
 
         <div className="mt-4 space-y-2">
@@ -522,8 +523,8 @@ function CloneOwnerTokenActions({ agent, beamChainId }: { agent: Agent; beamChai
           <AlertDialogHeader>
             <AlertDialogTitle>Burn this clone?</AlertDialogTitle>
             <AlertDialogDescription className="text-pretty">
-              This sends registry token #{tokenId} to the zero address, which destroys the NFT on
-              this network. You cannot undo this action.
+              This sends registry token #{tokenId} to the burn address ({REGISTRY_BURN_ADDRESS}),
+              which permanently removes your control of this clone. You cannot undo this action.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

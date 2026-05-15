@@ -20,8 +20,10 @@ import {
   offerX402CheckoutFormToolArgsSchema,
   offerOnRampCheckoutFormToolArgsSchema,
   offerCreditCardCheckoutFormToolArgsSchema,
+  offerSwapCheckoutFormToolArgsSchema,
   x402CheckoutFormCtaParamsSchema,
   creditCardFormCtaParamsSchema,
+  swapFormCtaParamsSchema,
   type GenerateTaxReportToolArgs,
   type CreateX402PaymentToolArgs,
   type CreateOnRampTokensToolArgs,
@@ -38,6 +40,7 @@ import {
   draftNativeTransferInputSchema,
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
+  draftTokenSwapInputSchema,
 } from '@beam/stardorm-api-contract';
 import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
 import {
@@ -45,6 +48,12 @@ import {
   txRichFromNativeDraft,
   txRichFromNftDraft,
 } from '../handlers/transfer-draft-rich';
+import { txRichFromTokenSwapDraft } from '../handlers/swap-draft-rich';
+import {
+  BEAM_MAINNET_CAIP2,
+  BEAM_MAINNET_SWAP_ROUTER,
+  defaultBeamSwapFormPayload,
+} from '../beam/beam-swap.config';
 
 function formatBase10Integer(raw: string): string {
   const digits = raw.replace(/\s+/g, '');
@@ -96,6 +105,7 @@ const handlerEnum = z.enum(HANDLER_ACTION_IDS);
 const OFFER_X402_CHECKOUT_FORM = 'offer_x402_checkout_form' as const;
 const OFFER_ON_RAMP_CHECKOUT_FORM = 'offer_on_ramp_checkout_form' as const;
 const OFFER_CREDIT_CARD_CHECKOUT_FORM = 'offer_credit_card_checkout_form' as const;
+const OFFER_SWAP_CHECKOUT_FORM = 'offer_swap_checkout_form' as const;
 
 function handlerIdsForJsonContract(): string {
   return HANDLER_ACTION_IDS.map((h) => `"${h}"`).join('|');
@@ -262,6 +272,19 @@ export const agentComputeReplySchema = z
         });
       }
     }
+    if (handler === 'draft_token_swap') {
+      const form = swapFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
+      const r = draftTokenSwapInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'Invalid params for draft_token_swap (need full swap fields or a swap checkout form payload)',
+          path: ['params'],
+        });
+      }
+    }
   })
   .transform((val) => ({
     text: val.text,
@@ -341,6 +364,14 @@ export type AgentComputeReplyWithParams =
       text: string;
       handler: 'draft_nft_transfer';
       params: z.infer<typeof draftNftTransferInputSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'draft_token_swap';
+      params:
+        | z.infer<typeof draftTokenSwapInputSchema>
+        | z.infer<typeof swapFormCtaParamsSchema>;
       rich?: AgentRichCard;
     };
 
@@ -467,6 +498,31 @@ export function asTypedAgentReply(
     const filledRich = rich ?? txRichFromNftDraft(p);
     return { text: r.text, handler: 'draft_nft_transfer', params: p, rich: filledRich };
   }
+  if (r.handler === 'draft_token_swap') {
+    const formTry = swapFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const defaults = defaultBeamSwapFormPayload();
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'swap_checkout_form',
+          title: 'Token swap',
+          supportedAssets: formTry.data.supportedAssets,
+          networks: formTry.data.networks ?? defaults.networks,
+          intro: formTry.data.intro,
+          defaultPoolFee: formTry.data.defaultPoolFee ?? defaults.defaultPoolFee,
+        } as unknown as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'draft_token_swap',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
+    const p = draftTokenSwapInputSchema.parse(r.params);
+    const filledRich = rich ?? txRichFromTokenSwapDraft(p);
+    return { text: r.text, handler: 'draft_token_swap', params: p, rich: filledRich };
+  }
   return { text: r.text, rich };
 }
 
@@ -568,6 +624,13 @@ export function buildAgentOutputContract(
     allowed.includes('draft_nft_transfer')
       ? '- draft_nft_transfer params: `network` (CAIP-2), `contract` (NFT collection 0x…40), `standard` (`erc721` default or `erc1155`), `to` (0x…40), `tokenId` (decimal string). For ERC-1155 include required positive integer string `amount`; omit `amount` for ERC-721. Optional `note`. Never invent token ids or contracts.'
       : '',
+    allowed.includes('draft_token_swap')
+      ? [
+          '- draft_token_swap (JSON-only): use only on **0G mainnet** (`network` must be `eip155:16661`). Never target testnet (`eip155:16602`) — those intents are blocked.',
+          '- When the user already states `tokenIn`, `tokenInDecimals`, `tokenOut`, `tokenOutDecimals`, `amountInWei` (base units), optional `amountOutMinimumWei`, optional `poolFee` (500|3000|10000), call **draft_token_swap** with those exact values (optional symbols).',
+          '- Swap checkout form: params `{"_swapForm":true,"supportedAssets":[...], ...}` and matching `rich` type `swap_checkout_form` when any field is missing; use only tokens from the supported list.',
+        ].join('\n')
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -619,6 +682,9 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
   }
   if (handler === 'draft_nft_transfer') {
     return 'I can save an NFT transfer draft you confirm, then you sign the transaction in your wallet.';
+  }
+  if (handler === 'draft_token_swap') {
+    return 'I can save a Uniswap V3 swap on 0G mainnet you confirm — your wallet will approve the router if needed, then call exactInputSingle.';
   }
   return 'I can run that action on request.';
 }
@@ -950,6 +1016,21 @@ export function agentReplyFromChatCompletion(
           rich: richCard,
         };
       }
+      if (name === 'draft_token_swap') {
+        const full = draftTokenSwapInputSchema.safeParse({
+          ...rec,
+          network: rec.network ?? BEAM_MAINNET_CAIP2,
+          router: rec.router ?? BEAM_MAINNET_SWAP_ROUTER,
+        });
+        if (!full.success) continue;
+        const richCard = txRichFromTokenSwapDraft(full.data);
+        return {
+          text,
+          handler: 'draft_token_swap',
+          params: full.data,
+          rich: richCard,
+        };
+      }
     }
 
     for (const tc of toolCalls) {
@@ -1065,6 +1146,47 @@ export function agentReplyFromChatCompletion(
         'Enter your legal name and billing address in the form below, then tap **Create virtual card** to issue the card.';
       return { text, handler: 'create_credit_card', params, rich };
     }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_SWAP_CHECKOUT_FORM ||
+        !allowedHandlers.includes('draft_token_swap')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerSwapCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const defaults = defaultBeamSwapFormPayload();
+      const params = swapFormCtaParamsSchema.parse({
+        _swapForm: true as const,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks ?? defaults.networks,
+        intro: parsed.data.intro,
+        defaultPoolFee: parsed.data.defaultPoolFee ?? defaults.defaultPoolFee,
+      });
+      const rich = {
+        type: 'swap_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Token swap',
+        intro: parsed.data.intro,
+        supportedAssets: params.supportedAssets,
+        networks: params.networks,
+        defaultPoolFee: params.defaultPoolFee,
+      } as unknown as AgentRichCard;
+      const text =
+        content.trim() ||
+        'Pick the tokens and amount in the form below (0G mainnet only), then tap **Confirm swap draft**. Your wallet will approve the router if needed, then sign the swap.';
+      return { text, handler: 'draft_token_swap', params, rich };
+    }
   }
   return structuredReplyFromModelContent(content, allowedHandlers);
 }
@@ -1097,6 +1219,9 @@ export function buildAgentToolCallingSystemPrompt(
     ...(allowed.includes('draft_native_transfer') ? ['draft_native_transfer'] : []),
     ...(allowed.includes('draft_erc20_transfer') ? ['draft_erc20_transfer'] : []),
     ...(allowed.includes('draft_nft_transfer') ? ['draft_nft_transfer'] : []),
+    ...(allowed.includes('draft_token_swap')
+      ? ['draft_token_swap', 'offer_swap_checkout_form']
+      : []),
   ].join(', ');
   return [
     'You are Stardorm chat: a concise financial assistant.',
@@ -1148,6 +1273,14 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     allowed.includes('draft_nft_transfer')
       ? 'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`. Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.'
+      : '',
+    allowed.includes('draft_token_swap')
+      ? [
+          'For token swaps on 0G: only **mainnet** (`eip155:16661`). Never call swap tools with `eip155:16602` — testnet swap intents are blocked.',
+          'If the user already states `tokenIn`, `tokenOut`, both decimals, and `amountInWei` (and optional min-out / pool fee), call **draft_token_swap** with `network` `eip155:16661`.',
+          'If anything is missing, call **offer_swap_checkout_form** with `supportedAssets` from the deployment (USDC.e and wrapped native when listed); never invent contracts.',
+          'After proposing a swap, remind them to tap **Approve & swap** — approve ERC-20 allowance on token-in when needed, then `exactInputSingle` on the Beam router.',
+        ].join(' ')
       : '',
     !allowed.includes('complete_stripe_kyc')
       ? [

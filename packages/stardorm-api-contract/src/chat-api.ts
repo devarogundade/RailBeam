@@ -80,6 +80,23 @@ export const stardormChatRichBlockSchema = z.discriminatedUnion("type", [
     title: z.string().min(1),
     rows: stardormChatRichRows,
   }),
+  z.object({
+    type: z.literal("swap_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+    networks: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(64),
+          label: z.string().min(1).max(120),
+        }),
+      )
+      .max(16)
+      .optional(),
+    /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
+    defaultPoolFee: z.union([z.literal(500), z.literal(3000), z.literal(10000)]).optional(),
+  }),
 ]);
 
 export type StardormChatRichBlock = z.infer<typeof stardormChatRichBlockSchema>;

@@ -16,6 +16,7 @@ const SEED_HANDLER_ACTION_IDS = [
   "draft_native_transfer",
   "draft_erc20_transfer",
   "draft_nft_transfer",
+  "draft_token_swap",
 ] as const;
 type SeedHandlerActionId = (typeof SEED_HANDLER_ACTION_IDS)[number];
 
@@ -51,6 +52,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       "draft_native_transfer",
       "draft_erc20_transfer",
       "draft_nft_transfer",
+      "draft_token_swap",
     ],
   },
   ledger: {

@@ -23,6 +23,8 @@ export const HANDLER_ACTION_IDS = [
   "draft_erc20_transfer",
   /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
   "draft_nft_transfer",
+  /** Confirms a Uniswap V3 single-hop swap on 0G mainnet; user signs approve + router in wallet. */
+  "draft_token_swap",
 ] as const;
 
 export type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];

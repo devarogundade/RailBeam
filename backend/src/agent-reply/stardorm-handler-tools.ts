@@ -545,6 +545,125 @@ const draftErc20TransferTool: OpenAiChatTool = {
   },
 };
 
+const offerSwapCheckoutFormTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'offer_swap_checkout_form',
+    description:
+      'Show the swap form when the user wants to trade tokens on 0G mainnet but their message does NOT already state every required field (`network` must be `eip155:16661`, `tokenIn`/`tokenOut` contracts, decimals, `amountInWei`, optional `amountOutMinimumWei`, optional `poolFee`). Pass `supportedAssets` from the deployment list only — never invent token addresses. Testnet swaps are blocked.',
+    parameters: {
+      type: 'object',
+      properties: {
+        formTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+        },
+        intro: { type: 'string', maxLength: 2000 },
+        supportedAssets: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 24,
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 64 },
+              symbol: { type: 'string', minLength: 1, maxLength: 32 },
+              icon: { type: 'string', minLength: 1, maxLength: 512 },
+              decimals: { type: 'integer', minimum: 0, maximum: 36 },
+              address: { type: 'string', minLength: 1, maxLength: 66 },
+              usdValue: { type: 'number', minimum: 0 },
+            },
+            required: ['name', 'symbol', 'icon', 'decimals', 'address'],
+          },
+        },
+        networks: {
+          type: 'array',
+          maxItems: 16,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 64 },
+              label: { type: 'string', minLength: 1, maxLength: 120 },
+            },
+            required: ['id', 'label'],
+          },
+        },
+        defaultPoolFee: {
+          type: 'integer',
+          enum: [500, 3000, 10000],
+          description: 'Uniswap V3 pool fee tier (default 3000).',
+        },
+      },
+      required: ['supportedAssets'],
+    },
+  },
+};
+
+const draftTokenSwapTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'draft_token_swap',
+    description:
+      'When the user already stated every field, offer a single-hop Uniswap V3 swap on 0G mainnet (`eip155:16661` only — never testnet). User signs ERC-20 `approve` on tokenIn when needed, then router `exactInputSingle`.',
+    parameters: {
+      type: 'object',
+      properties: {
+        network: {
+          ...caip2NetworkProperty,
+          description: 'Must be `eip155:16661` for production swaps.',
+        },
+        tokenIn: evmAddress20Property,
+        tokenInSymbol: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 32,
+        },
+        tokenInDecimals: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 36,
+        },
+        tokenOut: evmAddress20Property,
+        tokenOutSymbol: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 32,
+        },
+        tokenOutDecimals: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 36,
+        },
+        amountInWei: {
+          type: 'string',
+          pattern: '^[1-9]\\d*$',
+          description: 'Token-in amount in base units.',
+        },
+        amountOutMinimumWei: {
+          type: 'string',
+          pattern: '^\\d+$',
+          description: 'Minimum token-out (slippage floor); `0` accepts any output.',
+        },
+        poolFee: {
+          type: 'integer',
+          enum: [500, 3000, 10000],
+          description: 'Uniswap V3 pool fee tier.',
+        },
+        note: { type: 'string', maxLength: 500 },
+      },
+      required: [
+        'network',
+        'tokenIn',
+        'tokenInDecimals',
+        'tokenOut',
+        'tokenOutDecimals',
+        'amountInWei',
+      ],
+    },
+  },
+};
+
 const draftNftTransferTool: OpenAiChatTool = {
   type: 'function',
   function: {
@@ -615,6 +734,10 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('draft_nft_transfer')) {
     out.push(draftNftTransferTool);
+  }
+  if (allowed.includes('draft_token_swap')) {
+    out.push(draftTokenSwapTool);
+    out.push(offerSwapCheckoutFormTool);
   }
   return out;
 }

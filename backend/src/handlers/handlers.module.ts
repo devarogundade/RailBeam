@@ -16,6 +16,7 @@ import {
   DraftNativeTransferHandlerService,
   DraftNftTransferHandlerService,
 } from './transfer-draft-handlers.service';
+import { DraftTokenSwapHandlerService } from './swap-draft-handlers.service';
 
 @Module({
   imports: [StardormMongoModule, PaymentsModule, StripeModule, CreditCardsModule],
@@ -31,6 +32,7 @@ import {
     DraftNativeTransferHandlerService,
     DraftErc20TransferHandlerService,
     DraftNftTransferHandlerService,
+    DraftTokenSwapHandlerService,
   ],
   exports: [HandlersService],
 })

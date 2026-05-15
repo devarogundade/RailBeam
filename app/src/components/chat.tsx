@@ -24,6 +24,8 @@ import {
   TransferDraftHandlerCtaRow,
   isTransferDraftHandler,
 } from "@/components/transfer-draft-handler-cta";
+import { SwapCheckoutFormCard } from "@/components/swap-checkout-form-card";
+import { SwapHandlerCtaRow, isTokenSwapHandler } from "@/components/swap-handler-cta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -1286,7 +1288,12 @@ function handlerCtaLabel(handler: string) {
   if (handler === "draft_native_transfer") return "Send native transfer";
   if (handler === "draft_erc20_transfer") return "Send token transfer";
   if (handler === "draft_nft_transfer") return "Send NFT transfer";
+  if (handler === "draft_token_swap") return "Approve & swap";
   return handler.replace(/_/g, " ");
+}
+
+function isSwapFormCtaParams(params: Record<string, unknown> | undefined): boolean {
+  return params != null && params._swapForm === true;
 }
 
 type CheckoutFormRich = Extract<
@@ -1294,6 +1301,7 @@ type CheckoutFormRich = Extract<
   | { type: "x402_checkout_form" }
   | { type: "on_ramp_checkout_form" }
   | { type: "credit_card_checkout_form" }
+  | { type: "swap_checkout_form" }
 >;
 
 /** Rich form blocks need `handlerCta` to run the server handler; show context if it is missing. */
@@ -1652,10 +1660,21 @@ function Bubble({
         {m.rich?.type === "credit_card_checkout_form" && !isUser && !m.handlerCta && (
           <CheckoutRichUnavailableNotice rich={m.rich} />
         )}
+        {m.rich?.type === "swap_checkout_form" && !isUser && m.handlerCta && (
+          <SwapCheckoutFormCard
+            rich={m.rich}
+            disabled={executingHandlerForId === m.id}
+            onConfirmSwap={(params) => void onRunHandlerCta(m, params)}
+          />
+        )}
+        {m.rich?.type === "swap_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
         {m.rich &&
           m.rich.type !== "x402_checkout_form" &&
           m.rich.type !== "on_ramp_checkout_form" &&
-          m.rich.type !== "credit_card_checkout_form" && (
+          m.rich.type !== "credit_card_checkout_form" &&
+          m.rich.type !== "swap_checkout_form" && (
           <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface-elevated">
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1703,6 +1722,7 @@ function Bubble({
           m.rich?.type !== "x402_checkout_form" &&
           m.rich?.type !== "on_ramp_checkout_form" &&
           m.rich?.type !== "credit_card_checkout_form" &&
+          m.rich?.type !== "swap_checkout_form" &&
           (m.handlerCta.handler === "generate_tax_report" ? (
             <TaxReportHandlerCtaRow
               m={m}
@@ -1713,6 +1733,13 @@ function Bubble({
             <TransferDraftHandlerCtaRow
               messageId={m.id}
               handler={m.handlerCta.handler}
+              params={m.handlerCta.params as Record<string, unknown>}
+              label={handlerCtaLabel(m.handlerCta.handler)}
+            />
+          ) : isTokenSwapHandler(m.handlerCta.handler) &&
+            !isSwapFormCtaParams(m.handlerCta.params as Record<string, unknown>) ? (
+            <SwapHandlerCtaRow
+              messageId={m.id}
               params={m.handlerCta.params as Record<string, unknown>}
               label={handlerCtaLabel(m.handlerCta.handler)}
             />

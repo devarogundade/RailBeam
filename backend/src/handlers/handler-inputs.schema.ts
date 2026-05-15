@@ -278,3 +278,19 @@ export const offerCreditCardCheckoutFormToolArgsSchema = z.object({
 export type OfferCreditCardCheckoutFormToolArgs = z.infer<
   typeof offerCreditCardCheckoutFormToolArgsSchema
 >;
+
+/** OpenAI tool `offer_swap_checkout_form` arguments. */
+export const offerSwapCheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: x402CheckoutFormNetworksSchema,
+  defaultPoolFee: z.union([z.literal(500), z.literal(3000), z.literal(10000)]).optional(),
+});
+
+export type OfferSwapCheckoutFormToolArgs = z.infer<
+  typeof offerSwapCheckoutFormToolArgsSchema
+>;
+
+export { swapFormCtaParamsSchema, isSwapFormCtaParams } from '@beam/stardorm-api-contract';
+export type { SwapFormCtaParams } from '@beam/stardorm-api-contract';

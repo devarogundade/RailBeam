@@ -13,6 +13,7 @@ import {
   DraftNativeTransferHandlerService,
   DraftNftTransferHandlerService,
 } from './transfer-draft-handlers.service';
+import { DraftTokenSwapHandlerService } from './swap-draft-handlers.service';
 
 @Injectable()
 export class HandlersService {
@@ -27,6 +28,7 @@ export class HandlersService {
     private readonly draftNative: DraftNativeTransferHandlerService,
     private readonly draftErc20: DraftErc20TransferHandlerService,
     private readonly draftNft: DraftNftTransferHandlerService,
+    private readonly draftSwap: DraftTokenSwapHandlerService,
   ) {}
 
   async dispatch(
@@ -58,6 +60,8 @@ export class HandlersService {
         return this.draftErc20.handle(body, ctx);
       case 'draft_nft_transfer':
         return this.draftNft.handle(body, ctx);
+      case 'draft_token_swap':
+        return this.draftSwap.handle(body, ctx);
     }
   }
 }
