@@ -45,13 +45,44 @@ export function nativeWeiFromUsdCentsFloor(
   return (microUsd * 10n ** 18n) / usdMicroPerNative;
 }
 
-export type CreditCardFundQuote = {
+export type CreditCardFundQuoteX402 = {
+  onchainFundingRequired: false;
   chainId: number;
   recipient: `0x${string}`;
   usdcAsset: string;
   usdcAmountBaseUnits: string;
   usdcDecimals: number;
 };
+
+export type CreditCardFundQuoteNative = {
+  onchainFundingRequired: true;
+  chainId: number;
+  recipient: `0x${string}`;
+  minNativeWei: string;
+  usdValue: number;
+  nativeSymbol: string;
+  nativeDecimals: number;
+};
+
+export type CreditCardFundQuote =
+  | CreditCardFundQuoteX402
+  | CreditCardFundQuoteNative;
+
+/** ceil(amountCents * 10^18 / (100 * usdPerWholeNative)) using integer micro-USD math. */
+export function minNativeWeiFromUsdCents(
+  amountCents: number,
+  usdPerWholeNative: number,
+): bigint {
+  if (!Number.isFinite(usdPerWholeNative) || usdPerWholeNative <= 0) {
+    throw new BadRequestException('Invalid native USD reference');
+  }
+  const microUsd = BigInt(amountCents) * 10_000n;
+  const usdMicroPerNative = BigInt(Math.round(usdPerWholeNative * 1_000_000));
+  if (usdMicroPerNative <= 0n) {
+    throw new BadRequestException('Invalid native USD reference');
+  }
+  return (microUsd * 10n ** 18n + usdMicroPerNative - 1n) / usdMicroPerNative;
+}
 
 @Injectable()
 export class CreditCardFundingService {
@@ -89,19 +120,55 @@ export class CreditCardFundingService {
     return Boolean(this.getFundRecipient() && this.x402Facilitator.isConfigured());
   }
 
-  quote(amountCents: number, _clientEvmChainId?: number): CreditCardFundQuote {
-    if (!this.isX402FundingConfigured()) {
+  quote(
+    amountCents: number,
+    clientEvmChainId?: number,
+  ): CreditCardFundQuote {
+    const recipient = this.getFundRecipient();
+    if (!recipient) {
       throw new ServiceUnavailableException(
-        'Card funding requires CREDIT_CARD_FUND_RECIPIENT and X402_FACILITATOR_URL (USDC.e x402 on 0G mainnet).',
+        'Card funding requires CREDIT_CARD_FUND_RECIPIENT to be configured.',
       );
     }
-    const recipient = this.getFundRecipient()!;
+
+    if (this.isX402FundingConfigured()) {
+      return {
+        onchainFundingRequired: false,
+        chainId: BEAM_EVM_CHAIN_IDS.mainnet,
+        recipient,
+        usdcAsset: BEAM_USDC_E_ADDRESS,
+        usdcAmountBaseUnits: usdcBaseUnitsFromUsdCents(amountCents),
+        usdcDecimals: BEAM_USDC_E_DECIMALS,
+      };
+    }
+
+    const tier = beamEvmTierFromChainId(clientEvmChainId);
+    if (!tier) {
+      throw new BadRequestException(
+        'Set your Beam / 0G network in the app (or send X-Beam-Chain-Id) to quote on-chain card funding.',
+      );
+    }
+    const native = OG_NATIVE[tier];
+    const usdValue = native.usdValue;
+    if (usdValue == null || !Number.isFinite(usdValue) || usdValue <= 0) {
+      throw new ServiceUnavailableException(
+        'Native USD reference is not configured for this network.',
+      );
+    }
+    const minNativeWei = minNativeWeiFromUsdCents(amountCents, usdValue);
+    if (minNativeWei <= 0n) {
+      throw new BadRequestException(
+        'Fund amount is too small for an on-chain native payment',
+      );
+    }
     return {
-      chainId: BEAM_EVM_CHAIN_IDS.mainnet,
+      onchainFundingRequired: true,
+      chainId: clientEvmChainId!,
       recipient,
-      usdcAsset: BEAM_USDC_E_ADDRESS,
-      usdcAmountBaseUnits: usdcBaseUnitsFromUsdCents(amountCents),
-      usdcDecimals: BEAM_USDC_E_DECIMALS,
+      minNativeWei: minNativeWei.toString(),
+      usdValue,
+      nativeSymbol: native.symbol,
+      nativeDecimals: native.decimals,
     };
   }
 

@@ -126,7 +126,9 @@ export class PaymentInvoiceService implements HandlerService {
     );
 
     const pdf = await buildLinesPdf(lines.slice(0, 48));
-    const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
+    const { rootHash } = await this.ogStorage.uploadBuffer(pdf, {
+      clientEvmChainId: ctx.clientEvmChainId,
+    });
 
     return {
       message:

@@ -1350,6 +1350,11 @@ type UserUploadResult = z.infer<typeof userUploadResultSchema>;
 type ExecuteHandlerBody = z.infer<typeof executeHandlerBodySchema>;
 type ExecuteHandlerResponse = z.infer<typeof executeHandlerResponseSchema>;
 
+/**
+ * Recursively convert JSON `null` to `undefined` so optional Zod fields accept
+ * model output and Mongo payloads (`intro: null` otherwise fails chat parse).
+ */
+declare function stripJsonNulls(value: unknown): unknown;
 declare const stardormChatRichRowSchema: z.ZodObject<{
     label: z.ZodString;
     value: z.ZodString;
@@ -1891,7 +1896,7 @@ declare const stardormChatAttachmentSchema: z.ZodObject<{
     size?: string | undefined;
 }>;
 type StardormChatAttachment = z.infer<typeof stardormChatAttachmentSchema>;
-declare const stardormChatSuccessSchema: z.ZodObject<{
+declare const stardormChatSuccessObjectSchema: z.ZodObject<{
     agentKey: z.ZodString;
     reply: z.ZodString;
     structured: z.ZodEffects<z.ZodOptional<z.ZodObject<{
@@ -2664,7 +2669,915 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     rich?: unknown;
     attachments?: unknown;
 }>;
-type StardormChatSuccess = z.infer<typeof stardormChatSuccessSchema>;
+declare const stardormChatSuccessSchema: z.ZodEffects<z.ZodObject<{
+    agentKey: z.ZodString;
+    reply: z.ZodString;
+    structured: z.ZodEffects<z.ZodOptional<z.ZodObject<{
+        text: z.ZodString;
+        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>>;
+        params: z.ZodOptional<z.ZodUnknown>;
+    }, "strip", z.ZodTypeAny, {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    }, {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    }>>, {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    } | undefined, unknown>;
+    /** Structured card rows for the client (model or server-generated). */
+    rich: z.ZodEffects<z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+        type: z.ZodLiteral<"report">;
+        title: z.ZodString;
+        rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            value: string;
+        }, {
+            label: string;
+            value: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }, {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"invoice">;
+        title: z.ZodString;
+        rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            value: string;
+        }, {
+            label: string;
+            value: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }, {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"tx">;
+        title: z.ZodString;
+        rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            value: string;
+        }, {
+            label: string;
+            value: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }, {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"x402_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        /** Paywalled HTTP resource URL for x402 clients (optional). */
+        resourceUrl: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    }, {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"on_ramp_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    }, {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        /** Pre-filled ISO 4217 currency in the form (e.g. USD). */
+        defaultCurrency: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }, {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"credit_card">;
+        title: z.ZodString;
+        rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            value: string;
+        }, {
+            label: string;
+            value: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }, {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"swap_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
+        defaultPoolFee: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<500>, z.ZodLiteral<3000>, z.ZodLiteral<10000>]>>;
+    }, "strip", z.ZodTypeAny, {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }, {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"marketplace_hire">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        specialistName: z.ZodString;
+        specialistAgentKey: z.ZodString;
+        category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+        capability: z.ZodOptional<z.ZodString>;
+        userTask: z.ZodOptional<z.ZodString>;
+        /** App path to open the marketplace (default `/marketplace`). */
+        marketplacePath: z.ZodDefault<z.ZodString>;
+        /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+        agentProfilePath: z.ZodOptional<z.ZodString>;
+        requiredHandler: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }>]>>, {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | undefined, unknown>;
+    /** Files the server uploaded to 0G Storage from the user's chat turn (echoed for immediate render). */
+    attachments: z.ZodEffects<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        mimeType: z.ZodString;
+        hash: z.ZodString;
+        size: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }, {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }>, "many">>, {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }[] | undefined, unknown>;
+    compute: z.ZodObject<{
+        model: z.ZodString;
+        verified: z.ZodBoolean;
+        chatId: z.ZodOptional<z.ZodString>;
+        provider: z.ZodString;
+        computeNetwork: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    }, {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    }>;
+}, "strip", z.ZodTypeAny, {
+    agentKey: string;
+    reply: string;
+    compute: {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    };
+    structured?: {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    } | undefined;
+    rich?: {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | undefined;
+    attachments?: {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }[] | undefined;
+}, {
+    agentKey: string;
+    reply: string;
+    compute: {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    };
+    structured?: unknown;
+    rich?: unknown;
+    attachments?: unknown;
+}>, {
+    agentKey: string;
+    reply: string;
+    compute: {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    };
+    structured?: {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    } | undefined;
+    rich?: {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | undefined;
+    attachments?: {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }[] | undefined;
+}, unknown>;
+type StardormChatSuccess = z.infer<typeof stardormChatSuccessObjectSchema>;
 declare const stardormChatClientErrorSchema: z.ZodObject<{
     error: z.ZodString;
 }, "strip", z.ZodTypeAny, {
@@ -2672,7 +3585,7 @@ declare const stardormChatClientErrorSchema: z.ZodObject<{
 }, {
     error: string;
 }>;
-declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
+declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodEffects<z.ZodObject<{
     agentKey: z.ZodString;
     reply: z.ZodString;
     structured: z.ZodEffects<z.ZodOptional<z.ZodObject<{
@@ -3444,7 +4357,142 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     structured?: unknown;
     rich?: unknown;
     attachments?: unknown;
-}>, z.ZodObject<{
+}>, {
+    agentKey: string;
+    reply: string;
+    compute: {
+        model: string;
+        verified: boolean;
+        provider: string;
+        computeNetwork: string;
+        chatId?: string | undefined;
+    };
+    structured?: {
+        text: string;
+        params?: unknown;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+    } | undefined;
+    rich?: {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | undefined;
+    attachments?: {
+        id: string;
+        name: string;
+        mimeType: string;
+        hash: string;
+        size?: string | undefined;
+    }[] | undefined;
+}, unknown>, z.ZodObject<{
     error: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     error: string;
@@ -3590,7 +4638,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         hash: string;
         size?: string | undefined;
     }>, "many">>;
-    rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+    rich: z.ZodOptional<z.ZodEffects<z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         type: z.ZodLiteral<"report">;
         title: z.ZodString;
         rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -4030,7 +5078,119 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
-    }>]>>;
+    }>]>>, {
+        type: "report";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "invoice";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "x402_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        resourceUrl?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "on_ramp_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+    } | {
+        type: "credit_card_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        defaultCurrency?: string | undefined;
+    } | {
+        type: "credit_card";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | {
+        type: "swap_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | undefined, unknown>>;
     handlerCta: z.ZodOptional<z.ZodObject<{
         handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
         params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -4332,119 +5492,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
     chatId?: string | undefined;
     provider?: string | undefined;
     agentKey?: string | undefined;
-    rich?: {
-        type: "report";
-        title: string;
-        rows?: {
-            label: string;
-            value: string;
-        }[] | undefined;
-    } | {
-        type: "invoice";
-        title: string;
-        rows?: {
-            label: string;
-            value: string;
-        }[] | undefined;
-    } | {
-        type: "tx";
-        title: string;
-        rows?: {
-            label: string;
-            value: string;
-        }[] | undefined;
-    } | {
-        type: "x402_checkout_form";
-        title: string;
-        supportedAssets: {
-            symbol: string;
-            name: string;
-            icon: string;
-            decimals: number;
-            address: string;
-            usdValue?: number | undefined;
-        }[];
-        intro?: string | undefined;
-        resourceUrl?: string | undefined;
-        networks?: {
-            label: string;
-            id: string;
-        }[] | undefined;
-    } | {
-        type: "on_ramp_checkout_form";
-        title: string;
-        supportedAssets: {
-            symbol: string;
-            name: string;
-            icon: string;
-            decimals: number;
-            address: string;
-            usdValue?: number | undefined;
-        }[];
-        intro?: string | undefined;
-        networks?: {
-            label: string;
-            id: string;
-        }[] | undefined;
-    } | {
-        type: "credit_card_checkout_form";
-        title: string;
-        intro?: string | undefined;
-        defaultCurrency?: string | undefined;
-    } | {
-        type: "credit_card";
-        title: string;
-        rows?: {
-            label: string;
-            value: string;
-        }[] | undefined;
-    } | {
-        type: "swap_checkout_form";
-        title: string;
-        supportedAssets: {
-            symbol: string;
-            name: string;
-            icon: string;
-            decimals: number;
-            address: string;
-            usdValue?: number | undefined;
-        }[];
-        intro?: string | undefined;
-        networks?: {
-            label: string;
-            id: string;
-        }[] | undefined;
-        defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-    } | {
-        type: "marketplace_hire";
-        title: string;
-        specialistName: string;
-        specialistAgentKey: string;
-        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-        intro?: string | undefined;
-        capability?: string | undefined;
-        userTask?: string | undefined;
-        marketplacePath?: string | undefined;
-        agentProfilePath?: string | undefined;
-        requiredHandler?: string | undefined;
-    } | {
-        type: "transfer_checkout_form";
-        title: string;
-        supportedAssets: {
-            symbol: string;
-            name: string;
-            icon: string;
-            decimals: number;
-            address: string;
-            usdValue?: number | undefined;
-        }[];
-        intro?: string | undefined;
-        networks?: {
-            label: string;
-            id: string;
-        }[] | undefined;
-        defaultTo?: string | undefined;
-    } | undefined;
+    rich?: unknown;
     attachments?: {
         id: string;
         name: string;
@@ -4521,7 +5569,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }>, "many">>;
-        rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+        rich: z.ZodOptional<z.ZodEffects<z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
             type: z.ZodLiteral<"report">;
             title: z.ZodString;
             rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -4961,7 +6009,119 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
-        }>]>>;
+        }>]>>, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "swap_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | undefined, unknown>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
             handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -5263,119 +6423,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -5617,119 +6665,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -5932,12 +6868,12 @@ declare const conversationSyncThreadSchema: z.ZodObject<{
     op: z.ZodLiteral<"thread">;
     conversationId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "thread";
 }, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "thread";
 }>;
 /** Full message rows for in-place TanStack cache updates (no refetch). */
@@ -5970,7 +6906,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }>, "many">>;
-        rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+        rich: z.ZodOptional<z.ZodEffects<z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
             type: z.ZodLiteral<"report">;
             title: z.ZodString;
             rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -6410,7 +7346,119 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
-        }>]>>;
+        }>]>>, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "swap_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | undefined, unknown>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
             handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -6709,119 +7757,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -6871,6 +7807,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
         } | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
+    v: 1;
     conversationId: string;
     messages: {
         id: string;
@@ -7043,9 +7980,9 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             dashboardPath: string;
         } | undefined;
     }[];
-    v: 1;
     op: "thread_messages";
 }, {
+    v: 1;
     conversationId: string;
     messages: {
         id: string;
@@ -7057,119 +7994,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -7218,7 +8043,6 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             dashboardPath: string;
         } | undefined;
     }[];
-    v: 1;
     op: "thread_messages";
 }>;
 declare const conversationSyncConversationsSchema: z.ZodObject<{
@@ -7236,12 +8060,12 @@ declare const conversationSyncConversationDeletedSchema: z.ZodObject<{
     op: z.ZodLiteral<"conversation_deleted">;
     conversationId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "conversation_deleted";
 }, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "conversation_deleted";
 }>;
 declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
@@ -7249,12 +8073,12 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
     op: z.ZodLiteral<"thread">;
     conversationId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "thread";
 }, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "thread";
 }>, z.ZodObject<{
     v: z.ZodLiteral<1>;
@@ -7285,7 +8109,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             hash: string;
             size?: string | undefined;
         }>, "many">>;
-        rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+        rich: z.ZodOptional<z.ZodEffects<z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
             type: z.ZodLiteral<"report">;
             title: z.ZodString;
             rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -7725,7 +8549,119 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
-        }>]>>;
+        }>]>>, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "swap_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | undefined, unknown>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
             handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -8024,119 +8960,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -8186,6 +9010,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
         } | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
+    v: 1;
     conversationId: string;
     messages: {
         id: string;
@@ -8358,9 +9183,9 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             dashboardPath: string;
         } | undefined;
     }[];
-    v: 1;
     op: "thread_messages";
 }, {
+    v: 1;
     conversationId: string;
     messages: {
         id: string;
@@ -8372,119 +9197,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
         chatId?: string | undefined;
         provider?: string | undefined;
         agentKey?: string | undefined;
-        rich?: {
-            type: "report";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "invoice";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "tx";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "x402_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            resourceUrl?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "on_ramp_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-        } | {
-            type: "credit_card_checkout_form";
-            title: string;
-            intro?: string | undefined;
-            defaultCurrency?: string | undefined;
-        } | {
-            type: "credit_card";
-            title: string;
-            rows?: {
-                label: string;
-                value: string;
-            }[] | undefined;
-        } | {
-            type: "swap_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultPoolFee?: 500 | 3000 | 10000 | undefined;
-        } | {
-            type: "marketplace_hire";
-            title: string;
-            specialistName: string;
-            specialistAgentKey: string;
-            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
-            intro?: string | undefined;
-            capability?: string | undefined;
-            userTask?: string | undefined;
-            marketplacePath?: string | undefined;
-            agentProfilePath?: string | undefined;
-            requiredHandler?: string | undefined;
-        } | {
-            type: "transfer_checkout_form";
-            title: string;
-            supportedAssets: {
-                symbol: string;
-                name: string;
-                icon: string;
-                decimals: number;
-                address: string;
-                usdValue?: number | undefined;
-            }[];
-            intro?: string | undefined;
-            networks?: {
-                label: string;
-                id: string;
-            }[] | undefined;
-            defaultTo?: string | undefined;
-        } | undefined;
+        rich?: unknown;
         attachments?: {
             id: string;
             name: string;
@@ -8533,7 +9246,6 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             dashboardPath: string;
         } | undefined;
     }[];
-    v: 1;
     op: "thread_messages";
 }>, z.ZodObject<{
     v: z.ZodLiteral<1>;
@@ -8549,12 +9261,12 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
     op: z.ZodLiteral<"conversation_deleted">;
     conversationId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "conversation_deleted";
 }, {
-    conversationId: string;
     v: 1;
+    conversationId: string;
     op: "conversation_deleted";
 }>]>;
 type ConversationSyncThreadPayload = z.infer<typeof conversationSyncThreadSchema>;
@@ -9579,28 +10291,8 @@ declare const creditCardFundQuoteQuerySchema: z.ZodObject<{
 }>;
 type CreditCardFundQuoteQuery = z.infer<typeof creditCardFundQuoteQuerySchema>;
 /** USDC.e x402 fund on 0G mainnet (1 USD cent = 10_000 base units). */
-declare const creditCardFundQuoteSchema: z.ZodObject<{
-    chainId: z.ZodNumber;
-    recipient: z.ZodString;
-    usdcAsset: z.ZodString;
-    usdcAmountBaseUnits: z.ZodString;
-    usdcDecimals: z.ZodNumber;
-}, "strip", z.ZodTypeAny, {
-    chainId: number;
-    recipient: string;
-    usdcAsset: string;
-    usdcAmountBaseUnits: string;
-    usdcDecimals: number;
-}, {
-    chainId: number;
-    recipient: string;
-    usdcAsset: string;
-    usdcAmountBaseUnits: string;
-    usdcDecimals: number;
-}>;
-type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
-/** @deprecated Use {@link creditCardFundQuoteSchema} */
 declare const creditCardFundQuoteX402Schema: z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<false>;
     chainId: z.ZodNumber;
     recipient: z.ZodString;
     usdcAsset: z.ZodString;
@@ -9608,21 +10300,99 @@ declare const creditCardFundQuoteX402Schema: z.ZodObject<{
     usdcDecimals: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     chainId: number;
+    onchainFundingRequired: false;
     recipient: string;
     usdcAsset: string;
     usdcAmountBaseUnits: string;
     usdcDecimals: number;
 }, {
     chainId: number;
+    onchainFundingRequired: false;
     recipient: string;
     usdcAsset: string;
     usdcAmountBaseUnits: string;
     usdcDecimals: number;
 }>;
+/** Native 0G transfer to treasury (used when x402 is not configured). */
+declare const creditCardFundQuoteNativeSchema: z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<true>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    minNativeWei: z.ZodString;
+    usdValue: z.ZodNumber;
+    nativeSymbol: z.ZodString;
+    nativeDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}>;
+declare const creditCardFundQuoteSchema: z.ZodDiscriminatedUnion<"onchainFundingRequired", [z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<false>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    usdcAsset: z.ZodString;
+    usdcAmountBaseUnits: z.ZodString;
+    usdcDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    chainId: number;
+    onchainFundingRequired: false;
+    recipient: string;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
+}, {
+    chainId: number;
+    onchainFundingRequired: false;
+    recipient: string;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
+}>, z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<true>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    minNativeWei: z.ZodString;
+    usdValue: z.ZodNumber;
+    nativeSymbol: z.ZodString;
+    nativeDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}>]>;
+type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
+type CreditCardFundQuoteX402 = z.infer<typeof creditCardFundQuoteX402Schema>;
+type CreditCardFundQuoteNative = z.infer<typeof creditCardFundQuoteNativeSchema>;
 /** @deprecated Use {@link CreditCardFundQuote} */
 type CreditCardFundQuoteResponse = CreditCardFundQuote;
 /** @deprecated Use {@link creditCardFundQuoteSchema} */
-declare const creditCardFundQuoteResponseSchema: z.ZodObject<{
+declare const creditCardFundQuoteResponseSchema: z.ZodDiscriminatedUnion<"onchainFundingRequired", [z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<false>;
     chainId: z.ZodNumber;
     recipient: z.ZodString;
     usdcAsset: z.ZodString;
@@ -9630,17 +10400,43 @@ declare const creditCardFundQuoteResponseSchema: z.ZodObject<{
     usdcDecimals: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     chainId: number;
+    onchainFundingRequired: false;
     recipient: string;
     usdcAsset: string;
     usdcAmountBaseUnits: string;
     usdcDecimals: number;
 }, {
     chainId: number;
+    onchainFundingRequired: false;
     recipient: string;
     usdcAsset: string;
     usdcAmountBaseUnits: string;
     usdcDecimals: number;
-}>;
+}>, z.ZodObject<{
+    onchainFundingRequired: z.ZodLiteral<true>;
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    minNativeWei: z.ZodString;
+    usdValue: z.ZodNumber;
+    nativeSymbol: z.ZodString;
+    nativeDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}, {
+    usdValue: number;
+    chainId: number;
+    onchainFundingRequired: true;
+    recipient: string;
+    minNativeWei: string;
+    nativeSymbol: string;
+    nativeDecimals: number;
+}>]>;
 declare const creditCardWithdrawBodySchema: z.ZodObject<{
     amountCents: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
@@ -10477,4 +11273,4 @@ declare const patchChatMessageResultResponseSchema: z.ZodObject<{
 }>;
 type PatchChatMessageResultResponse = z.infer<typeof patchChatMessageResultResponseSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHandlerResult, type ChatHandlerServerResult, type ChatHandlerWalletTxResult, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PatchChatMessageResultBody, type PatchChatMessageResultResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SuggestMarketplaceHireInput, type SwapFormCtaParams, type TransferFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHandlerResult, type ChatHandlerServerResult, type ChatHandlerWalletTxResult, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteNative, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardFundQuoteX402, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PatchChatMessageResultBody, type PatchChatMessageResultResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SuggestMarketplaceHireInput, type SwapFormCtaParams, type TransferFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteNativeSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripJsonNulls, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

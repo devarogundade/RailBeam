@@ -99,7 +99,8 @@ export type CreditCardFundQuoteQuery = z.infer<
 >;
 
 /** USDC.e x402 fund on 0G mainnet (1 USD cent = 10_000 base units). */
-export const creditCardFundQuoteSchema = z.object({
+export const creditCardFundQuoteX402Schema = z.object({
+  onchainFundingRequired: z.literal(false),
   chainId: z.number().int(),
   recipient: z.string().min(1),
   usdcAsset: z.string().min(1),
@@ -107,10 +108,25 @@ export const creditCardFundQuoteSchema = z.object({
   usdcDecimals: z.number().int().min(0).max(18),
 });
 
-export type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
+/** Native 0G transfer to treasury (used when x402 is not configured). */
+export const creditCardFundQuoteNativeSchema = z.object({
+  onchainFundingRequired: z.literal(true),
+  chainId: z.number().int(),
+  recipient: z.string().min(1),
+  minNativeWei: z.string().regex(/^\d+$/),
+  usdValue: z.number().finite().positive(),
+  nativeSymbol: z.string().min(1),
+  nativeDecimals: z.number().int().min(0).max(18),
+});
 
-/** @deprecated Use {@link creditCardFundQuoteSchema} */
-export const creditCardFundQuoteX402Schema = creditCardFundQuoteSchema;
+export const creditCardFundQuoteSchema = z.discriminatedUnion(
+  "onchainFundingRequired",
+  [creditCardFundQuoteX402Schema, creditCardFundQuoteNativeSchema],
+);
+
+export type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
+export type CreditCardFundQuoteX402 = z.infer<typeof creditCardFundQuoteX402Schema>;
+export type CreditCardFundQuoteNative = z.infer<typeof creditCardFundQuoteNativeSchema>;
 
 /** @deprecated Use {@link CreditCardFundQuote} */
 export type CreditCardFundQuoteResponse = CreditCardFundQuote;

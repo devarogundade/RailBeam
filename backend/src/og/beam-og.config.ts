@@ -16,6 +16,18 @@ export const OG_RPC = {
     process.env.OG_RPC_URL_TESTNET?.trim() || 'https://evmrpc-testnet.0g.ai',
 } as const;
 
+/** Default 0G Storage turbo indexer URLs (see 0G network overview docs). */
+export const OG_STORAGE_INDEXER = {
+  mainnet: 'https://indexer-storage-turbo.0g.ai',
+  testnet: 'https://indexer-storage-testnet-turbo.0g.ai',
+} as const;
+
+export type OgStorageEndpoints = {
+  tier: BeamEvmTier | undefined;
+  rpcUrl: string;
+  indexerRpc: string;
+};
+
 export const OG_CONTRACT_ADDRESSES: {
   mainnet: Record<string, `0x${string}`>;
   testnet: Record<string, `0x${string}`>;
@@ -93,6 +105,51 @@ export function activeOgRpcUrl(config: ConfigService): string {
   const testnet = config.get<string>('OG_RPC_URL_TESTNET')?.trim();
   if (testnet) return testnet;
   return OG_RPC.mainnet;
+}
+
+export function ogRpcUrlForTier(
+  config: ConfigService,
+  tier: BeamEvmTier | undefined,
+): string {
+  if (tier === 'testnet') {
+    return config.get<string>('OG_RPC_URL_TESTNET')?.trim() || OG_RPC.testnet;
+  }
+  if (tier === 'mainnet') {
+    return config.get<string>('OG_RPC_URL_MAINNET')?.trim() || OG_RPC.mainnet;
+  }
+  return activeOgRpcUrl(config);
+}
+
+/**
+ * Storage indexer HTTP endpoint for the client’s 0G EVM tier (`X-Beam-Chain-Id`).
+ * RPC and indexer must target the same network or uploads fail on `market()`.
+ */
+export function ogStorageIndexerRpcForTier(
+  config: ConfigService,
+  tier: BeamEvmTier | undefined,
+): string {
+  const legacy = config.get<string>('OG_STORAGE_INDEXER_RPC')?.trim();
+  const mainnet = config.get<string>('OG_STORAGE_INDEXER_RPC_MAINNET')?.trim();
+  const testnet = config.get<string>('OG_STORAGE_INDEXER_RPC_TESTNET')?.trim();
+  if (tier === 'mainnet') {
+    return mainnet || legacy || OG_STORAGE_INDEXER.mainnet;
+  }
+  if (tier === 'testnet') {
+    return testnet || legacy || OG_STORAGE_INDEXER.testnet;
+  }
+  return mainnet || legacy || testnet || OG_STORAGE_INDEXER.mainnet;
+}
+
+export function ogStorageEndpointsForClientEvmChain(
+  config: ConfigService,
+  clientEvmChainId?: number,
+): OgStorageEndpoints {
+  const tier = beamEvmTierFromChainId(clientEvmChainId);
+  return {
+    tier,
+    rpcUrl: ogRpcUrlForTier(config, tier),
+    indexerRpc: ogStorageIndexerRpcForTier(config, tier),
+  };
 }
 
 /**

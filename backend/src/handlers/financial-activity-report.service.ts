@@ -98,7 +98,9 @@ export class FinancialActivityReportService implements HandlerService {
     ];
 
     const pdf = await buildLinesPdf(lines);
-    const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
+    const { rootHash } = await this.ogStorage.uploadBuffer(pdf, {
+      clientEvmChainId: ctx.clientEvmChainId,
+    });
 
     return {
       message:

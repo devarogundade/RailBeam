@@ -84,6 +84,7 @@ export class UserController {
   )
   async uploadMeFile(
     @CurrentWallet() wallet: AuthedWallet,
+    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
     @UploadedFile(
       new ParseFilePipe({
         fileIsRequired: true,
@@ -95,8 +96,9 @@ export class UserController {
     file: MulterIncomingFile,
   ) {
     try {
+      const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
       return userUploadResultSchema.parse(
-        await this.users.uploadMeFile(wallet.walletAddress, file),
+        await this.users.uploadMeFile(wallet.walletAddress, file, clientEvmChainId),
       );
     } catch (e: unknown) {
       if (e instanceof HttpException) throw e;

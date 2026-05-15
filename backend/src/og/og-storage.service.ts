@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { activeOgRpcUrl } from 'src/og/beam-og.config';
+import { ogStorageEndpointsForClientEvmChain } from 'src/og/beam-og.config';
 import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk';
 import { ethers } from 'ethers';
 import { randomUUID } from 'node:crypto';
@@ -40,38 +40,72 @@ function parseUploadTx(tx: unknown): { rootHash: string; txHash?: string } {
   throw new Error('Storage upload did not return rootHash');
 }
 
+export type OgStorageNetworkOptions = {
+  /** 0G EVM chain id from the Beam app (`X-Beam-Chain-Id`), when known. */
+  clientEvmChainId?: number;
+};
+
 @Injectable()
 export class OgStorageService {
   constructor(private readonly config: ConfigService) {}
 
-  private rpcUrl(): string {
-    return activeOgRpcUrl(this.config);
-  }
-
-  private indexerUrl(): string {
-    return this.config.get<string>('OG_STORAGE_INDEXER_RPC') ?? '';
+  private endpoints(opts?: OgStorageNetworkOptions) {
+    return ogStorageEndpointsForClientEvmChain(
+      this.config,
+      opts?.clientEvmChainId,
+    );
   }
 
   private pk(): string {
     return this.config.get<string>('PRIVATE_KEY') ?? '';
   }
 
-  private signer(): ethers.Wallet {
+  private signer(rpcUrl: string): ethers.Wallet {
     const pk = this.pk();
     if (!pk) throw new Error('PRIVATE_KEY is required for 0G Storage');
-    return new ethers.Wallet(pk, new ethers.JsonRpcProvider(this.rpcUrl()));
+    return new ethers.Wallet(pk, new ethers.JsonRpcProvider(rpcUrl));
+  }
+
+  private formatUploadError(
+    err: unknown,
+    endpoints: ReturnType<typeof ogStorageEndpointsForClientEvmChain>,
+  ): string {
+    const raw = err instanceof Error ? err.message : String(err);
+    if (!raw.includes('BAD_DATA') && !raw.includes('market()')) {
+      return `Storage upload error: ${raw}`;
+    }
+    const tierLabel = endpoints.tier ?? 'default';
+    return (
+      `Storage upload failed: 0G market contract returned empty data. ` +
+      `Ensure OG_RPC_URL_${endpoints.tier === 'testnet' ? 'TESTNET' : 'MAINNET'} and ` +
+      `OG_STORAGE_INDEXER_RPC_${endpoints.tier === 'testnet' ? 'TESTNET' : 'MAINNET'} ` +
+      `target the same network (current tier: ${tierLabel}, rpc: ${endpoints.rpcUrl}, indexer: ${endpoints.indexerRpc}). ` +
+      `Original: ${raw}`
+    );
   }
 
   async uploadBuffer(
     value: Buffer,
+    opts?: OgStorageNetworkOptions,
   ): Promise<{ rootHash: string; txHash?: string }> {
+    const endpoints = this.endpoints(opts);
+    if (!endpoints.indexerRpc.trim()) {
+      throw new Error(
+        '0G Storage indexer URL is not configured (set OG_STORAGE_INDEXER_RPC_MAINNET / OG_STORAGE_INDEXER_RPC_TESTNET).',
+      );
+    }
+
     const mem = new MemData(new Uint8Array(value));
     const [, treeErr] = await mem.merkleTree();
     if (treeErr) throw new Error(`Merkle tree error: ${String(treeErr)}`);
 
-    const indexer = new Indexer(this.indexerUrl());
-    const [tx, err] = await indexer.upload(mem, this.rpcUrl(), this.signer());
-    if (err) throw new Error(`Storage upload error: ${String(err)}`);
+    const indexer = new Indexer(endpoints.indexerRpc);
+    const [tx, err] = await indexer.upload(
+      mem,
+      endpoints.rpcUrl,
+      this.signer(endpoints.rpcUrl),
+    );
+    if (err) throw new Error(this.formatUploadError(err, endpoints));
 
     void (tx as UploadTx);
     return parseUploadTx(tx);
@@ -79,12 +113,17 @@ export class OgStorageService {
 
   async uploadString(
     value: string,
+    opts?: OgStorageNetworkOptions,
   ): Promise<{ rootHash: string; txHash?: string }> {
-    return this.uploadBuffer(Buffer.from(value, 'utf8'));
+    return this.uploadBuffer(Buffer.from(value, 'utf8'), opts);
   }
 
-  async getString(rootHash: string): Promise<string> {
-    const indexer = new Indexer(this.indexerUrl());
+  async getString(
+    rootHash: string,
+    opts?: OgStorageNetworkOptions,
+  ): Promise<string> {
+    const { indexerRpc } = this.endpoints(opts);
+    const indexer = new Indexer(indexerRpc);
     const tmp = path.join(os.tmpdir(), `stardorm-og-${rootHash}.txt`);
     const err = await indexer.download(rootHash, tmp);
     if (err) throw new Error(`Storage get error: ${String(err)}`);
@@ -96,8 +135,12 @@ export class OgStorageService {
     }
   }
 
-  async getBytes(rootHash: string): Promise<Buffer> {
-    const indexer = new Indexer(this.indexerUrl());
+  async getBytes(
+    rootHash: string,
+    opts?: OgStorageNetworkOptions,
+  ): Promise<Buffer> {
+    const { indexerRpc } = this.endpoints(opts);
+    const indexer = new Indexer(indexerRpc);
     const tmp = path.join(
       os.tmpdir(),
       `stardorm-og-${rootHash}-${randomUUID()}.bin`,

@@ -14,6 +14,7 @@ import {
   userUploadResultSchema,
   onRampsListResponseSchema,
   paymentRequestsListResponseSchema,
+  stripJsonNulls,
   stardormChatClientResultSchema,
   userKycStatusDocumentSchema,
   type ChatHistoryAttachment,
@@ -41,17 +42,13 @@ function normalizeStardormChatResponseBody(data: unknown): unknown {
   if (data == null) return data;
   if (typeof data === "string") {
     try {
-      return JSON.parse(data) as unknown;
+      return stripJsonNulls(JSON.parse(data) as unknown);
     } catch {
       return data;
     }
   }
   if (typeof data !== "object") return data;
-  const o = { ...(data as Record<string, unknown>) };
-  for (const key of ["rich", "structured", "attachments"] as const) {
-    if (o[key] === null) delete o[key];
-  }
-  return o;
+  return stripJsonNulls(data);
 }
 
 function formatZodIssues(issues: { path: (string | number)[]; message: string }[]): string {

@@ -1,6 +1,24 @@
 import { z } from "zod";
 import { handlerActionIdSchema } from "./handlers.js";
 
+/**
+ * Recursively convert JSON `null` to `undefined` so optional Zod fields accept
+ * model output and Mongo payloads (`intro: null` otherwise fails chat parse).
+ */
+export function stripJsonNulls(value: unknown): unknown {
+  if (value === null) return undefined;
+  if (Array.isArray(value)) return value.map(stripJsonNulls);
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const stripped = stripJsonNulls(v);
+      if (stripped !== undefined) out[k] = stripped;
+    }
+    return out;
+  }
+  return value;
+}
+
 export const stardormChatRichRowSchema = z.object({
   label: z.string(),
   value: z.string(),
@@ -169,7 +187,7 @@ function nullishOptional<T extends z.ZodTypeAny>(schema: T) {
   return z.preprocess((v) => (v === null ? undefined : v), schema);
 }
 
-export const stardormChatSuccessSchema = z.object({
+const stardormChatSuccessObjectSchema = z.object({
   agentKey: z.string().min(1),
   reply: z.string(),
   structured: nullishOptional(stardormChatStructuredSchema.optional()),
@@ -182,7 +200,12 @@ export const stardormChatSuccessSchema = z.object({
   compute: stardormChatComputeSchema,
 });
 
-export type StardormChatSuccess = z.infer<typeof stardormChatSuccessSchema>;
+export const stardormChatSuccessSchema = z.preprocess(
+  (v) => (v != null && typeof v === "object" ? stripJsonNulls(v) : v),
+  stardormChatSuccessObjectSchema,
+);
+
+export type StardormChatSuccess = z.infer<typeof stardormChatSuccessObjectSchema>;
 
 export const stardormChatClientErrorSchema = z.object({
   error: z.string().min(1),

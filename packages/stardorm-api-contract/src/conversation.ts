@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { handlerActionIdSchema } from "./handlers.js";
-import { stardormChatRichBlockSchema } from "./chat-api.js";
+import { stripJsonNulls, stardormChatRichBlockSchema } from "./chat-api.js";
 import { chatHandlerResultSchema } from "./handler-result.js";
 
 export const chatHistoryQuerySchema = z.object({
@@ -67,7 +67,12 @@ export const chatHistoryMessageSchema = z.object({
   content: z.string(),
   createdAt: z.number(),
   attachments: z.array(chatHistoryAttachmentSchema).optional(),
-  rich: stardormChatRichBlockSchema.optional(),
+  rich: z
+    .preprocess(
+      (v) => (v != null && typeof v === "object" ? stripJsonNulls(v) : v),
+      stardormChatRichBlockSchema.optional(),
+    )
+    .optional(),
   handlerCta: chatHistoryHandlerCtaSchema.optional(),
   /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
   result: chatHandlerResultSchema.optional(),

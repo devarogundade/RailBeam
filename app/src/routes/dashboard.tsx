@@ -31,8 +31,6 @@ import {
 } from "@/lib/format-subgraph";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchStardormCreditCards,
@@ -64,6 +62,7 @@ import {
 } from "@/components/page-shimmer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
+import { VirtualCardFundsDialog } from "@/components/virtual-card-funds-dialog";
 import { X402PaymentLinkCopyButtons } from "@/components/x402-payment-link-actions";
 
 export const Route = createFileRoute("/dashboard")({
@@ -625,6 +624,11 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
       if (cents == null) throw new Error("Enter a positive dollar amount.");
       const quote = await fetchCreditCardFundQuote(cents);
       if ("error" in quote) throw new Error(quote.error);
+      if (quote.onchainFundingRequired) {
+        throw new Error(
+          "Native 0G card funding is not supported in this app build. Configure x402 USDC.e funding on the server.",
+        );
+      }
       if (!address) throw new Error("Connect your wallet to fund with USDC.e.");
       if (!walletClient) {
         throw new Error("Wallet client unavailable. Refresh and try again.");
@@ -733,8 +737,8 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
                 mainnetWithdrawDisabled={mainnetVirtualCardWithdrawDisabled}
                 funding={fundMut.isPending && fundMut.variables?.id === c.id}
                 withdrawing={withdrawMut.isPending && withdrawMut.variables?.id === c.id}
-                onFund={(dollars) => fundMut.mutate({ id: c.id, dollars })}
-                onWithdraw={(dollars) => withdrawMut.mutate({ id: c.id, dollars })}
+                onFund={(dollars) => fundMut.mutateAsync({ id: c.id, dollars })}
+                onWithdraw={(dollars) => withdrawMut.mutateAsync({ id: c.id, dollars })}
               />
             ))}
           </ul>
@@ -753,14 +757,14 @@ function CreditCardRow({
   mainnetWithdrawDisabled,
 }: {
   card: CreditCardPublic;
-  onFund: (dollars: string) => void;
-  onWithdraw: (dollars: string) => void;
+  onFund: (dollars: string) => Promise<unknown>;
+  onWithdraw: (dollars: string) => Promise<unknown>;
   funding: boolean;
   withdrawing: boolean;
   mainnetWithdrawDisabled: boolean;
 }) {
-  const [fundAmt, setFundAmt] = React.useState("");
-  const [wdAmt, setWdAmt] = React.useState("");
+  const [fundOpen, setFundOpen] = React.useState(false);
+  const [withdrawOpen, setWithdrawOpen] = React.useState(false);
   const qc = useQueryClient();
   const [cardDetailsRevealed, setCardDetailsRevealed] = React.useState(false);
   const sensitiveQ = useQuery({
@@ -856,56 +860,44 @@ function CreditCardRow({
           </dl>
         ) : null}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface-elevated p-3">
-          <Label className="text-xs">Add funds (USD)</Label>
-          <div className="mt-2 flex gap-2">
-            <Input
-              placeholder="e.g. 25.00"
-              value={fundAmt}
-              onChange={(e) => setFundAmt(e.target.value)}
-              className="h-9"
-            />
-            <Button
-              type="button"
-              size="sm"
-              loading={funding}
-              disabled={funding}
-              onClick={() => {
-                onFund(fundAmt);
-                setFundAmt("");
-              }}
-            >
-              Fund
-            </Button>
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface-elevated p-3">
-          <Label className="text-xs">Remove funds (USD)</Label>
-          <div className="mt-2 flex gap-2">
-            <Input
-              placeholder="e.g. 10.00"
-              value={wdAmt}
-              onChange={(e) => setWdAmt(e.target.value)}
-              className="h-9"
-              disabled={mainnetWithdrawDisabled}
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              loading={withdrawing}
-              disabled={withdrawing || mainnetWithdrawDisabled}
-              onClick={() => {
-                onWithdraw(wdAmt);
-                setWdAmt("");
-              }}
-            >
-              Remove
-            </Button>
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" disabled={funding} onClick={() => setFundOpen(true)}>
+          Add funds
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={withdrawing || mainnetWithdrawDisabled}
+          onClick={() => setWithdrawOpen(true)}
+        >
+          Remove funds
+        </Button>
       </div>
+
+      <VirtualCardFundsDialog
+        open={fundOpen}
+        onOpenChange={setFundOpen}
+        mode="fund"
+        card={card}
+        loading={funding}
+        onSubmit={async (dollars) => {
+          await onFund(dollars);
+          setFundOpen(false);
+        }}
+      />
+      <VirtualCardFundsDialog
+        open={withdrawOpen}
+        onOpenChange={setWithdrawOpen}
+        mode="withdraw"
+        card={card}
+        loading={withdrawing}
+        withdrawDisabled={mainnetWithdrawDisabled}
+        onSubmit={async (dollars) => {
+          await onWithdraw(dollars);
+          setWithdrawOpen(false);
+        }}
+      />
     </li>
   );
 }

@@ -137,7 +137,9 @@ export class TaxesService implements HandlerService {
       output,
       usdPerNative > 0 && Number.isFinite(usdPerNative),
     );
-    const { rootHash } = await this.ogStorage.uploadBuffer(pdf);
+    const { rootHash } = await this.ogStorage.uploadBuffer(pdf, {
+      clientEvmChainId: ctx.clientEvmChainId,
+    });
 
     return {
       message:

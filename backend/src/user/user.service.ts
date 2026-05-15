@@ -1232,13 +1232,16 @@ export class UserService {
   async uploadMeFile(
     walletAddress: string,
     file: MulterIncomingFile,
+    clientEvmChainId?: number,
   ): Promise<UserUploadResult> {
     this.normalizeWallet(walletAddress);
     const buffer = await this.multerFileToBuffer(file);
     if (!buffer.length) {
       throw new BadRequestException('Empty file');
     }
-    const { rootHash, txHash } = await this.ogStorage.uploadBuffer(buffer);
+    const { rootHash, txHash } = await this.ogStorage.uploadBuffer(buffer, {
+      clientEvmChainId,
+    });
     return {
       rootHash,
       txHash,
@@ -1582,7 +1585,9 @@ export class UserService {
       if (!buffer.length) {
         throw new BadRequestException('Empty file');
       }
-      const { rootHash } = await this.ogStorage.uploadBuffer(buffer);
+      const { rootHash } = await this.ogStorage.uploadBuffer(buffer, {
+        clientEvmChainId,
+      });
       attachments.push({
         id: randomUUID(),
         mimeType: file.mimetype || 'application/octet-stream',

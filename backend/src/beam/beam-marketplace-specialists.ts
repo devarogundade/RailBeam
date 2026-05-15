@@ -147,7 +147,7 @@ export function marketplaceHireRichFromInput(
   return {
     type: 'marketplace_hire',
     title,
-    intro: input.intro,
+    ...(input.intro?.trim() ? { intro: input.intro.trim() } : {}),
     specialistName,
     specialistAgentKey: key,
     ...(category ? { category } : {}),

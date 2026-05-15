@@ -193,6 +193,19 @@ var storageUploadResponseSchema = zod.z.object({
   rootHash: zod.z.string().min(1),
   txHash: zod.z.string().optional()
 });
+function stripJsonNulls(value) {
+  if (value === null) return void 0;
+  if (Array.isArray(value)) return value.map(stripJsonNulls);
+  if (typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      const stripped = stripJsonNulls(v);
+      if (stripped !== void 0) out[k] = stripped;
+    }
+    return out;
+  }
+  return value;
+}
 var stardormChatRichRowSchema = zod.z.object({
   label: zod.z.string(),
   value: zod.z.string()
@@ -328,7 +341,7 @@ var stardormChatAttachmentSchema = zod.z.object({
 function nullishOptional(schema) {
   return zod.z.preprocess((v) => v === null ? void 0 : v, schema);
 }
-var stardormChatSuccessSchema = zod.z.object({
+var stardormChatSuccessObjectSchema = zod.z.object({
   agentKey: zod.z.string().min(1),
   reply: zod.z.string(),
   structured: nullishOptional(stardormChatStructuredSchema.optional()),
@@ -340,6 +353,10 @@ var stardormChatSuccessSchema = zod.z.object({
   ),
   compute: stardormChatComputeSchema
 });
+var stardormChatSuccessSchema = zod.z.preprocess(
+  (v) => v != null && typeof v === "object" ? stripJsonNulls(v) : v,
+  stardormChatSuccessObjectSchema
+);
 var stardormChatClientErrorSchema = zod.z.object({
   error: zod.z.string().min(1)
 });
@@ -497,7 +514,10 @@ var chatHistoryMessageSchema = zod.z.object({
   content: zod.z.string(),
   createdAt: zod.z.number(),
   attachments: zod.z.array(chatHistoryAttachmentSchema).optional(),
-  rich: stardormChatRichBlockSchema.optional(),
+  rich: zod.z.preprocess(
+    (v) => v != null && typeof v === "object" ? stripJsonNulls(v) : v,
+    stardormChatRichBlockSchema.optional()
+  ).optional(),
   handlerCta: chatHistoryHandlerCtaSchema.optional(),
   /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
   result: chatHandlerResultSchema.optional(),
@@ -810,14 +830,27 @@ var creditCardsListResponseSchema = zod.z.object({
 var creditCardFundQuoteQuerySchema = zod.z.object({
   amountCents: zod.z.coerce.number().int().min(1).max(1e8)
 });
-var creditCardFundQuoteSchema = zod.z.object({
+var creditCardFundQuoteX402Schema = zod.z.object({
+  onchainFundingRequired: zod.z.literal(false),
   chainId: zod.z.number().int(),
   recipient: zod.z.string().min(1),
   usdcAsset: zod.z.string().min(1),
   usdcAmountBaseUnits: zod.z.string().regex(/^\d+$/),
   usdcDecimals: zod.z.number().int().min(0).max(18)
 });
-var creditCardFundQuoteX402Schema = creditCardFundQuoteSchema;
+var creditCardFundQuoteNativeSchema = zod.z.object({
+  onchainFundingRequired: zod.z.literal(true),
+  chainId: zod.z.number().int(),
+  recipient: zod.z.string().min(1),
+  minNativeWei: zod.z.string().regex(/^\d+$/),
+  usdValue: zod.z.number().finite().positive(),
+  nativeSymbol: zod.z.string().min(1),
+  nativeDecimals: zod.z.number().int().min(0).max(18)
+});
+var creditCardFundQuoteSchema = zod.z.discriminatedUnion(
+  "onchainFundingRequired",
+  [creditCardFundQuoteX402Schema, creditCardFundQuoteNativeSchema]
+);
 var creditCardFundQuoteResponseSchema = creditCardFundQuoteSchema;
 var creditCardWithdrawBodySchema = zod.z.object({
   amountCents: zod.z.coerce.number().int().min(1).max(1e8)
@@ -1118,6 +1151,7 @@ exports.conversationsQuerySchema = conversationsQuerySchema;
 exports.createConversationBodySchema = createConversationBodySchema;
 exports.createCreditCardInputSchema = createCreditCardInputSchema;
 exports.creditCardFormCtaParamsSchema = creditCardFormCtaParamsSchema;
+exports.creditCardFundQuoteNativeSchema = creditCardFundQuoteNativeSchema;
 exports.creditCardFundQuoteQuerySchema = creditCardFundQuoteQuerySchema;
 exports.creditCardFundQuoteResponseSchema = creditCardFundQuoteResponseSchema;
 exports.creditCardFundQuoteSchema = creditCardFundQuoteSchema;
@@ -1175,6 +1209,7 @@ exports.stardormChatStructuredSchema = stardormChatStructuredSchema;
 exports.stardormChatSuccessSchema = stardormChatSuccessSchema;
 exports.storageUploadBodySchema = storageUploadBodySchema;
 exports.storageUploadResponseSchema = storageUploadResponseSchema;
+exports.stripJsonNulls = stripJsonNulls;
 exports.stripeKycInputSchema = stripeKycInputSchema;
 exports.suggestMarketplaceHireInputSchema = suggestMarketplaceHireInputSchema;
 exports.swapFormCtaParamsSchema = swapFormCtaParamsSchema;
