@@ -148,6 +148,37 @@ export const stardormChatRichBlockSchema = z.discriminatedUnion("type", [
       .optional(),
     defaultTo: z.string().max(66).optional(),
   }),
+  z.object({
+    type: z.literal("nft_transfer_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    networks: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(64),
+          label: z.string().min(1).max(120),
+        }),
+      )
+      .max(16)
+      .optional(),
+    defaultTo: z.string().max(66).optional(),
+    defaultContract: z.string().max(66).optional(),
+  }),
+  z.object({
+    type: z.literal("native_transfer_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    networks: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(64),
+          label: z.string().min(1).max(120),
+        }),
+      )
+      .max(16)
+      .optional(),
+    defaultTo: z.string().max(66).optional(),
+  }),
 ]);
 
 export type StardormChatRichBlock = z.infer<typeof stardormChatRichBlockSchema>;

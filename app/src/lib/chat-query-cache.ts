@@ -2,15 +2,6 @@ import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { ChatHistoryMessage, ChatHistoryResponse } from "@railbeam/stardorm-api-contract";
 import { queryKeys } from "@/lib/query-keys";
 
-function collectMessageIds(data: InfiniteData<ChatHistoryResponse> | undefined): Set<string> {
-  const ids = new Set<string>();
-  if (!data?.pages) return ids;
-  for (const page of data.pages) {
-    for (const m of page.messages) ids.add(m.id);
-  }
-  return ids;
-}
-
 /** Merges WSS-delivered rows into the newest chat history page without a network refetch. */
 export function appendThreadMessagesToChatCache(
   queryClient: QueryClient,
@@ -23,31 +14,45 @@ export function appendThreadMessagesToChatCache(
   let merged = false;
 
   queryClient.setQueryData<InfiniteData<ChatHistoryResponse>>(key, (old) => {
-    const existingIds = collectMessageIds(old);
-    const toAdd = incoming.filter((m) => !existingIds.has(m.id));
-    if (toAdd.length === 0) return old;
-    merged = true;
-
     if (!old?.pages?.length) {
       const agentKey =
-        toAdd.find((m) => m.agentKey)?.agentKey ?? toAdd.find((m) => m.role === "agent")?.agentKey ?? "beam-default";
+        incoming.find((m) => m.agentKey)?.agentKey ??
+        incoming.find((m) => m.role === "agent")?.agentKey ??
+        "beam-default";
+      merged = true;
       return {
         pageParams: [undefined],
         pages: [
           {
             conversationId,
             agentKey,
-            messages: [...toAdd],
+            messages: [...incoming],
             hasMoreOlder: false,
           },
         ],
       };
     }
 
-    const pages = old.pages.map((page, index) =>
-      index === 0 ? { ...page, messages: [...page.messages, ...toAdd] } : page,
-    );
-    return { ...old, pages };
+    let changed = false;
+    const pages = old.pages.map((page, index) => {
+      if (index !== 0) return page;
+      const messages = [...page.messages];
+      for (const inc of incoming) {
+        const idx = messages.findIndex((m) => m.id === inc.id);
+        if (idx >= 0) {
+          messages[idx] = { ...messages[idx], ...inc };
+          changed = true;
+        } else if (!messages.some((m) => m.id === inc.id)) {
+          messages.push(inc);
+          changed = true;
+        }
+      }
+      if (!changed) return page;
+      merged = true;
+      return { ...page, messages };
+    });
+
+    return merged ? { ...old, pages } : old;
   });
 
   return merged;

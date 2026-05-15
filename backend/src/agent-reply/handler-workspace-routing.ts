@@ -1,6 +1,10 @@
 import type { SuggestMarketplaceHireInput } from '@beam/stardorm-api-contract';
 import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
-import { suggestMarketplaceHireInputSchema } from '@beam/stardorm-api-contract';
+import {
+  nativeTransferFormCtaParamsSchema,
+  nftFormCtaParamsSchema,
+  suggestMarketplaceHireInputSchema,
+} from '@beam/stardorm-api-contract';
 import {
   creditCardFormCtaParamsSchema,
   onRampFormCtaParamsSchema,
@@ -239,9 +243,36 @@ export function buildHandlerWorkspaceOffer(
       } as AgentRichCard;
       return { text, handler, params, rich };
     }
-    case 'draft_native_transfer':
-    case 'draft_nft_transfer':
-      return null;
+    case 'draft_native_transfer': {
+      const defaults = defaultBeamTransferFormPayload();
+      const params = nativeTransferFormCtaParamsSchema.parse({
+        _nativeForm: true as const,
+        networks: defaults.networks,
+        ...(intro ? { intro } : {}),
+      });
+      const rich = {
+        type: 'native_transfer_checkout_form' as const,
+        title: 'Native transfer',
+        intro,
+        networks: params.networks,
+      } as AgentRichCard;
+      return { text, handler, params, rich };
+    }
+    case 'draft_nft_transfer': {
+      const defaults = defaultBeamTransferFormPayload();
+      const params = nftFormCtaParamsSchema.parse({
+        _nftForm: true as const,
+        networks: defaults.networks,
+        ...(intro ? { intro } : {}),
+      });
+      const rich = {
+        type: 'nft_transfer_checkout_form' as const,
+        title: 'NFT transfer',
+        intro,
+        networks: params.networks,
+      } as AgentRichCard;
+      return { text, handler, params, rich };
+    }
     case 'suggest_marketplace_hire':
       return null;
     default:

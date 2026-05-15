@@ -1,6 +1,3 @@
-import type { Chain } from "viem";
-import { zeroGMainnet, zeroGTestnet } from "viem/chains";
-
 export const BEAM_RPC = {
   mainnet: "https://evmrpc.0g.ai",
   testnet: "https://evmrpc-testnet.0g.ai",
@@ -37,7 +34,8 @@ export const BEAM_CONTRACT_ADDRESSES: {
   testnet: {},
 };
 
-export const ZERO_G_CHAIN_BY_CAIP: Record<string, Chain> = {
-  "eip155:16661": zeroGMainnet,
-  "eip155:16602": zeroGTestnet,
+/** 0G EVM chains (must match presets used by the Beam app). */
+export const ZERO_G_CHAIN_ID_BY_CAIP: Record<string, number> = {
+  "eip155:16661": 16661,
+  "eip155:16602": 16602,
 };

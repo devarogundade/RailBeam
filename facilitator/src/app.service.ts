@@ -9,11 +9,9 @@ import type {
   VerifyResponse,
 } from '@x402/core/types';
 import { registerExactEvmScheme } from '@x402/evm/exact/facilitator';
-import type { Hex } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
   BEAM_RPC,
-  ZERO_G_CHAIN_BY_CAIP,
+  ZERO_G_CHAIN_ID_BY_CAIP,
 } from './beam-chain.config';
 import {
   createBeamMultiChainFacilitatorSigner,
@@ -33,24 +31,20 @@ function parseEnabledCaipNetworks(config: ConfigService): string[] {
 }
 
 function rpcUrlForCaip(config: ConfigService, caip: string): string {
-  const chain = ZERO_G_CHAIN_BY_CAIP[caip];
-  if (!chain) {
+  if (!ZERO_G_CHAIN_ID_BY_CAIP[caip]) {
     throw new Error(`Unknown CAIP network ${caip}`);
   }
-  const defaultHttp = chain.rpcUrls.default.http[0] ?? '';
-
   if (caip === 'eip155:16661') {
     const explicit = config.get<string>('OG_RPC_URL_MAINNET')?.trim();
     if (explicit) return explicit;
-    return BEAM_RPC.mainnet || defaultHttp;
+    return BEAM_RPC.mainnet;
   }
   if (caip === 'eip155:16602') {
     const explicit = config.get<string>('OG_RPC_URL_TESTNET')?.trim();
     if (explicit) return explicit;
-    return BEAM_RPC.testnet || defaultHttp;
+    return BEAM_RPC.testnet;
   }
-
-  return defaultHttp;
+  throw new Error(`Unsupported CAIP network ${caip}`);
 }
 
 @Injectable()
@@ -64,22 +58,21 @@ export class AppService implements OnModuleInit {
     const enabled = parseEnabledCaipNetworks(this.configService);
 
     for (const caip of enabled) {
-      if (!ZERO_G_CHAIN_BY_CAIP[caip]) {
+      if (!ZERO_G_CHAIN_ID_BY_CAIP[caip]) {
         throw new Error(
-          `Unsupported network ${caip}. Supported: ${Object.keys(ZERO_G_CHAIN_BY_CAIP).join(', ')} (0G mainnet / testnet).`,
+          `Unsupported network ${caip}. Supported: ${Object.keys(ZERO_G_CHAIN_ID_BY_CAIP).join(', ')} (0G mainnet / testnet).`,
         );
       }
     }
 
-    const account = privateKeyToAccount(pk as Hex);
     const networkClients = enabled.map((caip) => ({
       caip2: caip,
-      chain: ZERO_G_CHAIN_BY_CAIP[caip],
+      chainId: ZERO_G_CHAIN_ID_BY_CAIP[caip],
       rpcUrl: rpcUrlForCaip(this.configService, caip),
     }));
 
     const evmSigner = createBeamMultiChainFacilitatorSigner({
-      account,
+      privateKey: pk.startsWith('0x') ? pk : `0x${pk}`,
       networks: networkClients,
     });
 

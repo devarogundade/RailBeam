@@ -21,6 +21,8 @@ export type HandlerContext = {
   walletAddress: string;
   /** 0G EVM chain id from the Beam app (`X-Beam-Chain-Id`), when known. */
   clientEvmChainId?: number;
+  /** Present when the handler runs from chat (`executeHandler`) so e.g. Stripe return URLs can reopen the thread. */
+  conversationId?: string;
 };
 
 /** Re-exported from `@beam/stardorm-api-contract` so the contract stays the single source of truth. */

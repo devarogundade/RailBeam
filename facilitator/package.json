@@ -17,9 +17,9 @@
     "@nestjs/platform-express": "^11.0.1",
     "@x402/core": "^2.10.0",
     "@x402/evm": "^2.10.0",
+    "ethers": "^6.13.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "viem": "^2.39.3"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

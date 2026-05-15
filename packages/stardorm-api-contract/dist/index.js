@@ -314,6 +314,31 @@ var stardormChatRichBlockSchema = zod.z.discriminatedUnion("type", [
       })
     ).max(16).optional(),
     defaultTo: zod.z.string().max(66).optional()
+  }),
+  zod.z.object({
+    type: zod.z.literal("nft_transfer_checkout_form"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    networks: zod.z.array(
+      zod.z.object({
+        id: zod.z.string().min(1).max(64),
+        label: zod.z.string().min(1).max(120)
+      })
+    ).max(16).optional(),
+    defaultTo: zod.z.string().max(66).optional(),
+    defaultContract: zod.z.string().max(66).optional()
+  }),
+  zod.z.object({
+    type: zod.z.literal("native_transfer_checkout_form"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    networks: zod.z.array(
+      zod.z.object({
+        id: zod.z.string().min(1).max(64),
+        label: zod.z.string().min(1).max(120)
+      })
+    ).max(16).optional(),
+    defaultTo: zod.z.string().max(66).optional()
   })
 ]);
 var stardormChatJsonBodySchema = zod.z.object({
@@ -1169,6 +1194,27 @@ var transferFormCtaParamsSchema = zod.z.object({
 function isTransferFormCtaParams(v) {
   return transferFormCtaParamsSchema.safeParse(v).success;
 }
+var optionalDefaultToSchema = zod.z.string().trim().refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), "defaultTo must be 0x\u202640").transform((s) => s.toLowerCase()).optional();
+var optionalDefaultContractSchema = zod.z.string().trim().refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), "defaultContract must be 0x\u202640").transform((s) => s.toLowerCase()).optional();
+var nftFormCtaParamsSchema = zod.z.object({
+  _nftForm: zod.z.literal(true),
+  networks: zod.z.array(transferFormNetworkOptionSchema).max(16).optional(),
+  intro: zod.z.string().max(2e3).optional(),
+  defaultTo: optionalDefaultToSchema,
+  defaultContract: optionalDefaultContractSchema
+});
+function isNftFormCtaParams(v) {
+  return nftFormCtaParamsSchema.safeParse(v).success;
+}
+var nativeTransferFormCtaParamsSchema = zod.z.object({
+  _nativeForm: zod.z.literal(true),
+  networks: zod.z.array(transferFormNetworkOptionSchema).max(16).optional(),
+  intro: zod.z.string().max(2e3).optional(),
+  defaultTo: optionalDefaultToSchema
+});
+function isNativeTransferFormCtaParams(v) {
+  return nativeTransferFormCtaParamsSchema.safeParse(v).success;
+}
 var marketplaceSpecialistAgentKeySchema = zod.z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9-]*$/i);
 var suggestMarketplaceHireInputSchema = zod.z.object({
   specialistAgentKey: marketplaceSpecialistAgentKeySchema,
@@ -1251,6 +1297,8 @@ exports.handlersListResponseSchema = handlersListResponseSchema;
 exports.isCreditCardFormCtaParams = isCreditCardFormCtaParams;
 exports.isHandlerActionId = isHandlerActionId;
 exports.isIso3166Alpha2 = isIso3166Alpha2;
+exports.isNativeTransferFormCtaParams = isNativeTransferFormCtaParams;
+exports.isNftFormCtaParams = isNftFormCtaParams;
 exports.isOnRampFormCtaParams = isOnRampFormCtaParams;
 exports.isSwapFormCtaParams = isSwapFormCtaParams;
 exports.isTransferFormCtaParams = isTransferFormCtaParams;
@@ -1259,6 +1307,8 @@ exports.marketplaceSpecialistAgentKeySchema = marketplaceSpecialistAgentKeySchem
 exports.meFinancialSnapshotsQuerySchema = meFinancialSnapshotsQuerySchema;
 exports.meOnRampsQuerySchema = meOnRampsQuerySchema;
 exports.mePaymentRequestsQuerySchema = mePaymentRequestsQuerySchema;
+exports.nativeTransferFormCtaParamsSchema = nativeTransferFormCtaParamsSchema;
+exports.nftFormCtaParamsSchema = nftFormCtaParamsSchema;
 exports.onRampFormCtaParamsSchema = onRampFormCtaParamsSchema;
 exports.onRampFormNetworkOptionSchema = onRampFormNetworkOptionSchema;
 exports.onRampRecordSchema = onRampRecordSchema;

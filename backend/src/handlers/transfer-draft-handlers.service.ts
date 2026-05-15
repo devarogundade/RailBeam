@@ -3,7 +3,11 @@ import {
   draftErc20TransferInputSchema,
   draftNativeTransferInputSchema,
   draftNftTransferInputSchema,
+  isNativeTransferFormCtaParams,
+  isNftFormCtaParams,
   isTransferFormCtaParams,
+  nativeTransferFormCtaParamsSchema,
+  nftFormCtaParamsSchema,
   transferFormCtaParamsSchema,
 } from '@beam/stardorm-api-contract';
 import { defaultBeamTransferFormPayload } from '../beam/beam-transfer.config';
@@ -23,6 +27,26 @@ export class DraftNativeTransferHandlerService implements HandlerService {
   readonly id = 'draft_native_transfer' as const;
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
+    if (isNativeTransferFormCtaParams(raw)) {
+      const form = nativeTransferFormCtaParamsSchema.parse(raw);
+      const defaults = defaultBeamTransferFormPayload();
+      return {
+        message:
+          'Enter the network, recipient, and amount (in native token units) in the form below, then tap **Confirm transfer draft**. Your wallet will sign the native transfer.',
+        rich: {
+          type: 'native_transfer_checkout_form',
+          title: 'Native transfer',
+          intro: form.intro,
+          networks: form.networks ?? defaults.networks,
+          ...(form.defaultTo ? { defaultTo: form.defaultTo } : {}),
+        },
+        data: {
+          kind: 'native_transfer_form',
+          walletAddress: ctx.walletAddress,
+        },
+      };
+    }
+
     const parsed = draftNativeTransferInputSchema.safeParse(raw);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -101,6 +125,27 @@ export class DraftNftTransferHandlerService implements HandlerService {
   readonly id = 'draft_nft_transfer' as const;
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
+    if (isNftFormCtaParams(raw)) {
+      const form = nftFormCtaParamsSchema.parse(raw);
+      const defaults = defaultBeamTransferFormPayload();
+      return {
+        message:
+          'Fill in collection contract, token id, recipient, and standard in the form below, then tap **Confirm transfer draft**. Your wallet will sign the NFT transfer.',
+        rich: {
+          type: 'nft_transfer_checkout_form',
+          title: 'NFT transfer',
+          intro: form.intro,
+          networks: form.networks ?? defaults.networks,
+          ...(form.defaultTo ? { defaultTo: form.defaultTo } : {}),
+          ...(form.defaultContract ? { defaultContract: form.defaultContract } : {}),
+        },
+        data: {
+          kind: 'nft_transfer_form',
+          walletAddress: ctx.walletAddress,
+        },
+      };
+    }
+
     const parsed = draftNftTransferInputSchema.safeParse(raw);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());

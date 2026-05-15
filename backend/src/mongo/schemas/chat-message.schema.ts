@@ -64,6 +64,8 @@ export class ChatRichBlock {
       'credit_card',
       'swap_checkout_form',
       'transfer_checkout_form',
+      'nft_transfer_checkout_form',
+      'native_transfer_checkout_form',
       'marketplace_hire',
     ],
   })
@@ -95,6 +97,9 @@ export class ChatRichBlock {
 
   @Prop()
   defaultTo?: string;
+
+  @Prop()
+  defaultContract?: string;
 
   @Prop()
   specialistName?: string;

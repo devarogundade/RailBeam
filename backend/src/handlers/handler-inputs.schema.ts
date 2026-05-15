@@ -397,3 +397,43 @@ export const offerTransferCheckoutFormToolArgsSchema = z.object({
 export type OfferTransferCheckoutFormToolArgs = z.infer<
   typeof offerTransferCheckoutFormToolArgsSchema
 >;
+
+/** OpenAI tool `offer_nft_transfer_checkout_form` arguments. */
+export const offerNftTransferCheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  networks: x402CheckoutFormNetworksSchema,
+  defaultTo: z
+    .string()
+    .trim()
+    .refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), 'defaultTo must be 0x…40')
+    .transform((s) => s.toLowerCase())
+    .optional(),
+  defaultContract: z
+    .string()
+    .trim()
+    .refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), 'defaultContract must be 0x…40')
+    .transform((s) => s.toLowerCase())
+    .optional(),
+});
+
+export type OfferNftTransferCheckoutFormToolArgs = z.infer<
+  typeof offerNftTransferCheckoutFormToolArgsSchema
+>;
+
+/** OpenAI tool `offer_native_transfer_checkout_form` arguments. */
+export const offerNativeTransferCheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  networks: x402CheckoutFormNetworksSchema,
+  defaultTo: z
+    .string()
+    .trim()
+    .refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), 'defaultTo must be 0x…40')
+    .transform((s) => s.toLowerCase())
+    .optional(),
+});
+
+export type OfferNativeTransferCheckoutFormToolArgs = z.infer<
+  typeof offerNativeTransferCheckoutFormToolArgsSchema
+>;

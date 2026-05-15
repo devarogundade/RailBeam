@@ -496,7 +496,7 @@ const draftNativeTransferTool: OpenAiChatTool = {
   function: {
     name: 'draft_native_transfer',
     description:
-      'When the user already stated every field, offer a server action that records a native (gas token) transfer draft. The server does not broadcast transactions — the user signs in Beam Send or their wallet.',
+      'When the user already stated every field (`network` CAIP-2, `to` 0x…40, `valueWei` positive integer string), offer a native transfer draft. If network, recipient, or amount is missing or ambiguous, call **offer_native_transfer_checkout_form** instead (optional `networks`, `defaultTo`, `intro`). The server does not broadcast — the user signs in Beam Send or their wallet.',
     parameters: {
       type: 'object',
       properties: {
@@ -510,6 +510,42 @@ const draftNativeTransferTool: OpenAiChatTool = {
         note: { type: 'string', maxLength: 500 },
       },
       required: ['network', 'to', 'valueWei'],
+    },
+  },
+};
+
+const offerNativeTransferCheckoutFormTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'offer_native_transfer_checkout_form',
+    description:
+      'Show the native (gas token) transfer form when the user wants to send native currency on 0G but their message does NOT already state every required field (`network` CAIP-2, `to`, wei `valueWei`). Pass optional `networks` (mainnet/testnet), optional `defaultTo`, optional `intro`. Never invent recipients or amounts.',
+    parameters: {
+      type: 'object',
+      properties: {
+        formTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+        },
+        intro: { type: 'string', maxLength: 2000 },
+        networks: {
+          type: 'array',
+          maxItems: 16,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 64 },
+              label: { type: 'string', minLength: 1, maxLength: 120 },
+            },
+            required: ['id', 'label'],
+          },
+        },
+        defaultTo: {
+          ...evmAddress20Property,
+          description: 'Optional recipient pre-fill when the user already gave `to`.',
+        },
+      },
     },
   },
 };
@@ -716,7 +752,7 @@ const draftNftTransferTool: OpenAiChatTool = {
   function: {
     name: 'draft_nft_transfer',
     description:
-      'When the user already stated every field, offer a server action that records an NFT transfer draft (ERC-721 or ERC-1155). The user completes safeTransferFrom in their wallet.',
+      'When the user already stated every field (`network`, collection `contract`, `to`, `tokenId`, `standard` erc721|erc1155, and for ERC-1155 `amount`), offer an NFT transfer draft. If anything required is missing, call **offer_nft_transfer_checkout_form** instead (optional `networks`, `defaultTo`, `defaultContract`, `intro`). Never invent contracts or token ids.',
     parameters: {
       type: 'object',
       properties: {
@@ -741,6 +777,46 @@ const draftNftTransferTool: OpenAiChatTool = {
         note: { type: 'string', maxLength: 500 },
       },
       required: ['network', 'contract', 'to', 'tokenId'],
+    },
+  },
+};
+
+const offerNftTransferCheckoutFormTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'offer_nft_transfer_checkout_form',
+    description:
+      'Show the NFT transfer form when the user wants to send an ERC-721 or ERC-1155 NFT but their message does NOT already spell out every required field (network, collection contract, recipient, token id, standard, and amount for ERC-1155). Pass optional `networks`, optional `defaultTo`, optional `defaultContract` when the user gave partial info. Never invent addresses or token ids.',
+    parameters: {
+      type: 'object',
+      properties: {
+        formTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+        },
+        intro: { type: 'string', maxLength: 2000 },
+        networks: {
+          type: 'array',
+          maxItems: 16,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 64 },
+              label: { type: 'string', minLength: 1, maxLength: 120 },
+            },
+            required: ['id', 'label'],
+          },
+        },
+        defaultTo: {
+          ...evmAddress20Property,
+          description: 'Optional recipient pre-fill.',
+        },
+        defaultContract: {
+          ...evmAddress20Property,
+          description: 'Optional NFT collection contract pre-fill.',
+        },
+      },
     },
   },
 };
@@ -829,6 +905,7 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('draft_native_transfer')) {
     out.push(draftNativeTransferTool);
+    out.push(offerNativeTransferCheckoutFormTool);
   }
   if (allowed.includes('draft_erc20_transfer')) {
     out.push(draftErc20TransferTool);
@@ -836,6 +913,7 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('draft_nft_transfer')) {
     out.push(draftNftTransferTool);
+    out.push(offerNftTransferCheckoutFormTool);
   }
   if (allowed.includes('draft_token_swap')) {
     out.push(draftTokenSwapTool);

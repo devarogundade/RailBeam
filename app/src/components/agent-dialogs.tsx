@@ -130,13 +130,15 @@ export function HireDialog({
       });
       return;
     }
+    const hireChainAgentId = agent.chainAgentId;
+    if (hireChainAgentId == null) return;
     try {
       await withHireReceiptWait(async () => {
         const hash = await writeContractAsync({
           address: registry,
           abi: identityRegistryAbi,
           functionName: "subscribe",
-          args: [BigInt(agent.chainAgentId), IDENTITY_SUBSCRIBE_NUM_DAYS],
+          args: [BigInt(hireChainAgentId), IDENTITY_SUBSCRIBE_NUM_DAYS],
           value,
         });
         await waitForWriteContractReceipt(publicClient, hash);
@@ -254,7 +256,8 @@ export function FireDialog({
   const canUnsubscribe = Boolean(registry && agent.chainAgentId != null);
 
   const onFire = async () => {
-    if (canUnsubscribe && registry && agent.chainAgentId != null) {
+    const fireChainAgentId = agent.chainAgentId;
+    if (canUnsubscribe && registry && fireChainAgentId != null) {
       try {
         if (!publicClient) {
           toast.error("Wallet client unavailable", {
@@ -267,7 +270,7 @@ export function FireDialog({
             address: registry,
             abi: identityRegistryAbi,
             functionName: "unsubscribe",
-            args: [BigInt(agent.chainAgentId)],
+            args: [BigInt(fireChainAgentId)],
           });
           await waitForWriteContractReceipt(publicClient, hash);
         });

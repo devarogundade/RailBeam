@@ -1099,6 +1099,75 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"nft_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+        defaultContract: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"native_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>;
 }, "strip", z.ZodTypeAny, {
     message: string;
@@ -1208,6 +1277,25 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -1329,6 +1417,25 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -1828,6 +1935,75 @@ declare const stardormChatRichBlockSchema: z.ZodDiscriminatedUnion<"type", [z.Zo
         address: string;
         usdValue?: number | undefined;
     }[];
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"nft_transfer_checkout_form">;
+    title: z.ZodString;
+    intro: z.ZodOptional<z.ZodString>;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    defaultTo: z.ZodOptional<z.ZodString>;
+    defaultContract: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    type: "nft_transfer_checkout_form";
+    title: string;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+    defaultContract?: string | undefined;
+}, {
+    type: "nft_transfer_checkout_form";
+    title: string;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+    defaultContract?: string | undefined;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"native_transfer_checkout_form">;
+    title: z.ZodString;
+    intro: z.ZodOptional<z.ZodString>;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    defaultTo: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    type: "native_transfer_checkout_form";
+    title: string;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}, {
+    type: "native_transfer_checkout_form";
+    title: string;
     intro?: string | undefined;
     networks?: {
         label: string;
@@ -2362,6 +2538,75 @@ declare const stardormChatSuccessObjectSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"nft_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+        defaultContract: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"native_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>, {
         type: "report";
         title: string;
@@ -2468,6 +2713,25 @@ declare const stardormChatSuccessObjectSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -2641,6 +2905,25 @@ declare const stardormChatSuccessObjectSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -3135,6 +3418,75 @@ declare const stardormChatSuccessSchema: z.ZodEffects<z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"nft_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+        defaultContract: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"native_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>, {
         type: "report";
         title: string;
@@ -3241,6 +3593,25 @@ declare const stardormChatSuccessSchema: z.ZodEffects<z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -3420,6 +3791,25 @@ declare const stardormChatSuccessSchema: z.ZodEffects<z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -3562,6 +3952,25 @@ declare const stardormChatSuccessSchema: z.ZodEffects<z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -4051,6 +4460,75 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodEffects<z.ZodObje
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"nft_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+        defaultContract: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"native_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>, {
         type: "report";
         title: string;
@@ -4157,6 +4635,25 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodEffects<z.ZodObje
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -4336,6 +4833,25 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodEffects<z.ZodObje
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -4478,6 +4994,25 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodEffects<z.ZodObje
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -5078,6 +5613,75 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultTo?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"nft_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+        defaultContract: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }, {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"native_transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "native_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>, {
         type: "report";
         title: string;
@@ -5184,6 +5788,25 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -5428,6 +6051,25 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             address: string;
             usdValue?: number | undefined;
         }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    } | {
+        type: "nft_transfer_checkout_form";
+        title: string;
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+        defaultContract?: string | undefined;
+    } | {
+        type: "native_transfer_checkout_form";
+        title: string;
         intro?: string | undefined;
         networks?: {
             label: string;
@@ -6009,6 +6651,75 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"nft_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+            defaultContract: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"native_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>, {
             type: "report";
             title: string;
@@ -6115,6 +6826,25 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -6365,6 +7095,25 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -6595,6 +7344,25 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -7346,6 +8114,75 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"nft_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+            defaultContract: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"native_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>, {
             type: "report";
             title: string;
@@ -7452,6 +8289,25 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -7699,6 +8555,25 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -7925,6 +8800,25 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -8549,6 +9443,75 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"nft_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+            defaultContract: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }, {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"native_transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>, {
             type: "report";
             title: string;
@@ -8655,6 +9618,25 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -8902,6 +9884,25 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -9128,6 +10129,25 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 address: string;
                 usdValue?: number | undefined;
             }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        } | {
+            type: "nft_transfer_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+            defaultContract?: string | undefined;
+        } | {
+            type: "native_transfer_checkout_form";
+            title: string;
             intro?: string | undefined;
             networks?: {
                 label: string;
@@ -11115,6 +12135,77 @@ declare const transferFormCtaParamsSchema: z.ZodObject<{
 }>;
 type TransferFormCtaParams = z.infer<typeof transferFormCtaParamsSchema>;
 declare function isTransferFormCtaParams(v: unknown): v is TransferFormCtaParams;
+/** Persisted CTA until the user submits the NFT transfer checkout form. */
+declare const nftFormCtaParamsSchema: z.ZodObject<{
+    _nftForm: z.ZodLiteral<true>;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    intro: z.ZodOptional<z.ZodString>;
+    defaultTo: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>;
+    defaultContract: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>;
+}, "strip", z.ZodTypeAny, {
+    _nftForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+    defaultContract?: string | undefined;
+}, {
+    _nftForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+    defaultContract?: string | undefined;
+}>;
+type NftFormCtaParams = z.infer<typeof nftFormCtaParamsSchema>;
+declare function isNftFormCtaParams(v: unknown): v is NftFormCtaParams;
+/** Persisted CTA until the user submits the native transfer checkout form. */
+declare const nativeTransferFormCtaParamsSchema: z.ZodObject<{
+    _nativeForm: z.ZodLiteral<true>;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    intro: z.ZodOptional<z.ZodString>;
+    defaultTo: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>;
+}, "strip", z.ZodTypeAny, {
+    _nativeForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}, {
+    _nativeForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}>;
+type NativeTransferFormCtaParams = z.infer<typeof nativeTransferFormCtaParamsSchema>;
+declare function isNativeTransferFormCtaParams(v: unknown): v is NativeTransferFormCtaParams;
 
 /** Known Beam catalog specialist keys (subgraph / marketplace). */
 declare const marketplaceSpecialistAgentKeySchema: z.ZodString;
@@ -11447,4 +12538,4 @@ declare const patchChatMessageResultResponseSchema: z.ZodObject<{
 }>;
 type PatchChatMessageResultResponse = z.infer<typeof patchChatMessageResultResponseSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHandlerResult, type ChatHandlerServerResult, type ChatHandlerWalletTxResult, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteNative, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardFundQuoteX402, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type FinancialSnapshotDailyRow, type FinancialSnapshotsListResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeFinancialSnapshotsQuery, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampTokensInputCore, type OnRampsListResponse, type PatchChatMessageResultBody, type PatchChatMessageResultResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SuggestMarketplaceHireInput, type SwapFormCtaParams, type TransferFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteNativeSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, deriveTokenAmountWeiFromUsdCents, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, finalizeOnRampTokensPayload, financialSnapshotDailyRowSchema, financialSnapshotsListResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meFinancialSnapshotsQuerySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputCoreSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripJsonNulls, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, validateOnRampUsdDerive, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHandlerResult, type ChatHandlerServerResult, type ChatHandlerWalletTxResult, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteNative, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardFundQuoteX402, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type FinancialSnapshotDailyRow, type FinancialSnapshotsListResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeFinancialSnapshotsQuery, type MeOnRampsQuery, type MePaymentRequestsQuery, type NativeTransferFormCtaParams, type NftFormCtaParams, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampTokensInputCore, type OnRampsListResponse, type PatchChatMessageResultBody, type PatchChatMessageResultResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SuggestMarketplaceHireInput, type SwapFormCtaParams, type TransferFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteNativeSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, deriveTokenAmountWeiFromUsdCents, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, finalizeOnRampTokensPayload, financialSnapshotDailyRowSchema, financialSnapshotsListResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isNativeTransferFormCtaParams, isNftFormCtaParams, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meFinancialSnapshotsQuerySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, nativeTransferFormCtaParamsSchema, nftFormCtaParamsSchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputCoreSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripJsonNulls, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, validateOnRampUsdDerive, x402SupportedAssetSchema };

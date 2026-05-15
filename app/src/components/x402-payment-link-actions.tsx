@@ -137,14 +137,14 @@ export function X402PaymentLinkActions({
         agentApiUrl ? (
           <LinkRow
             label="Agent / x402 API"
-            description="For agents and backends — GET returns payment requirements (x402Payload)."
+            description="For agents and backends — GET /payments/:id/access returns 402 with payment requirements until paid."
             url={agentApiUrl}
             onCopy={() => copyText("x402 API link", agentApiUrl)}
           />
         ) : (
           <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
             Set <code className="text-foreground">VITE_STARDORM_API_URL</code> to copy the x402 API link (
-            <code className="text-foreground">GET /payments/:id</code>).
+            <code className="text-foreground">GET /payments/:id/access</code>).
           </p>
         )
       ) : null}

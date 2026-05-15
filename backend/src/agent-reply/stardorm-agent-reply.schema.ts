@@ -20,6 +20,8 @@ import {
   offerX402CheckoutFormToolArgsSchema,
   offerOnRampCheckoutFormToolArgsSchema,
   offerCreditCardCheckoutFormToolArgsSchema,
+  offerNativeTransferCheckoutFormToolArgsSchema,
+  offerNftTransferCheckoutFormToolArgsSchema,
   offerSwapCheckoutFormToolArgsSchema,
   offerTransferCheckoutFormToolArgsSchema,
   x402CheckoutFormCtaParamsSchema,
@@ -44,6 +46,8 @@ import {
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
   draftTokenSwapInputSchema,
+  nativeTransferFormCtaParamsSchema,
+  nftFormCtaParamsSchema,
   suggestMarketplaceHireInputSchema,
 } from '@beam/stardorm-api-contract';
 import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
@@ -126,6 +130,9 @@ const OFFER_ON_RAMP_CHECKOUT_FORM = 'offer_on_ramp_checkout_form' as const;
 const OFFER_CREDIT_CARD_CHECKOUT_FORM = 'offer_credit_card_checkout_form' as const;
 const OFFER_SWAP_CHECKOUT_FORM = 'offer_swap_checkout_form' as const;
 const OFFER_TRANSFER_CHECKOUT_FORM = 'offer_transfer_checkout_form' as const;
+const OFFER_NFT_TRANSFER_CHECKOUT_FORM = 'offer_nft_transfer_checkout_form' as const;
+const OFFER_NATIVE_TRANSFER_CHECKOUT_FORM =
+  'offer_native_transfer_checkout_form' as const;
 
 function handlerIdsForJsonContract(): string {
   return HANDLER_ACTION_IDS.map((h) => `"${h}"`).join('|');
@@ -271,11 +278,14 @@ export const agentComputeReplySchema = z
       }
     }
     if (handler === 'draft_native_transfer') {
+      const form = nativeTransferFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
       const r = draftNativeTransferInputSchema.safeParse(params);
       if (!r.success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Invalid params for draft_native_transfer',
+          message:
+            'Invalid params for draft_native_transfer (need full native transfer fields or a native checkout form payload)',
           path: ['params'],
         });
       }
@@ -294,11 +304,14 @@ export const agentComputeReplySchema = z
       }
     }
     if (handler === 'draft_nft_transfer') {
+      const form = nftFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
       const r = draftNftTransferInputSchema.safeParse(params);
       if (!r.success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Invalid params for draft_nft_transfer',
+          message:
+            'Invalid params for draft_nft_transfer (need full NFT transfer fields or an NFT checkout form payload)',
           path: ['params'],
         });
       }
@@ -394,7 +407,9 @@ export type AgentComputeReplyWithParams =
   | {
       text: string;
       handler: 'draft_native_transfer';
-      params: z.infer<typeof draftNativeTransferInputSchema>;
+      params:
+        | z.infer<typeof draftNativeTransferInputSchema>
+        | z.infer<typeof nativeTransferFormCtaParamsSchema>;
       rich?: AgentRichCard;
     }
   | {
@@ -408,7 +423,9 @@ export type AgentComputeReplyWithParams =
   | {
       text: string;
       handler: 'draft_nft_transfer';
-      params: z.infer<typeof draftNftTransferInputSchema>;
+      params:
+        | z.infer<typeof draftNftTransferInputSchema>
+        | z.infer<typeof nftFormCtaParamsSchema>;
       rich?: AgentRichCard;
     }
   | {
@@ -535,6 +552,25 @@ export function asTypedAgentReply(
     };
   }
   if (r.handler === 'draft_native_transfer') {
+    const formTry = nativeTransferFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const defaults = defaultBeamTransferFormPayload();
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'native_transfer_checkout_form',
+          title: 'Native transfer',
+          networks: formTry.data.networks ?? defaults.networks,
+          intro: formTry.data.intro,
+          defaultTo: formTry.data.defaultTo,
+        } as unknown as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'draft_native_transfer',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
     const p = draftNativeTransferInputSchema.parse(r.params);
     const filledRich = rich ?? txRichFromNativeDraft(p);
     return { text: r.text, handler: 'draft_native_transfer', params: p, rich: filledRich };
@@ -565,6 +601,26 @@ export function asTypedAgentReply(
     return { text: r.text, handler: 'draft_erc20_transfer', params: p, rich: filledRich };
   }
   if (r.handler === 'draft_nft_transfer') {
+    const formTry = nftFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const defaults = defaultBeamTransferFormPayload();
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'nft_transfer_checkout_form',
+          title: 'NFT transfer',
+          networks: formTry.data.networks ?? defaults.networks,
+          intro: formTry.data.intro,
+          defaultTo: formTry.data.defaultTo,
+          defaultContract: formTry.data.defaultContract,
+        } as unknown as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'draft_nft_transfer',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
     const p = draftNftTransferInputSchema.parse(r.params);
     const filledRich = rich ?? txRichFromNftDraft(p);
     return { text: r.text, handler: 'draft_nft_transfer', params: p, rich: filledRich };
@@ -699,7 +755,10 @@ export function buildAgentOutputContract(
       ? '- generate_financial_activity_report params: optional `from`/`to` each `{"year","month","day"}` (UTC), optional `reportTitle`; may be `{}` for all recent rows.'
       : '',
     allowed.includes('draft_native_transfer')
-      ? '- draft_native_transfer params: `network` (CAIP-2 `eip155:<chainId>`), `to` (0x…40 recipient), `valueWei` (positive integer string wei), optional `note`. Never invent addresses or amounts.'
+      ? [
+          '- draft_native_transfer (JSON-only): use when the user message states `network` (CAIP-2), `to` (0x…40), and `valueWei` (positive integer wei string). Never invent values.',
+          '- Native checkout form: params `{"_nativeForm":true}` with optional `networks`, optional `defaultTo`, optional `intro`, matching `rich` type `native_transfer_checkout_form` when any required field is missing.',
+        ].join('\n')
       : '',
     allowed.includes('draft_erc20_transfer')
       ? [
@@ -708,7 +767,10 @@ export function buildAgentOutputContract(
         ].join('\n')
       : '',
     allowed.includes('draft_nft_transfer')
-      ? '- draft_nft_transfer params: `network` (CAIP-2), `contract` (NFT collection 0x…40), `standard` (`erc721` default or `erc1155`), `to` (0x…40), `tokenId` (decimal string). For ERC-1155 include required positive integer string `amount`; omit `amount` for ERC-721. Optional `note`. Never invent token ids or contracts.'
+      ? [
+          '- draft_nft_transfer (JSON-only): use when the user states `network`, collection `contract`, `to`, `tokenId`, `standard` (erc721 vs erc1155), and for ERC-1155 `amount`. Never invent contracts or token ids.',
+          '- NFT checkout form: params `{"_nftForm":true}` with optional `networks`, optional `defaultTo`, optional `defaultContract`, optional `intro`, matching `rich` type `nft_transfer_checkout_form` when any required field is missing.',
+        ].join('\n')
       : '',
     allowed.includes('draft_token_swap')
       ? [
@@ -773,7 +835,7 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
     return 'Pick the token, recipient, and amount in the form below, then tap **Confirm transfer draft**.';
   }
   if (handler === 'draft_nft_transfer') {
-    return 'Provide collection, token id, and recipient, then tap **Confirm transfer draft** and sign in your wallet.';
+    return 'Fill in the NFT details in the form below, then tap **Confirm transfer draft** and sign in your wallet.';
   }
   if (handler === 'draft_token_swap') {
     return 'Pick tokens and amounts in the swap form below (0G mainnet only), then tap **Confirm swap draft**.';
@@ -1338,6 +1400,88 @@ export function agentReplyFromChatCompletion(
     for (const tc of toolCalls) {
       if (tc.type !== 'function') continue;
       const name = tc.function?.name;
+      if (
+        name !== OFFER_NATIVE_TRANSFER_CHECKOUT_FORM ||
+        !allowedHandlers.includes('draft_native_transfer')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerNativeTransferCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const defaults = defaultBeamTransferFormPayload();
+      const params = nativeTransferFormCtaParamsSchema.parse({
+        _nativeForm: true as const,
+        networks: parsed.data.networks ?? defaults.networks,
+        intro: parsed.data.intro,
+        ...(parsed.data.defaultTo ? { defaultTo: parsed.data.defaultTo } : {}),
+      });
+      const rich = {
+        type: 'native_transfer_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Native transfer',
+        intro: parsed.data.intro,
+        networks: params.networks,
+        ...(params.defaultTo ? { defaultTo: params.defaultTo } : {}),
+      } as AgentRichCard;
+      const offerText =
+        content.trim() ||
+        'Enter the network, recipient, and amount in the form below, then tap **Confirm transfer draft**. Your wallet will sign the native transfer.';
+      return { text: offerText, handler: 'draft_native_transfer', params, rich };
+    }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_NFT_TRANSFER_CHECKOUT_FORM ||
+        !allowedHandlers.includes('draft_nft_transfer')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerNftTransferCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const defaults = defaultBeamTransferFormPayload();
+      const params = nftFormCtaParamsSchema.parse({
+        _nftForm: true as const,
+        networks: parsed.data.networks ?? defaults.networks,
+        intro: parsed.data.intro,
+        ...(parsed.data.defaultTo ? { defaultTo: parsed.data.defaultTo } : {}),
+        ...(parsed.data.defaultContract
+          ? { defaultContract: parsed.data.defaultContract }
+          : {}),
+      });
+      const rich = {
+        type: 'nft_transfer_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'NFT transfer',
+        intro: parsed.data.intro,
+        networks: params.networks,
+        ...(params.defaultTo ? { defaultTo: params.defaultTo } : {}),
+        ...(params.defaultContract ? { defaultContract: params.defaultContract } : {}),
+      } as AgentRichCard;
+      const offerText =
+        content.trim() ||
+        'Fill in collection, token id, recipient, and standard in the form below, then tap **Confirm transfer draft**. Your wallet will sign the NFT transfer.';
+      return { text: offerText, handler: 'draft_nft_transfer', params, rich };
+    }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
       if (name !== 'suggest_marketplace_hire') continue;
       let parsedArgs: unknown;
       try {
@@ -1388,11 +1532,15 @@ export function buildAgentToolCallingSystemPrompt(
     ...(allowed.includes('generate_financial_activity_report')
       ? ['generate_financial_activity_report']
       : []),
-    ...(allowed.includes('draft_native_transfer') ? ['draft_native_transfer'] : []),
+    ...(allowed.includes('draft_native_transfer')
+      ? ['draft_native_transfer', 'offer_native_transfer_checkout_form']
+      : []),
     ...(allowed.includes('draft_erc20_transfer')
       ? ['draft_erc20_transfer', 'offer_transfer_checkout_form']
       : []),
-    ...(allowed.includes('draft_nft_transfer') ? ['draft_nft_transfer'] : []),
+    ...(allowed.includes('draft_nft_transfer')
+      ? ['draft_nft_transfer', 'offer_nft_transfer_checkout_form']
+      : []),
     ...(allowed.includes('draft_token_swap')
       ? ['draft_token_swap', 'offer_swap_checkout_form']
       : []),
@@ -1445,7 +1593,11 @@ export function buildAgentToolCallingSystemPrompt(
       ? 'After proposing generate_financial_activity_report, remind the user to tap **Download activity report** to build the snapshot PDF.'
       : '',
     allowed.includes('draft_native_transfer')
-      ? 'For native transfers: call **draft_native_transfer** only when the user message states `network` (CAIP-2), full `to` address, and `valueWei` as a positive integer wei string. Remind them to tap **Confirm transfer draft** — the server records the plan; they sign in Beam Send or their wallet.'
+      ? [
+          'For native transfers: call **draft_native_transfer** only when the user message states `network` (CAIP-2), full `to` address, and `valueWei` as a positive integer wei string.',
+          'If anything is missing, call **offer_native_transfer_checkout_form** with optional `networks` and optional `defaultTo` — never invent recipients or amounts.',
+          'Remind them to tap **Confirm transfer draft** — the server records the plan; they sign in Beam Send or their wallet.',
+        ].join(' ')
       : '',
     allowed.includes('draft_erc20_transfer')
       ? [
@@ -1456,7 +1608,11 @@ export function buildAgentToolCallingSystemPrompt(
         ].join(' ')
       : '',
     allowed.includes('draft_nft_transfer')
-      ? 'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`. Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.'
+      ? [
+          'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`.',
+          'If anything required is missing, call **offer_nft_transfer_checkout_form** with optional `networks`, `defaultTo`, or `defaultContract` when partially known — never invent contracts or token ids.',
+          'Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.',
+        ].join(' ')
       : '',
     allowed.includes('draft_token_swap')
       ? [

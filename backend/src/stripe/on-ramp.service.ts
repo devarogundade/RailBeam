@@ -119,6 +119,11 @@ export class OnRampService {
     });
 
     const onRampId = doc._id.toHexString();
+    const convId = ctx.conversationId?.trim();
+    const convQuery =
+      convId && convId.length <= 128
+        ? `&convId=${encodeURIComponent(convId)}`
+        : '';
 
     let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
     try {
@@ -137,8 +142,9 @@ export class OnRampService {
             quantity: 1,
           },
         ],
-        success_url: `${appUrl}/chat?onRamp=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/chat?onRamp=canceled`,
+        /** Chat lives at `/`, not `/chat` (see app `routes/index.tsx`). */
+        success_url: `${appUrl}/?onRamp=success&session_id={CHECKOUT_SESSION_ID}${convQuery}`,
+        cancel_url: `${appUrl}/?onRamp=canceled${convQuery}`,
         client_reference_id: onRampId,
         metadata: {
           beam_on_ramp: '1',

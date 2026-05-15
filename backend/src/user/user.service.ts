@@ -57,6 +57,8 @@ import {
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
   draftTokenSwapInputSchema,
+  isNativeTransferFormCtaParams,
+  isNftFormCtaParams,
   chatHandlerResultSchema,
   type ChatHandlerResult,
   type UserKycStatus,
@@ -75,6 +77,8 @@ import {
 import {
   mergeTxRichWithHandlerResult,
   txRichFromErc20Draft,
+  txRichFromNativeDraft,
+  txRichFromNftDraft,
 } from 'src/handlers/transfer-draft-rich';
 import { txRichFromTokenSwapDraft } from 'src/handlers/swap-draft-rich';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
@@ -1938,6 +1942,11 @@ export class UserService {
       body.handler === 'draft_erc20_transfer' && isTransferFormCtaParams(storedParams);
     const swapFormCta =
       body.handler === 'draft_token_swap' && isSwapFormCtaParams(storedParams);
+    const nftFormCta =
+      body.handler === 'draft_nft_transfer' && isNftFormCtaParams(storedParams);
+    const nativeFormCta =
+      body.handler === 'draft_native_transfer' &&
+      isNativeTransferFormCtaParams(storedParams);
     let execParams: unknown = body.params ?? {};
     if (checkoutFormCta) {
       const parsed = X402InputSchema.safeParse(execParams);
@@ -1983,6 +1992,12 @@ export class UserService {
       if (!UserService.jsonParamsEqual(storedParams, execParams)) {
         throw new BadRequestException('Params do not match this chat action');
       }
+    } else if (nativeFormCta) {
+      const parsed = draftNativeTransferInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
     } else if (body.handler === 'draft_native_transfer') {
       const parsed = draftNativeTransferInputSchema.safeParse(execParams);
       if (!parsed.success) {
@@ -2009,6 +2024,12 @@ export class UserService {
       }
     } else if (swapFormCta) {
       const parsed = draftTokenSwapInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
+    } else if (nftFormCta) {
+      const parsed = draftNftTransferInputSchema.safeParse(execParams);
       if (!parsed.success) {
         throw new BadRequestException(parsed.error.flatten());
       }
@@ -2043,12 +2064,13 @@ export class UserService {
       );
     }
 
-    if (transferFormCta || swapFormCta) {
+    if (transferFormCta || swapFormCta || nftFormCta || nativeFormCta) {
       const result = await this.handlers.dispatch(
         body.handler,
         execParams,
         {
           walletAddress: wallet,
+          conversationId: String(conv._id),
           ...(clientEvmChainId != null ? { clientEvmChainId } : {}),
         },
       );
@@ -2060,10 +2082,16 @@ export class UserService {
             )
           : swapFormCta && body.handler === 'draft_token_swap'
             ? txRichFromTokenSwapDraft(draftTokenSwapInputSchema.parse(execParams))
-            : undefined);
+            : nftFormCta && body.handler === 'draft_nft_transfer'
+              ? txRichFromNftDraft(draftNftTransferInputSchema.parse(execParams))
+              : nativeFormCta && body.handler === 'draft_native_transfer'
+                ? txRichFromNativeDraft(
+                    draftNativeTransferInputSchema.parse(execParams),
+                  )
+                : undefined);
       const handlerId = body.handler;
       const paramsForCta =
-        transferFormCta || swapFormCta
+        transferFormCta || swapFormCta || nftFormCta || nativeFormCta
           ? (execParams as Record<string, unknown>)
           : storedParams;
       await this.chatMessageModel.updateOne(
@@ -2105,6 +2133,7 @@ export class UserService {
       execParams,
       {
         walletAddress: wallet,
+        conversationId: String(conv._id),
         ...(clientEvmChainId != null ? { clientEvmChainId } : {}),
       },
     );

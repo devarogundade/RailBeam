@@ -3,7 +3,7 @@ import { getStardormApiBase } from "@/lib/stardorm-axios";
 export type X402PaymentLinks = {
   /** Hosted Beam checkout for people (wallet UI). */
   humanCheckoutUrl: string;
-  /** Public API row with `x402Payload` for agents and backends. */
+  /** x402 paywall URL for agents — GET `/payments/:id/access` (402 + requirements until settled). */
   agentApiUrl: string | null;
 };
 
@@ -26,7 +26,7 @@ export function buildX402PaymentLinks(params: {
 
   const base = (params.apiBase ?? getStardormApiBase())?.replace(/\/$/, "");
   const agentApiUrl = base
-    ? `${base}/payments/${encodeURIComponent(paymentRequestId)}`
+    ? `${base}/payments/${encodeURIComponent(paymentRequestId)}/access`
     : null;
 
   return { humanCheckoutUrl, agentApiUrl };

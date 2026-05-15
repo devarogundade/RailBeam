@@ -39,13 +39,15 @@ export function createX402PaymentAxios(params: {
     {
       address: account.address,
       signTypedData: (message) =>
-        walletClient.signTypedData({
-          account,
-          domain: message.domain as never,
-          types: message.types as never,
-          primaryType: message.primaryType,
-          message: message.message as never,
-        }),
+        walletClient.signTypedData(
+          {
+            account,
+            domain: message.domain,
+            types: message.types,
+            primaryType: message.primaryType,
+            message: message.message,
+          } as Parameters<WalletClient["signTypedData"]>[0],
+        ),
     },
     publicClient ?? undefined,
   );

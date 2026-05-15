@@ -581,6 +581,7 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
       toast.error("Registry not available on this network");
       return;
     }
+    const uriSaveChainAgentId = agent.chainAgentId;
     const nextUri = mergeDisplayFieldsIntoRegistrationUri(agent.registrationUriRaw, {
       name,
       description,
@@ -598,7 +599,7 @@ function CloneOwnerUriPanel({ agent, beamChainId }: { agent: Agent; beamChainId:
           address: registry,
           abi: identityRegistryAbi,
           functionName: "setAgentURI",
-          args: [BigInt(agent.chainAgentId), nextUri],
+          args: [BigInt(uriSaveChainAgentId), nextUri],
         });
         await waitForWriteContractReceipt(publicClient, hash);
       });

@@ -59,6 +59,19 @@ function shortenMiddleText(s: string, maxLen = 42): string {
   return `${t.slice(0, head)}…${t.slice(-tail)}`;
 }
 
+/** Preserve execute-handler payload fields (e.g. Identity URL) when webhooks refresh status. */
+function priorServerHandlerData(
+  msg: ChatMessageDocument,
+): Record<string, unknown> {
+  const hr = msg.handlerResultData;
+  if (!hr || typeof hr !== 'object') return {};
+  const rec = hr as Record<string, unknown>;
+  if (rec.kind !== 'server' || rec.data == null || typeof rec.data !== 'object') {
+    return {};
+  }
+  return { ...(rec.data as Record<string, unknown>) };
+}
+
 export function kycReportRichCard(
   verificationSessionId: string,
   status: UserKycStatus,
@@ -267,7 +280,11 @@ export class KycStripeService {
           : status === 'canceled'
             ? ('failed' as const)
             : ('completed' as const),
-      data: { kycStatus: status, verificationSessionId },
+      data: {
+        ...priorServerHandlerData(msg),
+        kycStatus: status,
+        verificationSessionId,
+      },
       updatedAt: Date.now(),
     };
 
@@ -276,6 +293,27 @@ export class KycStripeService {
       { $set: { content, rich, handlerResultData } },
     );
 
+    const data = handlerResultData.data as Record<string, unknown>;
+    const verificationUrlRaw =
+      typeof data.stripeIdentityVerificationUrl === 'string'
+        ? data.stripeIdentityVerificationUrl.trim()
+        : '';
+    const verificationUrl = /^https:\/\//i.test(verificationUrlRaw)
+      ? verificationUrlRaw
+      : null;
+    const vsId =
+      typeof data.verificationSessionId === 'string'
+        ? data.verificationSessionId.trim()
+        : null;
+    const stripeIdentityFollowUp =
+      verificationUrl && vsId
+        ? ({
+            kind: 'stripe_identity' as const,
+            verificationUrl,
+            verificationSessionId: vsId,
+          })
+        : undefined;
+
     const historyMsg: ChatHistoryMessage = {
       id: String(msg._id),
       role: msg.role === 'user' ? 'user' : 'agent',
@@ -283,6 +321,7 @@ export class KycStripeService {
       content,
       createdAt: typeof msg.createdAt === 'number' ? msg.createdAt : Date.now(),
       rich,
+      ...(stripeIdentityFollowUp ? { followUp: stripeIdentityFollowUp } : {}),
       result: handlerResultData,
     };
     this.conversationSync.notifyWallet(wallet, {

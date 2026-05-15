@@ -11,6 +11,8 @@ import type {
 import {
   ISO_3166_1_ALPHA2_CODES,
   isoCountryDisplayName,
+  isNativeTransferFormCtaParams,
+  isNftFormCtaParams,
 } from "@railbeam/stardorm-api-contract";
 import {
   Select,
@@ -26,6 +28,8 @@ import {
 } from "@/components/transfer-draft-handler-cta";
 import { SwapCheckoutFormCard } from "@/components/swap-checkout-form-card";
 import { TransferCheckoutFormCard } from "@/components/transfer-checkout-form-card";
+import { NativeTransferCheckoutFormCard } from "@/components/native-transfer-checkout-form-card";
+import { NftTransferCheckoutFormCard } from "@/components/nft-transfer-checkout-form-card";
 import { MarketplaceHireRichCard } from "@/components/marketplace-hire-rich-card";
 import { SwapHandlerCtaRow, isTokenSwapHandler } from "@/components/swap-handler-cta";
 import { ChatMessageContent } from "@/components/chat-message-content";
@@ -530,7 +534,29 @@ export function Chat() {
   });
 
   const navigate = useNavigate();
-  const { convId: conversationFromSearch } = indexRouteApi.useSearch();
+  const { convId: conversationFromSearch, onRamp: onRampFromStripe } = indexRouteApi.useSearch();
+
+  /** Stripe Checkout return: show feedback and drop one-off query params (keep `convId`). */
+  React.useEffect(() => {
+    if (!onRampFromStripe) return;
+    if (onRampFromStripe === "success") {
+      toast.success("Payment submitted", {
+        description: "Stripe will confirm your card; settlement runs after that.",
+      });
+    } else {
+      toast.info("Checkout canceled", {
+        description: "You can start a new checkout from the conversation when you're ready.",
+      });
+    }
+    void navigate({
+      to: "/",
+      search: (prev) => {
+        const { onRamp: _o, session_id: _s, ...rest } = prev;
+        return rest;
+      },
+      replace: true,
+    });
+  }, [onRampFromStripe, navigate]);
 
   React.useEffect(() => {
     const id = conversationFromSearch;
@@ -1479,6 +1505,8 @@ type CheckoutFormRich = Extract<
   | { type: "credit_card_checkout_form" }
   | { type: "swap_checkout_form" }
   | { type: "transfer_checkout_form" }
+  | { type: "nft_transfer_checkout_form" }
+  | { type: "native_transfer_checkout_form" }
 >;
 
 /** Rich form blocks need `handlerCta` to run the server handler; show context if it is missing. */
@@ -1840,6 +1868,26 @@ function Bubble({
         {m.rich?.type === "transfer_checkout_form" && !isUser && !m.handlerCta && (
           <CheckoutRichUnavailableNotice rich={m.rich} />
         )}
+        {m.rich?.type === "nft_transfer_checkout_form" && !isUser && m.handlerCta && (
+          <NftTransferCheckoutFormCard
+            rich={m.rich}
+            disabled={executingHandlerForId === m.id}
+            onConfirmNftTransfer={(params) => void onRunHandlerCta(m, params)}
+          />
+        )}
+        {m.rich?.type === "nft_transfer_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
+        {m.rich?.type === "native_transfer_checkout_form" && !isUser && m.handlerCta && (
+          <NativeTransferCheckoutFormCard
+            rich={m.rich}
+            disabled={executingHandlerForId === m.id}
+            onConfirmNativeTransfer={(params) => void onRunHandlerCta(m, params)}
+          />
+        )}
+        {m.rich?.type === "native_transfer_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
         {m.rich?.type === "marketplace_hire" && !isUser && (
           <MarketplaceHireRichCard rich={m.rich} />
         )}
@@ -1849,6 +1897,8 @@ function Bubble({
           m.rich.type !== "credit_card_checkout_form" &&
           m.rich.type !== "swap_checkout_form" &&
           m.rich.type !== "transfer_checkout_form" &&
+          m.rich.type !== "nft_transfer_checkout_form" &&
+          m.rich.type !== "native_transfer_checkout_form" &&
           m.rich.type !== "marketplace_hire" && (
           <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface-elevated">
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
@@ -1899,6 +1949,8 @@ function Bubble({
           m.rich?.type !== "credit_card_checkout_form" &&
           m.rich?.type !== "swap_checkout_form" &&
           m.rich?.type !== "transfer_checkout_form" &&
+          m.rich?.type !== "nft_transfer_checkout_form" &&
+          m.rich?.type !== "native_transfer_checkout_form" &&
           (m.handlerCta.handler === "generate_tax_report" ? (
             <TaxReportHandlerCtaRow
               m={m}
@@ -1906,7 +1958,9 @@ function Bubble({
               onRunHandlerCta={onRunHandlerCta}
             />
           ) : isTransferDraftHandler(m.handlerCta.handler) &&
-            !isTransferFormCtaParams(m.handlerCta.params as Record<string, unknown>) ? (
+            !isTransferFormCtaParams(m.handlerCta.params as Record<string, unknown>) &&
+            !isNftFormCtaParams(m.handlerCta.params) &&
+            !isNativeTransferFormCtaParams(m.handlerCta.params) ? (
             <TransferDraftHandlerCtaRow
               messageId={m.id}
               handler={m.handlerCta.handler}
