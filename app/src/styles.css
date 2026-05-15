@@ -226,11 +226,11 @@
   animation: beam-shimmer 1.65s ease-in-out infinite;
 }
 .beam-shimmer-highlight {
-  width: 45%;
+  width: 40%;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in oklab, var(--foreground) 14%, transparent),
+    color-mix(in oklab, var(--foreground) 8%, transparent),
     transparent
   );
 }

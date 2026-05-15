@@ -383,20 +383,70 @@ export function ConversationListSkeleton() {
 
 export function DashboardListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <ul className="mt-3 divide-y divide-border text-sm" aria-hidden>
+    <ul className="mt-3 divide-y divide-border text-sm" aria-busy="true" aria-label="Loading list">
       {Array.from({ length: rows }).map((_, i) => (
         <li
           key={i}
           className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div className="min-w-0 space-y-1">
-            <Skeleton className="h-4 w-[min(100%,16rem)]" />
-            <Skeleton className="h-3 w-[min(100%,22rem)] max-w-full" />
+          <div className="min-w-0 space-y-1.5">
+            <Skeleton className="h-4 w-[min(100%,16rem)] max-w-full" />
+            <Skeleton className="h-3 w-[min(100%,22rem)] max-w-full opacity-90" />
           </div>
-          <div className="flex shrink-0 items-center gap-1 sm:justify-end">
-            <Skeleton className="h-3.5 w-3.5 rounded-sm" />
-            <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-28 shrink-0 rounded-md" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Matches checkout / x402 payment request rows (title + badges, meta, action column). */
+export function DashboardPaymentRequestsSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <ul
+      className="mt-3 divide-y divide-border text-sm"
+      aria-busy="true"
+      aria-label="Loading payment requests"
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <li
+          key={i}
+          className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Skeleton className="h-4 w-[min(100%,12rem)] max-w-full" />
+              <Skeleton className="h-5 w-17 rounded-full" />
+              <Skeleton className="h-5 w-11 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-full max-w-xl opacity-90" />
           </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:items-end">
+            <Skeleton className="h-8 w-full rounded-md sm:w-28" />
+            <Skeleton className="h-8 w-full rounded-md sm:w-36" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Matches on-ramp history rows (status badge + title, amount line). */
+export function DashboardOnRampsListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <ul
+      className="mt-3 divide-y divide-border text-sm"
+      aria-busy="true"
+      aria-label="Loading on-ramps"
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <li key={i} className="flex flex-col gap-2 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-5 w-22 rounded-full" />
+            <Skeleton className="h-4 w-[min(100%,18rem)] max-w-full" />
+          </div>
+          <Skeleton className="h-3 w-full max-w-sm opacity-90" />
+          <Skeleton className="hidden h-3 w-64 max-w-full opacity-80 sm:block" />
         </li>
       ))}
     </ul>

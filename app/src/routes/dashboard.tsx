@@ -57,6 +57,8 @@ import { EmptyState } from "@/components/empty-state";
 import { queryKeys } from "@/lib/query-keys";
 import {
   DashboardListSkeleton,
+  DashboardOnRampsListSkeleton,
+  DashboardPaymentRequestsSkeleton,
   PageRoutePending,
   VirtualCardsPanelSkeleton,
 } from "@/components/page-shimmer";
@@ -514,7 +516,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
       ) : isError ? (
         <p className="mt-3 text-sm text-destructive">Could not load payment requests.</p>
       ) : isPending ? (
-        <DashboardListSkeleton rows={4} />
+        <DashboardPaymentRequestsSkeleton rows={4} />
       ) : !data || data.total === 0 ? (
         <div className="mt-3">
           <EmptyState
@@ -701,7 +703,7 @@ function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
         ) : isError ? (
           <p className="mt-3 text-sm text-destructive">Could not load on-ramps.</p>
         ) : isPending ? (
-          <DashboardListSkeleton rows={4} />
+          <DashboardOnRampsListSkeleton rows={4} />
         ) : !data?.items.length ? (
           <div className="mt-3">
             <EmptyState
@@ -951,10 +953,6 @@ function CreditCardRow({
         {cardDetailsRevealed && sensitiveQ.isError ? (
           <p className="text-[11px] text-destructive">
             {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
-          </p>
-        ) : !cardDetailsRevealed ? (
-          <p className="text-[11px] leading-snug text-muted-foreground">
-            Use the eye on the card to show the full number, expiry, and CVV at checkout.
           </p>
         ) : null}
         <VirtualCardFundsActions

@@ -222,6 +222,8 @@ const CONV_PAGE_SIZE = 20;
 const CHAT_PAGE_SIZE = 35;
 /** Distance from the bottom (px) still treated as "following" the latest messages. */
 const CHAT_SCROLL_SLACK_PX = 200;
+/** Composer textarea grows with content up to this many lines (Shift+Enter for more). */
+const CHAT_COMPOSER_MAX_ROWS = 3;
 
 export function Chat() {
   const queryClient = useQueryClient();
@@ -321,6 +323,7 @@ export function Chat() {
   const convListEndRef = React.useRef<HTMLDivElement>(null);
   const chatTopSentinelRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const composerTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   /** When true, new messages at the end pin the viewport to the latest bubble. */
   const stickToBottomRef = React.useRef(true);
   const [showJumpToBottom, setShowJumpToBottom] = React.useState(false);
@@ -336,6 +339,32 @@ export function Chat() {
   const sendInFlightRef = React.useRef(false);
   const prevOpenConversationIdRef = React.useRef(openConversationId);
   const prevLastMessageIdRef = React.useRef<string | undefined>(undefined);
+
+  const adjustComposerTextareaHeight = React.useCallback(() => {
+    const el = composerTextareaRef.current;
+    if (!el) return;
+    const cs = window.getComputedStyle(el);
+    const lhRaw = cs.lineHeight;
+    let lineHeight: number;
+    if (lhRaw === "normal") {
+      const fs = parseFloat(cs.fontSize) || 16;
+      lineHeight = fs * 1.35;
+    } else {
+      lineHeight = parseFloat(lhRaw) || 20;
+    }
+    const pt = parseFloat(cs.paddingTop) || 0;
+    const pb = parseFloat(cs.paddingBottom) || 0;
+    const maxH = lineHeight * CHAT_COMPOSER_MAX_ROWS + pt + pb;
+
+    el.style.height = "auto";
+    const sh = el.scrollHeight;
+    el.style.height = `${Math.min(sh, maxH)}px`;
+    el.style.overflowY = sh > maxH ? "auto" : "hidden";
+  }, []);
+
+  React.useLayoutEffect(() => {
+    adjustComposerTextareaHeight();
+  }, [input, adjustComposerTextareaHeight, isMobile]);
 
   const scrollToBottom = React.useCallback(() => {
     const end = chatEndRef.current;
@@ -1119,7 +1148,7 @@ export function Chat() {
             </div>
           )}
 
-          <div className="flex flex-row items-center gap-1 rounded-2xl border border-border bg-surface p-1.5 focus-within:border-(--border-medium) md:items-end md:gap-2 md:p-2">
+          <div className="flex flex-row items-end gap-1 rounded-2xl border border-border bg-surface p-1.5 focus-within:border-(--border-medium) md:gap-2 md:p-2">
             {!hideAgentPicker && (
               <AgentDropdown
                 agents={workspaceAgents}
@@ -1149,6 +1178,7 @@ export function Chat() {
               <Paperclip className="h-4 w-4" />
             </Button>
             <textarea
+              ref={composerTextareaRef}
               value={input}
               disabled={!apiOn || typing}
               onChange={(e) => setInput(e.target.value)}
@@ -1168,7 +1198,7 @@ export function Chat() {
                     : `Message ${activeAgent.name}…`
                   : "Connect wallet and send messages…"
               }
-              className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-base leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
+              className="min-h-9 min-w-0 flex-1 resize-none overflow-hidden bg-transparent px-1 py-1.5 text-base leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
             />
             <Button
               type="button"

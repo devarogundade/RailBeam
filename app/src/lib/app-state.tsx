@@ -17,6 +17,7 @@ import {
   clearStardormAccessToken,
   getStardormAccessToken,
   setStardormAccessToken,
+  stardormConnectedWalletRef,
 } from "./stardorm-auth";
 import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
 import { useMyActiveSubscribedChainAgentIds } from "@/lib/hooks/use-stardorm-subgraph";
@@ -77,11 +78,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const address = status === "connected" && rawAddress ? rawAddress : null;
   const userKey = address ? (address.toLowerCase() as `0x${string}`) : null;
 
-  const [stardormAccessToken, setStardormAccessTokenState] = React.useState<string | null>(null);
+  stardormConnectedWalletRef.current = address;
 
-  React.useEffect(() => {
-    setStardormAccessTokenState(getStardormAccessToken());
-  }, []);
+  /** Bumped after JWT write/clear so we re-read `localStorage` without stale `useMemo` deps. */
+  const [, bumpJwtFromStorage] = React.useState(0);
+
+  const stardormAccessToken = address ? getStardormAccessToken() : null;
 
   const { data: bal } = useBalance({
     address: rawAddress,
@@ -257,8 +259,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toast.error("Auth verify failed", { description: "No access token returned." });
         return false;
       }
-      setStardormAccessToken(token);
-      setStardormAccessTokenState(token);
+      setStardormAccessToken(token, address);
+      bumpJwtFromStorage((e) => e + 1);
       const w = address.toLowerCase() as `0x${string}`;
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(w) });
       return true;
@@ -282,16 +284,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   }, [address, queryClient, signMessageAsync]);
-
-  const prevAddressRef = React.useRef<string | null>(null);
-  React.useEffect(() => {
-    const prev = prevAddressRef.current;
-    if (prev && address && prev !== address) {
-      clearStardormAccessToken();
-      setStardormAccessTokenState(null);
-    }
-    prevAddressRef.current = address;
-  }, [address]);
 
   React.useEffect(() => {
     if (!address) {
@@ -321,8 +313,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnect = () => {
-    clearStardormAccessToken();
-    setStardormAccessTokenState(null);
+    clearStardormAccessToken(address);
+    bumpJwtFromStorage((e) => e + 1);
     queryClient.removeQueries({ queryKey: queryKeys.user.all });
     setActiveAgentIdState("beam-default");
     appliedServerAgentOnce.current = false;

@@ -3,7 +3,10 @@ import { cn } from "@/lib/utils";
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("relative isolate overflow-hidden rounded-md bg-primary/10", className)}
+      className={cn(
+        "relative isolate overflow-hidden rounded-md bg-muted/55 dark:bg-muted/35",
+        className,
+      )}
       {...props}
     >
       <span

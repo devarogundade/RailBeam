@@ -740,44 +740,48 @@ export function structuredReplyFromModelContent(
   return asTypedAgentReply(d);
 }
 
+/**
+ * Shown when the model calls a handler tool but leaves `content` empty.
+ * Keep in sync with `HANDLER_CTA_LINES` in `handler-workspace-routing.ts`.
+ */
 function defaultHandlerOfferText(handler: HandlerActionId): string {
   if (handler === 'generate_tax_report') {
-    return 'I can generate that tax report on request.';
+    return 'Confirm the tax period below, then tap **Generate tax PDF** to build your report.';
   }
   if (handler === 'create_x402_payment') {
-    return 'I can create that payment request on request.';
+    return 'Enter the USDC.e amount and payee in the form below, then tap **Create payment link**.';
   }
   if (handler === 'on_ramp_tokens') {
-    return 'I can open a Stripe checkout so you can pay in USD and receive tokens on-chain.';
+    return 'Pick a supported token and network, enter amounts, then tap **Create Stripe checkout**.';
   }
   if (handler === 'complete_stripe_kyc') {
-    return 'I can start Stripe Identity verification for your account on request.';
+    return "I'll start the Stripe Identity verification process for you. Tap **Start Identity verification** to begin the secure KYC flow.";
   }
   if (handler === 'create_credit_card') {
-    return 'I can issue a virtual payment card with the billing profile you confirmed on request.';
+    return 'Enter your legal name and billing address in the form below, then tap **Create virtual card** to issue the card.';
   }
   if (handler === 'generate_payment_invoice') {
-    return 'I can generate a payment summary PDF from your Beam checkout, on-ramp, card, and KYC records on request.';
+    return 'Tap **Download payment summary** below to generate a PDF from your Beam records.';
   }
   if (handler === 'generate_financial_activity_report') {
-    return 'I can generate an activity snapshot report across your Beam payments, on-ramp, cards, and KYC on request.';
+    return 'Tap **Download activity report** below to build the snapshot PDF.';
   }
   if (handler === 'draft_native_transfer') {
-    return 'I can save a native gas-token transfer draft you confirm, then you sign the transaction in your wallet.';
+    return 'Confirm the network, recipient, and amount, then tap **Confirm transfer draft** and sign in your wallet.';
   }
   if (handler === 'draft_erc20_transfer') {
-    return 'I can save an ERC-20 transfer draft you confirm, then you sign the transaction in your wallet.';
+    return 'Pick the token, recipient, and amount in the form below, then tap **Confirm transfer draft**.';
   }
   if (handler === 'draft_nft_transfer') {
-    return 'I can save an NFT transfer draft you confirm, then you sign the transaction in your wallet.';
+    return 'Provide collection, token id, and recipient, then tap **Confirm transfer draft** and sign in your wallet.';
   }
   if (handler === 'draft_token_swap') {
-    return 'I can save a Uniswap V3 swap on 0G mainnet you confirm — your wallet will approve the router if needed, then call exactInputSingle.';
+    return 'Pick tokens and amounts in the swap form below (0G mainnet only), then tap **Confirm swap draft**.';
   }
   if (handler === 'suggest_marketplace_hire') {
-    return 'You will need a marketplace specialist for that — see the card below.';
+    return 'You need a marketplace specialist for this — use the card below to hire them and continue.';
   }
-  return 'I can run that action on request.';
+  return 'Use the action below to continue.';
 }
 
 function beamMarketplaceSpecialistsPromptBlock(): string {
