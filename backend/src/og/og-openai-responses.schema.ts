@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { OpenAiCompletionAssistantMessage } from 'src/og/chat-completion.schema';
+import {
+  openAiCompletionToolCallSchema,
+  openAiToolFunctionArgumentsSchema,
+  type OpenAiCompletionAssistantMessage,
+} from 'src/og/chat-completion.schema';
 
 const outputTextBlockSchema = z.object({
   type: z.literal('output_text'),
@@ -14,12 +18,26 @@ const messageOutputSchema = z.object({
   ),
 });
 
-/** Minimal `POST /v1/responses` body we need to read assistant text. */
+const functionCallOutputSchema = z.object({
+  type: z.literal('function_call'),
+  call_id: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string(),
+  arguments: openAiToolFunctionArgumentsSchema.optional().default('{}'),
+});
+
+/** Minimal `POST /v1/responses` body we need to read assistant text / tool calls. */
 export const openAiResponsesBodySchema = z
   .object({
     id: z.string().optional(),
     output: z
-      .array(z.union([messageOutputSchema, z.record(z.string(), z.unknown())]))
+      .array(
+        z.union([
+          messageOutputSchema,
+          functionCallOutputSchema,
+          z.record(z.string(), z.unknown()),
+        ]),
+      )
       .optional(),
   })
   .passthrough();
@@ -37,30 +55,64 @@ export function parseOpenAiResponsesAssistant(
   }
   const out = parsed.data.output ?? [];
   const texts: string[] = [];
+  const rawToolCalls: Array<{
+    id?: string;
+    type?: string;
+    function: { name: string; arguments: string };
+  }> = [];
+
   for (const item of out) {
     if (!item || typeof item !== 'object') continue;
-    if ((item as { type?: string }).type !== 'message') continue;
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const block of content) {
-      if (
-        block &&
-        typeof block === 'object' &&
-        (block as { type?: string }).type === 'output_text' &&
-        typeof (block as { text?: unknown }).text === 'string'
-      ) {
-        texts.push((block as { text: string }).text);
+    const type = (item as { type?: string }).type;
+
+    if (type === 'message') {
+      const content = (item as { content?: unknown }).content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        if (
+          block &&
+          typeof block === 'object' &&
+          (block as { type?: string }).type === 'output_text' &&
+          typeof (block as { text?: unknown }).text === 'string'
+        ) {
+          texts.push((block as { text: string }).text);
+        }
       }
+      continue;
+    }
+
+    if (type === 'function_call') {
+      const fc = functionCallOutputSchema.safeParse(item);
+      if (!fc.success) continue;
+      rawToolCalls.push({
+        id: fc.data.call_id ?? fc.data.id ?? '',
+        type: 'function',
+        function: {
+          name: fc.data.name,
+          arguments: fc.data.arguments,
+        },
+      });
     }
   }
+
   const content = texts.join('\n').trim();
-  if (!content) {
-    throw new Error('Responses API: no assistant output_text found');
+  const tool_calls =
+    rawToolCalls.length > 0
+      ? rawToolCalls.map((tc) => openAiCompletionToolCallSchema.parse(tc))
+      : undefined;
+
+  const hasBody =
+    content.length > 0 || (tool_calls != null && tool_calls.length > 0);
+  if (!hasBody) {
+    throw new Error(
+      'Responses API: no assistant output_text or function_call found',
+    );
   }
+
   return {
     role: 'assistant',
     content,
-    tool_calls: undefined,
+    tool_calls,
     reasoning_content: undefined,
   };
 }

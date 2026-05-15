@@ -24,7 +24,6 @@ export type OgComputeChatOptions = {
   /** OpenAI-compatible `tool_choice` (default when tools set: `auto`). */
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   /**
-   * When `INFERENCE_USE_RESPONSES_API` is enabled and no tools are sent, this is the
    * OpenAI `conv_*` id for `POST /v1/responses` `conversation` (omit to create a new one).
    */
   openAiConversationId?: string | null;
@@ -73,6 +72,21 @@ export class OgComputeService {
   private inferenceUseResponsesApi(): boolean {
     const v = this.config.get<string>('INFERENCE_USE_RESPONSES_API');
     return v?.toLowerCase() === 'true' || v === '1';
+  }
+
+  /** Map chat-completions `tool_choice` to Responses API `tool_choice`. */
+  private toolChoiceForResponsesApi(
+    toolChoice: OgComputeChatOptions['toolChoice'] | undefined,
+  ): unknown {
+    if (toolChoice == null) return undefined;
+    if (toolChoice === 'auto' || toolChoice === 'none') return toolChoice;
+    if (
+      toolChoice.type === 'function' &&
+      typeof toolChoice.function?.name === 'string'
+    ) {
+      return { type: 'function', name: toolChoice.function.name };
+    }
+    return toolChoice;
   }
 
   private async verifyInferenceResponse(
@@ -161,6 +175,8 @@ export class OgComputeService {
     model: string;
     headers: Record<string, string>;
     finalPrompt: ChatMessage[];
+    tools?: OpenAiChatTool[];
+    toolChoice?: OgComputeChatOptions['toolChoice'];
     existingOpenAiConversationId?: string;
     broker: Awaited<ReturnType<typeof createZGComputeNetworkBroker>>;
     providerAddr: string;
@@ -170,6 +186,8 @@ export class OgComputeService {
       model,
       headers,
       finalPrompt,
+      tools,
+      toolChoice,
       existingOpenAiConversationId,
       broker,
       providerAddr,
@@ -222,6 +240,11 @@ export class OgComputeService {
     if (instructions) {
       respBody.instructions = instructions;
     }
+    if (tools?.length) {
+      respBody.tools = tools;
+      respBody.tool_choice =
+        this.toolChoiceForResponsesApi(toolChoice) ?? 'auto';
+    }
 
     const resp = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
@@ -234,7 +257,12 @@ export class OgComputeService {
     }
 
     const data: unknown = await resp.json();
-    const assistantMessage = parseOpenAiResponsesAssistant(data);
+    let assistantMessage: OpenAiCompletionAssistantMessage;
+    try {
+      assistantMessage = parseOpenAiResponsesAssistant(data);
+    } catch {
+      return null;
+    }
     const chatIdHeader = resp.headers.get('ZG-Res-Key');
     const respId =
       data &&
@@ -296,24 +324,23 @@ export class OgComputeService {
 
     const headers = await broker.inference.getRequestHeaders(chatbot.provider);
 
-    const wantResponses =
-      this.inferenceUseResponsesApi() && !opts?.tools?.length;
-
-    if (wantResponses) {
-      const baseUrl = this.inferenceV1BaseFromChatEndpoint(endpoint);
-      const viaResponses = await this.tryChatViaResponsesApi({
-        baseUrl,
-        model,
-        headers: headers as unknown as Record<string, string>,
-        finalPrompt,
-        existingOpenAiConversationId:
-          opts?.openAiConversationId?.trim() || undefined,
-        broker,
-        providerAddr: chatbot.provider,
-      });
-      if (viaResponses) {
-        return viaResponses;
-      }
+    const baseUrl = this.inferenceV1BaseFromChatEndpoint(endpoint);
+    const viaResponses = await this.tryChatViaResponsesApi({
+      baseUrl,
+      model,
+      headers: headers as unknown as Record<string, string>,
+      finalPrompt,
+      tools: opts?.tools,
+      toolChoice: opts?.toolChoice,
+      existingOpenAiConversationId:
+        opts?.openAiConversationId?.trim() || undefined,
+      broker,
+      providerAddr: chatbot.provider,
+    });
+    if (viaResponses) {
+      return viaResponses;
+    }
+    if (this.inferenceUseResponsesApi()) {
       this.logger.warn(
         'INFERENCE_USE_RESPONSES_API is set but /conversations or /responses failed; falling back to /chat/completions',
       );

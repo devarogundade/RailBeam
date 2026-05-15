@@ -6,6 +6,7 @@ import {
   isOnRampFormCtaParams,
   createCreditCardInputSchema,
   isIso3166Alpha2,
+  stardormChatAttachmentSchema,
 } from '@beam/stardorm-api-contract';
 
 export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
@@ -112,6 +113,7 @@ export const X402InputSchema = z.object({
   resourceUrl: z.string().url().max(2048).optional(),
   expiresAt: z.coerce.date().optional(),
   decimals: z.number().int().min(0).max(36).optional(),
+  attachment: stardormChatAttachmentSchema.optional(),
 });
 
 export type X402Input = z.infer<typeof X402InputSchema>;

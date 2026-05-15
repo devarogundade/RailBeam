@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Payment received</title>
+</head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+  <p>Hi {{displayName}},</p>
+  <p>You received a payment on Beam.</p>
+  <ul>
+    <li><strong>Title:</strong> {{title}}</li>
+    <li><strong>Amount:</strong> {{amount}} {{asset}}</li>
+    <li><strong>Payer:</strong> {{payerWallet}}</li>
+    <li><strong>Transaction:</strong> {{txHash}}</li>
+  </ul>
+  <p><a href="{{appUrl}}">Open Beam</a></p>
+</body>
+</html>

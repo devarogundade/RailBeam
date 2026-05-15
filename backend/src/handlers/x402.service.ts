@@ -34,6 +34,7 @@ export class X402Service implements HandlerService {
       resourceUrl,
       expiresAt,
       decimals,
+      attachment,
     } = parsed.data;
 
     const payer = ctx.walletAddress.trim().toLowerCase();
@@ -72,6 +73,7 @@ export class X402Service implements HandlerService {
     const row = await this.paymentRequests.createX402Payment({
       title: displayTitle,
       description,
+      attachment,
       asset: currency,
       amount,
       payTo,

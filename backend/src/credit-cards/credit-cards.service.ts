@@ -11,6 +11,7 @@ import type {
   CreditCardPublic,
   CreditCardSensitiveDetails,
 } from '@beam/stardorm-api-contract';
+import { EmailNotificationsService } from '../email/email-notifications.service';
 import {
   CreditCard,
   CreditCardDocument,
@@ -39,6 +40,7 @@ export class CreditCardsService {
   constructor(
     @InjectModel(CreditCard.name)
     private readonly model: Model<CreditCardDocument>,
+    private readonly emailNotifications: EmailNotificationsService,
   ) {}
 
   async createForWallet(
@@ -158,6 +160,12 @@ export class CreditCardsService {
     if (!doc) throw new NotFoundException('Credit card not found');
     doc.balanceCents += amountCents;
     await doc.save();
+    this.emailNotifications.notifyCardFunded({
+      walletAddress: wallet,
+      lastFour: doc.last4,
+      amountCents,
+      balanceCents: doc.balanceCents,
+    });
     return doc;
   }
 

@@ -17,6 +17,7 @@ import {
   PaymentRequest,
   type PaymentRequestDocument,
 } from '../mongo/schemas/payment-request.schema';
+import { EmailNotificationsService } from '../email/email-notifications.service';
 import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
 import { X402FacilitatorService } from './x402-facilitator.service';
 
@@ -27,6 +28,7 @@ export class PaymentRequestsService {
     private readonly model: Model<PaymentRequestDocument>,
     private readonly x402Facilitator: X402FacilitatorService,
     private readonly financialSnapshots: FinancialSnapshotsService,
+    private readonly emailNotifications: EmailNotificationsService,
   ) {}
 
   toPublic(doc: PaymentRequestDocument): PublicPaymentRequest {
@@ -151,6 +153,7 @@ export class PaymentRequestsService {
   async createX402Payment(fields: {
     title: string;
     description?: string;
+    attachment?: PaymentRequestDocument['attachment'];
     asset: string;
     amount: string;
     payTo: string;
@@ -273,6 +276,14 @@ export class PaymentRequestsService {
     await doc.save();
     void this.financialSnapshots.recordPaymentSettled(doc).catch(() => {
       /* best-effort rollup for dashboard chat */
+    });
+    this.emailNotifications.notifyPaymentReceived({
+      createdByWallet: doc.createdByWallet,
+      title: doc.title,
+      amount: doc.amount,
+      asset: doc.asset,
+      payerWallet: doc.paidByWallet,
+      txHash: doc.txHash,
     });
     return this.toPublic(doc);
   }

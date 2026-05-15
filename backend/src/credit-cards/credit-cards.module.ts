@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { EmailModule } from '../email/email.module';
 import {
   CreditCard,
   CreditCardSchema,
@@ -13,6 +14,7 @@ import { CreditCardsService } from './credit-cards.service';
 
 @Module({
   imports: [
+    EmailModule,
     MongooseModule.forFeature([
       { name: CreditCard.name, schema: CreditCardSchema },
       { name: CreditCardFundTx.name, schema: CreditCardFundTxSchema },

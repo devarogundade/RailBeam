@@ -126,7 +126,7 @@ const indexRouteApi = getRouteApi("/");
 
 function buildStripeIdentityReturnPath(openConversationId: string | null): string {
   if (openConversationId) {
-    return `/?${new URLSearchParams({ conversation: openConversationId }).toString()}`;
+    return `/?${new URLSearchParams({ convId: openConversationId }).toString()}`;
   }
   return "/";
 }
@@ -478,7 +478,7 @@ export function Chat() {
   });
 
   const navigate = useNavigate();
-  const { conversation: conversationFromSearch } = indexRouteApi.useSearch();
+  const { convId: conversationFromSearch } = indexRouteApi.useSearch();
 
   React.useEffect(() => {
     const id = conversationFromSearch;

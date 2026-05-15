@@ -12,10 +12,12 @@ import { UserModule } from './user/user.module';
 import { HandlersModule } from './handlers/handlers.module';
 import { AgentsModule } from './agents/agents.module';
 import { PaymentsModule } from './payments/payments.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EmailModule,
     OgModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],

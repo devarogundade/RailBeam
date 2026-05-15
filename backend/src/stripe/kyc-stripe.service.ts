@@ -13,6 +13,7 @@ import {
   type UserKycStatusDocument,
 } from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
+import { EmailNotificationsService } from '../email/email-notifications.service';
 import {
   KycStatus,
   type KycStatusDocument,
@@ -40,6 +41,7 @@ export class KycStripeService {
     private readonly config: ConfigService,
     @InjectModel(KycStatus.name)
     private readonly kycModel: Model<KycStatusDocument>,
+    private readonly emailNotifications: EmailNotificationsService,
   ) {}
 
   readonly id = 'complete_stripe_kyc' as const;
@@ -134,6 +136,8 @@ export class KycStripeService {
     if (!wallet || !/^0x[a-f0-9]{40}$/.test(wallet)) {
       return;
     }
+    const prev = await this.kycModel.findOne({ walletAddress: wallet }).exec();
+    const prevStatus = prev?.status;
     const status = mapVerificationSessionStatus(session.status);
     await this.kycModel
       .findOneAndUpdate(
@@ -149,5 +153,11 @@ export class KycStripeService {
         { upsert: true },
       )
       .exec();
+    if (status === 'verified' && prevStatus !== 'verified') {
+      this.emailNotifications.notifyKycVerified(wallet);
+    }
+    if (status === 'requires_input' && prevStatus !== 'requires_input') {
+      this.emailNotifications.notifyKycActionRequired(wallet);
+    }
   }
 }

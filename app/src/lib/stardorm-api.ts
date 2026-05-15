@@ -9,6 +9,7 @@ import {
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
+  userUploadResultSchema,
   onRampsListResponseSchema,
   paymentRequestsListResponseSchema,
   stardormChatSuccessSchema,
@@ -26,6 +27,7 @@ import {
   type PaymentRequestsListResponse,
   type StardormChatClientResult,
   type UserKycStatusDocument,
+  type UserUploadResult,
 } from "@railbeam/stardorm-api-contract";
 import { getStardormAccessToken } from "./stardorm-auth";
 import { getStardormApiBase, stardormAxios } from "./stardorm-axios";
@@ -140,6 +142,46 @@ export async function fetchStardormChatMessages(params: {
     return chatHistoryResponseSchema.parse(data);
   } catch {
     return null;
+  }
+}
+
+export type StardormHandlerInvokeResult = {
+  message: string;
+  data?: Record<string, unknown>;
+  attachments?: Array<{ rootHash: string; mimeType: string; name: string }>;
+};
+
+export async function stardormInvokeHandler(
+  handleId: string,
+  body: unknown,
+): Promise<StardormHandlerInvokeResult | { error: string }> {
+  if (!getStardormApiBase()) return { error: "API not configured" };
+  try {
+    const { data } = await stardormAxios.post<unknown>(
+      `/handlers/${encodeURIComponent(handleId)}`,
+      body,
+    );
+    const parsed = executeHandlerResponseSchema.safeParse(data);
+    if (!parsed.success) {
+      return { error: "Unexpected response from Beam API" };
+    }
+    return parsed.data;
+  } catch (e: unknown) {
+    return { error: axiosErrorMessage(e) };
+  }
+}
+
+export async function uploadStardormUserFile(
+  file: File,
+): Promise<UserUploadResult | { error: string }> {
+  if (!getStardormApiBase()) return { error: "API not configured" };
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  try {
+    const { data } = await stardormAxios.post<unknown>("/users/me/files", fd);
+    return userUploadResultSchema.parse(data);
+  } catch (e: unknown) {
+    return { error: axiosErrorMessage(e) };
   }
 }
 

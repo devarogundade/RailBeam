@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
-import { ArrowUpRight, Zap, CreditCard, Eye, EyeOff, Users, Receipt, Landmark } from "lucide-react";
+import { ArrowUpRight, Zap, CreditCard, Eye, EyeOff, Users, Receipt, Landmark, Plus } from "lucide-react";
 import {
   useMyActiveSubscribedChainAgentIds,
   useStardormRecentSubscriptions,
@@ -55,6 +55,7 @@ import {
   VirtualCardsPanelSkeleton,
 } from "@/components/page-shimmer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -305,6 +306,7 @@ function onRampBadgeVariant(
 }
 
 function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
+  const [createOpen, setCreateOpen] = React.useState(false);
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.paymentRequests(),
     queryFn: () => fetchStardormPaymentRequests({ limit: 25 }),
@@ -313,10 +315,21 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="text-sm font-semibold">Checkout and x402</div>
-      <p className="text-[11px] text-muted-foreground">
-        Payment requests you created or settled, stored by the Beam API.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold">Checkout and x402</div>
+          <p className="text-[11px] text-muted-foreground">
+            Payment requests you created or settled, stored by the Beam API.
+          </p>
+        </div>
+        {enabled ? (
+          <Button type="button" size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Create payment link
+          </Button>
+        ) : null}
+      </div>
+      <CreatePaymentLinkDialog open={createOpen} onOpenChange={setCreateOpen} />
       {!enabled ? (
         <p className="mt-3 text-sm text-muted-foreground">
           Sign in with your wallet (Beam API session) to load payment activity.
@@ -330,7 +343,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
           <EmptyState
             icon={Receipt}
             title="No saved checkouts yet"
-            description="Use chat with an agent that offers x402 or payment links to create a checkout. Completed payments show up here."
+            description="Create a payment link above, or use chat with an agent that offers x402 checkouts. Completed payments show up here."
           />
         </div>
       ) : (

@@ -14,6 +14,7 @@ import {
 } from '@beam/stardorm-api-contract';
 import type { OnRampRecord } from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
+import { EmailNotificationsService } from '../email/email-notifications.service';
 import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
 import { OnRamp, type OnRampDocument } from '../mongo/schemas/on-ramp.schema';
 import { getStripe } from './stripe.client';
@@ -31,6 +32,7 @@ export class OnRampService {
     private readonly config: ConfigService,
     @InjectModel(OnRamp.name) private readonly onRampModel: Model<OnRampDocument>,
     private readonly financialSnapshots: FinancialSnapshotsService,
+    private readonly emailNotifications: EmailNotificationsService,
   ) {}
 
   readonly id = 'on_ramp_tokens' as const;
@@ -218,6 +220,8 @@ export class OnRampService {
       this.log.warn(`Invalid onRampId (skip fulfill): ${onRampId}`);
       return;
     }
+    const row = await this.onRampModel.findById(onRampId).exec();
+
     const pk = this.config.get<string>('ONRAMP_TREASURY_PRIVATE_KEY')?.trim();
     if (!pk) {
       this.log.error('ONRAMP_TREASURY_PRIVATE_KEY is not set; cannot fulfill on-ramp');
@@ -232,10 +236,16 @@ export class OnRampService {
           },
         )
         .exec();
+      if (row) {
+        this.emailNotifications.notifyOnRampFailed({
+          walletAddress: row.walletAddress,
+          tokenSymbol: row.tokenSymbol,
+          usdAmountCents: row.usdAmountCents,
+          reason: 'Treasury key not configured',
+        });
+      }
       return;
     }
-
-    const row = await this.onRampModel.findById(onRampId).exec();
     if (!row) {
       this.log.warn(`OnRamp ${onRampId} not found`);
       return;
@@ -277,6 +287,14 @@ export class OnRampService {
         .catch(() => {
           /* best-effort rollup */
         });
+      this.emailNotifications.notifyOnRampFulfilled({
+        walletAddress: row.walletAddress,
+        tokenSymbol: row.tokenSymbol,
+        tokenAmountWei: row.tokenAmountWei,
+        tokenDecimals: row.tokenDecimals,
+        usdAmountCents: row.usdAmountCents,
+        fulfillmentTxHash: receipt?.hash ?? tx.hash,
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       this.log.error(`On-ramp fulfillment failed for ${onRampId}: ${msg}`);
@@ -286,6 +304,12 @@ export class OnRampService {
           { $set: { status: 'failed', errorMessage: msg } },
         )
         .exec();
+      this.emailNotifications.notifyOnRampFailed({
+        walletAddress: row.walletAddress,
+        tokenSymbol: row.tokenSymbol,
+        usdAmountCents: row.usdAmountCents,
+        reason: msg,
+      });
     }
   }
 
@@ -319,11 +343,20 @@ export class OnRampService {
 
   async markStripePaymentFailed(onRampId: string, reason: string): Promise<void> {
     if (!Types.ObjectId.isValid(onRampId)) return;
+    const row = await this.onRampModel.findById(onRampId).exec();
     await this.onRampModel
       .updateOne(
         { _id: new Types.ObjectId(onRampId), status: { $ne: 'fulfilled' } },
         { $set: { status: 'failed', errorMessage: reason } },
       )
       .exec();
+    if (row && row.status !== 'fulfilled') {
+      this.emailNotifications.notifyOnRampFailed({
+        walletAddress: row.walletAddress,
+        tokenSymbol: row.tokenSymbol,
+        usdAmountCents: row.usdAmountCents,
+        reason,
+      });
+    }
   }
 }
