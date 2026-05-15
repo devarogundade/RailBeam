@@ -14,7 +14,7 @@ function DocsWebSocket() {
       <DocPageHero
         eyebrow="Realtime"
         title="WebSocket sync"
-        description="Stardorm pushes lightweight invalidation hints on /ws/conversations so clients can refresh chat threads and conversation lists when data changes elsewhere. The SDK builds the WebSocket URL from your configured API origin and wraps reconnecting listeners."
+        description="Stardorm pushes conversation sync events on /ws/conversations — full message rows for in-place cache updates, plus list hints when threads or metadata change. The SDK builds the WebSocket URL from your configured API origin and wraps reconnecting listeners."
       />
 
       <DocSection title="Auth and URL">
@@ -45,13 +45,16 @@ const url = sdk.realtime.conversationsWebSocketUrl();
           <code className="text-foreground">BeamConversationSyncPayload</code> in TypeScript.
         </p>
         <DocResult title="Examples">
-          {`{ "v": 1, "op": "thread", "conversationId": "…" }
+          {`{ "v": 1, "op": "thread_messages", "conversationId": "…", "messages": [ … ] }
+{ "v": 1, "op": "thread", "conversationId": "…" }
 { "v": 1, "op": "conversations" }
 { "v": 1, "op": "conversation_deleted", "conversationId": "…" }`}
         </DocResult>
         <p className="text-muted-foreground text-sm">
-          After a push, refetch the relevant REST resources (for example{" "}
-          <code className="text-foreground">GET /users/me/conversations</code> and chat message routes).
+          Prefer <code className="text-foreground">thread_messages</code> to merge rows into your local cache without
+          refetching the thread. Use <code className="text-foreground">thread</code> only as a legacy invalidation hint.
+          Refresh conversation lists after <code className="text-foreground">conversations</code> or{" "}
+          <code className="text-foreground">conversation_deleted</code>.
         </p>
       </DocSection>
 
@@ -69,6 +72,7 @@ const sdk = new BeamSdk({ network: "testnet", accessToken: jwt });
 
 const conn = sdk.realtime.connectConversationSync({
   onPayload: (p) => {
+    if (p.op === "thread_messages") console.log("merge", p.messages.length, "rows");
     if (p.op === "thread") console.log("refresh thread", p.conversationId);
     if (p.op === "conversations") console.log("refresh list");
     if (p.op === "conversation_deleted") console.log("removed", p.conversationId);

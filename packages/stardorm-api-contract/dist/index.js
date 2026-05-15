@@ -429,6 +429,32 @@ var createConversationBodySchema = zod.z.object({
 var deleteConversationResponseSchema = zod.z.object({
   deleted: zod.z.literal(true)
 });
+var conversationSyncThreadSchema = zod.z.object({
+  v: zod.z.literal(1),
+  op: zod.z.literal("thread"),
+  conversationId: zod.z.string().min(1)
+});
+var conversationSyncThreadMessagesSchema = zod.z.object({
+  v: zod.z.literal(1),
+  op: zod.z.literal("thread_messages"),
+  conversationId: zod.z.string().min(1),
+  messages: zod.z.array(chatHistoryMessageSchema).min(1)
+});
+var conversationSyncConversationsSchema = zod.z.object({
+  v: zod.z.literal(1),
+  op: zod.z.literal("conversations")
+});
+var conversationSyncConversationDeletedSchema = zod.z.object({
+  v: zod.z.literal(1),
+  op: zod.z.literal("conversation_deleted"),
+  conversationId: zod.z.string().min(1)
+});
+var conversationSyncPayloadSchema = zod.z.discriminatedUnion("op", [
+  conversationSyncThreadSchema,
+  conversationSyncThreadMessagesSchema,
+  conversationSyncConversationsSchema,
+  conversationSyncConversationDeletedSchema
+]);
 var agentOnchainFeedbackItemSchema = zod.z.object({
   id: zod.z.string(),
   agentId: zod.z.number(),
@@ -912,6 +938,11 @@ exports.chatHistoryMessageSchema = chatHistoryMessageSchema;
 exports.chatHistoryQuerySchema = chatHistoryQuerySchema;
 exports.chatHistoryResponseSchema = chatHistoryResponseSchema;
 exports.conversationSummarySchema = conversationSummarySchema;
+exports.conversationSyncConversationDeletedSchema = conversationSyncConversationDeletedSchema;
+exports.conversationSyncConversationsSchema = conversationSyncConversationsSchema;
+exports.conversationSyncPayloadSchema = conversationSyncPayloadSchema;
+exports.conversationSyncThreadMessagesSchema = conversationSyncThreadMessagesSchema;
+exports.conversationSyncThreadSchema = conversationSyncThreadSchema;
 exports.conversationsListResponseSchema = conversationsListResponseSchema;
 exports.conversationsPageResponseSchema = conversationsPageResponseSchema;
 exports.conversationsQuerySchema = conversationsQuerySchema;

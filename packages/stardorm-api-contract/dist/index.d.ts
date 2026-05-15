@@ -4119,6 +4119,1711 @@ declare const deleteConversationResponseSchema: z.ZodObject<{
 }>;
 type DeleteConversationResponse = z.infer<typeof deleteConversationResponseSchema>;
 
+/** Lightweight invalidation hint (legacy clients refetch the thread). */
+declare const conversationSyncThreadSchema: z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"thread">;
+    conversationId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    v: 1;
+    op: "thread";
+}, {
+    conversationId: string;
+    v: 1;
+    op: "thread";
+}>;
+/** Full message rows for in-place TanStack cache updates (no refetch). */
+declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"thread_messages">;
+    conversationId: z.ZodString;
+    messages: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        role: z.ZodEnum<["user", "agent"]>;
+        agentKey: z.ZodOptional<z.ZodString>;
+        content: z.ZodString;
+        createdAt: z.ZodNumber;
+        attachments: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            mimeType: z.ZodString;
+            name: z.ZodString;
+            hash: z.ZodString;
+            size: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }, {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }>, "many">>;
+        rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+            type: z.ZodLiteral<"report">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"invoice">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"tx">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"x402_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            resourceUrl: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }, {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"on_ramp_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }, {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"credit_card_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            defaultCurrency: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"credit_card">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>]>>;
+        handlerCta: z.ZodOptional<z.ZodObject<{
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
+            params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        }, {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        }>>;
+        followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"x402_checkout">;
+            payPath: z.ZodString;
+            paymentRequestId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        }, {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"tax_report_pdf">;
+            attachmentId: z.ZodString;
+            name: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        }, {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"stripe_on_ramp">;
+            checkoutUrl: z.ZodString;
+            onRampId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        }, {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"stripe_identity">;
+            verificationUrl: z.ZodString;
+            verificationSessionId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        }, {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"credit_card_ready">;
+            creditCardId: z.ZodString;
+            dashboardPath: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        }, {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        }>]>>;
+        model: z.ZodOptional<z.ZodString>;
+        verified: z.ZodOptional<z.ZodBoolean>;
+        chatId: z.ZodOptional<z.ZodString>;
+        provider: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }, {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    messages: {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }[];
+    v: 1;
+    op: "thread_messages";
+}, {
+    conversationId: string;
+    messages: {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }[];
+    v: 1;
+    op: "thread_messages";
+}>;
+declare const conversationSyncConversationsSchema: z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"conversations">;
+}, "strip", z.ZodTypeAny, {
+    v: 1;
+    op: "conversations";
+}, {
+    v: 1;
+    op: "conversations";
+}>;
+declare const conversationSyncConversationDeletedSchema: z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"conversation_deleted">;
+    conversationId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    v: 1;
+    op: "conversation_deleted";
+}, {
+    conversationId: string;
+    v: 1;
+    op: "conversation_deleted";
+}>;
+declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"thread">;
+    conversationId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    v: 1;
+    op: "thread";
+}, {
+    conversationId: string;
+    v: 1;
+    op: "thread";
+}>, z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"thread_messages">;
+    conversationId: z.ZodString;
+    messages: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        role: z.ZodEnum<["user", "agent"]>;
+        agentKey: z.ZodOptional<z.ZodString>;
+        content: z.ZodString;
+        createdAt: z.ZodNumber;
+        attachments: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            mimeType: z.ZodString;
+            name: z.ZodString;
+            hash: z.ZodString;
+            size: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }, {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }>, "many">>;
+        rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+            type: z.ZodLiteral<"report">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"invoice">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"tx">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"x402_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            resourceUrl: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }, {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"on_ramp_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }, {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"credit_card_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            defaultCurrency: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }, {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"credit_card">;
+            title: z.ZodString;
+            rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                label: z.ZodString;
+                value: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                value: string;
+            }, {
+                label: string;
+                value: string;
+            }>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }, {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        }>]>>;
+        handlerCta: z.ZodOptional<z.ZodObject<{
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer"]>;
+            params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        }, "strip", z.ZodTypeAny, {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        }, {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        }>>;
+        followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"x402_checkout">;
+            payPath: z.ZodString;
+            paymentRequestId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        }, {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"tax_report_pdf">;
+            attachmentId: z.ZodString;
+            name: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        }, {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"stripe_on_ramp">;
+            checkoutUrl: z.ZodString;
+            onRampId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        }, {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"stripe_identity">;
+            verificationUrl: z.ZodString;
+            verificationSessionId: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        }, {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"credit_card_ready">;
+            creditCardId: z.ZodString;
+            dashboardPath: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        }, {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        }>]>>;
+        model: z.ZodOptional<z.ZodString>;
+        verified: z.ZodOptional<z.ZodBoolean>;
+        chatId: z.ZodOptional<z.ZodString>;
+        provider: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }, {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    messages: {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }[];
+    v: 1;
+    op: "thread_messages";
+}, {
+    conversationId: string;
+    messages: {
+        id: string;
+        content: string;
+        createdAt: number;
+        role: "user" | "agent";
+        model?: string | undefined;
+        verified?: boolean | undefined;
+        chatId?: string | undefined;
+        provider?: string | undefined;
+        agentKey?: string | undefined;
+        rich?: {
+            type: "report";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "invoice";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "tx";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | {
+            type: "x402_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            resourceUrl?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "on_ramp_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+        } | {
+            type: "credit_card_checkout_form";
+            title: string;
+            intro?: string | undefined;
+            defaultCurrency?: string | undefined;
+        } | {
+            type: "credit_card";
+            title: string;
+            rows?: {
+                label: string;
+                value: string;
+            }[] | undefined;
+        } | undefined;
+        attachments?: {
+            id: string;
+            name: string;
+            mimeType: string;
+            hash: string;
+            size?: string | undefined;
+        }[] | undefined;
+        handlerCta?: {
+            params: Record<string, unknown>;
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer";
+        } | undefined;
+        followUp?: {
+            kind: "x402_checkout";
+            payPath: string;
+            paymentRequestId: string;
+        } | {
+            name: string;
+            kind: "tax_report_pdf";
+            attachmentId: string;
+        } | {
+            kind: "stripe_on_ramp";
+            checkoutUrl: string;
+            onRampId: string;
+        } | {
+            kind: "stripe_identity";
+            verificationUrl: string;
+            verificationSessionId: string;
+        } | {
+            kind: "credit_card_ready";
+            creditCardId: string;
+            dashboardPath: string;
+        } | undefined;
+    }[];
+    v: 1;
+    op: "thread_messages";
+}>, z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"conversations">;
+}, "strip", z.ZodTypeAny, {
+    v: 1;
+    op: "conversations";
+}, {
+    v: 1;
+    op: "conversations";
+}>, z.ZodObject<{
+    v: z.ZodLiteral<1>;
+    op: z.ZodLiteral<"conversation_deleted">;
+    conversationId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    conversationId: string;
+    v: 1;
+    op: "conversation_deleted";
+}, {
+    conversationId: string;
+    v: 1;
+    op: "conversation_deleted";
+}>]>;
+type ConversationSyncThreadPayload = z.infer<typeof conversationSyncThreadSchema>;
+type ConversationSyncThreadMessagesPayload = z.infer<typeof conversationSyncThreadMessagesSchema>;
+type ConversationSyncPayload = z.infer<typeof conversationSyncPayloadSchema>;
+
 /** One feedback row from the Stardorm subgraph (ReputationRegistry `NewFeedback`). */
 declare const agentOnchainFeedbackItemSchema: z.ZodObject<{
     id: z.ZodString;
@@ -5501,4 +7206,4 @@ declare const draftNftTransferInputSchema: z.ZodEffects<z.ZodObject<{
 }>;
 type DraftNftTransferInput = z.infer<typeof draftNftTransferInputSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

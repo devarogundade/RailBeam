@@ -2,7 +2,31 @@
  * JSON payloads pushed over `/ws/conversations` (RFC 6455 WebSocket).
  * Swift: decode with `JSONDecoder`; refresh via existing REST (`/users/me/chat/messages`, `/users/me/conversations`).
  */
-export type {
+import type { ChatHistoryMessage } from '@beam/stardorm-api-contract';
+
+export type ConversationSyncPayload =
+  | {
+      v: 1;
+      op: 'thread';
+      conversationId: string;
+    }
+  | {
+      v: 1;
+      op: 'thread_messages';
+      conversationId: string;
+      messages: ChatHistoryMessage[];
+    }
+  | {
+      v: 1;
+      op: 'conversations';
+    }
+  | {
+      v: 1;
+      op: 'conversation_deleted';
+      conversationId: string;
+    };
+
+export type ConversationSyncThreadMessagesPayload = Extract<
   ConversationSyncPayload,
-  ConversationSyncThreadMessagesPayload,
-} from '@beam/stardorm-api-contract';
+  { op: 'thread_messages' }
+>;

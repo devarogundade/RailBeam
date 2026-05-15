@@ -52,16 +52,3 @@ export function appendThreadMessagesToChatCache(
 
   return merged;
 }
-
-export function chatCacheHasMessageIds(
-  queryClient: QueryClient,
-  userKey: `0x${string}`,
-  conversationId: string,
-  messageIds: string[],
-): boolean {
-  const data = queryClient.getQueryData<InfiniteData<ChatHistoryResponse>>(
-    queryKeys.user.chatMessages(userKey, conversationId),
-  );
-  const existing = collectMessageIds(data);
-  return messageIds.every((id) => existing.has(id));
-}

@@ -1,4 +1,4 @@
-import { stardormChatSuccessSchema, executeHandlerResponseSchema, executeHandlerBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardFundBodySchema, userKycStatusDocumentSchema, meOnRampsQuerySchema, onRampsListResponseSchema, mePaymentRequestsQuerySchema, paymentRequestsListResponseSchema, creditCardSensitiveDetailsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardsListResponseSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, deleteConversationResponseSchema, conversationSummarySchema, createConversationBodySchema, conversationsQuerySchema, conversationsPageResponseSchema, userUploadResultSchema, publicUserSchema, updateUserBodySchema, publicPaymentRequestSchema, paymentSettlementBodySchema, handlersListResponseSchema, storageUploadResponseSchema, storageUploadBodySchema, authMeResponseSchema, authVerifyResponseSchema, authVerifyBodySchema, authChallengeResponseSchema, authChallengeBodySchema } from '@railbeam/stardorm-api-contract';
+import { conversationSyncPayloadSchema, stardormChatSuccessSchema, executeHandlerResponseSchema, executeHandlerBodySchema, creditCardPublicSchema, creditCardWithdrawBodySchema, creditCardFundBodySchema, userKycStatusDocumentSchema, meOnRampsQuerySchema, onRampsListResponseSchema, mePaymentRequestsQuerySchema, paymentRequestsListResponseSchema, creditCardSensitiveDetailsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardsListResponseSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, deleteConversationResponseSchema, conversationSummarySchema, createConversationBodySchema, conversationsQuerySchema, conversationsPageResponseSchema, userUploadResultSchema, publicUserSchema, updateUserBodySchema, publicPaymentRequestSchema, paymentSettlementBodySchema, handlersListResponseSchema, storageUploadResponseSchema, storageUploadBodySchema, authMeResponseSchema, authVerifyResponseSchema, authVerifyBodySchema, authChallengeResponseSchema, authChallengeBodySchema } from '@railbeam/stardorm-api-contract';
 import { parseAbi, createPublicClient, http, createWalletClient } from 'viem';
 import { readContract, writeContract } from 'viem/actions';
 import { zeroGTestnet, zeroGMainnet } from 'viem/chains';
@@ -1039,8 +1039,6 @@ var BeamSubgraphClient = class {
     return row ? mapValidationRow(row) : null;
   }
 };
-
-// src/realtime/conversation-sync.ts
 var BEAM_WS_CLOSE_UNAUTHORIZED = 4401;
 function buildBeamConversationsWebSocketUrl(apiBaseUrl, accessToken) {
   const trimmedBase = apiBaseUrl.trim().replace(/\/$/, "");
@@ -1059,18 +1057,8 @@ function buildBeamConversationsWebSocketUrl(apiBaseUrl, accessToken) {
 function parseBeamConversationSyncPayload(raw) {
   try {
     const o = JSON.parse(raw);
-    if (!o || typeof o !== "object") return null;
-    const v = o.v;
-    if (v !== 1) return null;
-    const op = o.op;
-    if (op === "conversations") return { v: 1, op: "conversations" };
-    const cid = o.conversationId;
-    if (typeof cid !== "string" || !cid.trim()) return null;
-    if (op === "thread") return { v: 1, op: "thread", conversationId: cid.trim() };
-    if (op === "conversation_deleted") {
-      return { v: 1, op: "conversation_deleted", conversationId: cid.trim() };
-    }
-    return null;
+    const parsed = conversationSyncPayloadSchema.safeParse(o);
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }

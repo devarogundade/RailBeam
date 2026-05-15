@@ -1,4 +1,4 @@
-import { StardormChatSuccess, AuthVerifyResponse, AuthChallengeResponse, AuthVerifyBody, AuthMeResponse, HandlersListResponse, PublicPaymentRequest, PaymentSettlementBody, StorageUploadBody, StorageUploadResponse, PublicUser, UpdateUserBody, UserUploadResult, ConversationsQuery, ConversationsPageResponse, CreateConversationBody, ConversationSummary, DeleteConversationResponse, ChatHistoryQuery, ChatHistoryResponse, CreditCardsListResponse, CreditCardFundQuoteQuery, CreditCardFundQuoteResponse, CreditCardSensitiveDetails, MePaymentRequestsQuery, PaymentRequestsListResponse, MeOnRampsQuery, OnRampsListResponse, UserKycStatusDocument, CreditCardFundBody, CreditCardPublic, CreditCardWithdrawBody, ExecuteHandlerBody, ExecuteHandlerResponse } from '@railbeam/stardorm-api-contract';
+import { StardormChatSuccess, AuthVerifyResponse, AuthChallengeResponse, AuthVerifyBody, AuthMeResponse, HandlersListResponse, PublicPaymentRequest, PaymentSettlementBody, StorageUploadBody, StorageUploadResponse, PublicUser, UpdateUserBody, UserUploadResult, ConversationsQuery, ConversationsPageResponse, CreateConversationBody, ConversationSummary, DeleteConversationResponse, ChatHistoryQuery, ChatHistoryResponse, CreditCardsListResponse, CreditCardFundQuoteQuery, CreditCardFundQuoteResponse, CreditCardSensitiveDetails, MePaymentRequestsQuery, PaymentRequestsListResponse, MeOnRampsQuery, OnRampsListResponse, UserKycStatusDocument, CreditCardFundBody, CreditCardPublic, CreditCardWithdrawBody, ExecuteHandlerBody, ExecuteHandlerResponse, ConversationSyncPayload } from '@railbeam/stardorm-api-contract';
 import { ZodType } from 'zod';
 import { Hex, Address, PublicClient, Transport, Chain, Account } from 'viem';
 import { PrivateKeyAccount } from 'viem/accounts';
@@ -292,19 +292,9 @@ type SubgraphValidation = {
  * Stardorm `/ws/conversations` — JSON text frames (see `backend/conversation-sync.events.ts`).
  * Auth: JWT in `?token=` (browsers cannot set `Authorization` on WebSocket handshakes).
  */
+
 /** Mirrors backend `ConversationSyncPayload`. */
-type BeamConversationSyncPayload = {
-    v: 1;
-    op: "thread";
-    conversationId: string;
-} | {
-    v: 1;
-    op: "conversations";
-} | {
-    v: 1;
-    op: "conversation_deleted";
-    conversationId: string;
-};
+type BeamConversationSyncPayload = ConversationSyncPayload;
 /** Backend closes with 4401 when JWT is missing or invalid. */
 declare const BEAM_WS_CLOSE_UNAUTHORIZED = 4401;
 /**
