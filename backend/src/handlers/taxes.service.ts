@@ -16,10 +16,12 @@ import {
   type ChainscanLedgerAggregate,
 } from './chainscan-ledger';
 import { buildLinesPdf } from './minimal-pdf';
+import { CoinmarketcapPriceService } from '../pricing/coinmarketcap-price.service';
+import { ZERO_GRAVITY_CMC_SLUG } from '../pricing/coinmarketcap.constants';
 
 type TaxesOutput = {
   address: string;
-  /** USD-ish totals when CHAINSCAN_TAX_USD_PER_NATIVE > 0; native leg only. */
+  /** USD-ish totals when a native spot price is available; native leg only. */
   income: number;
   expenses: number;
   taxes: number;
@@ -85,6 +87,7 @@ export class TaxesService implements HandlerService {
   constructor(
     private readonly ogStorage: OgStorageService,
     private readonly config: ConfigService,
+    private readonly cmcPrice: CoinmarketcapPriceService,
   ) {}
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
@@ -109,9 +112,7 @@ export class TaxesService implements HandlerService {
         'Chainscan API URL is not configured. Set CHAINSCAN_API_URL and/or CHAINSCAN_API_URL_MAINNET / CHAINSCAN_API_URL_TESTNET.',
       );
     }
-    const usdPerNative = Number(
-      this.config.get<string>('CHAINSCAN_TAX_USD_PER_NATIVE')?.trim() || '0',
-    );
+    const usdPerNative = (await this.cmcPrice.getZeroGravityUsdPrice()) ?? 0;
 
     const { rangeStartSec, rangeEndSec } = taxRangeBounds(fromDate, toDate);
     let ledger: ChainscanLedgerAggregate;
@@ -146,8 +147,8 @@ export class TaxesService implements HandlerService {
         'Tax-period summary built from your wallet activity on 0G via the public Chainscan API ' +
         '(native transfers and ERC-20 `tokentx`). Figures are not legal or tax advice. ' +
         (usdPerNative > 0 && Number.isFinite(usdPerNative)
-          ? `Estimated USD values use CHAINSCAN_TAX_USD_PER_NATIVE=${usdPerNative} on incoming/outgoing native gas token only; ERC-20 flows are listed in the PDF without fiat conversion.`
-          : 'Set CHAINSCAN_TAX_USD_PER_NATIVE in the backend to apply your jurisdiction rate to an approximate native-token USD leg; otherwise estimated tax is zero.'),
+          ? `Estimated USD values use CoinMarketCap spot for ${ZERO_GRAVITY_CMC_SLUG} ($${usdPerNative.toFixed(4)} per native, 24h cache) on incoming/outgoing native gas token only; ERC-20 flows are listed in the PDF without fiat conversion.`
+          : 'Native-token USD spot is unavailable (configure COINMARKETCAP_API_KEY and REDIS_URL); estimated tax on the native leg is zero.'),
       data: {
         countryCode: output.countryCode,
         from: output.fromDate.toISOString(),
@@ -212,7 +213,7 @@ export class TaxesService implements HandlerService {
     ];
     if (usdModelActive) {
       lines.push(
-        'USD-style estimate (native leg only, CHAINSCAN_TAX_USD_PER_NATIVE)',
+        `USD-style estimate (native leg only, CoinMarketCap ${ZERO_GRAVITY_CMC_SLUG})`,
         `  Income (est.):     $${fmt(output.income)}`,
         `  Expenses (est.):   $${fmt(output.expenses)}`,
         `  Taxes (est.):      $${fmt(output.taxes)}`,
@@ -221,7 +222,7 @@ export class TaxesService implements HandlerService {
       );
     } else {
       lines.push(
-        'USD / fiat tax estimate disabled (set CHAINSCAN_TAX_USD_PER_NATIVE to model native leg).',
+        'USD / fiat tax estimate disabled (native spot price unavailable).',
         '',
       );
     }

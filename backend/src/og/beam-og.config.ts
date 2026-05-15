@@ -141,14 +141,21 @@ export function ogStorageIndexerRpcForTier(
 }
 
 export function ogStorageEndpointsForClientEvmChain(
-  config: ConfigService,
-  clientEvmChainId?: number,
+  _: ConfigService,
+  __?: number,
 ): OgStorageEndpoints {
-  const tier = beamEvmTierFromChainId(clientEvmChainId);
+  // const tier = beamEvmTierFromChainId(clientEvmChainId);
+  // return {
+  //   tier,
+  //   rpcUrl: ogRpcUrlForTier(config, tier),
+  //   indexerRpc: ogStorageIndexerRpcForTier(config, tier),
+  // };
+
+  // TODO: remove this once we have a proper way to determine the tier
   return {
-    tier,
-    rpcUrl: ogRpcUrlForTier(config, tier),
-    indexerRpc: ogStorageIndexerRpcForTier(config, tier),
+    tier: 'testnet',
+    rpcUrl: OG_RPC.testnet,
+    indexerRpc: OG_STORAGE_INDEXER.testnet,
   };
 }
 

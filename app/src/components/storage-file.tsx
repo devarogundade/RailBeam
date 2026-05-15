@@ -1,8 +1,52 @@
 import * as React from "react";
 
+const MIME_EXTENSION: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "text/plain": "txt",
+  "text/csv": "csv",
+};
+
+function extFromMimeType(mimeType: string | undefined): string | undefined {
+  const base = mimeType?.split(";")[0]?.trim().toLowerCase();
+  if (!base) return undefined;
+  const mapped = MIME_EXTENSION[base];
+  if (mapped) return mapped;
+  const slash = base.indexOf("/");
+  if (slash > 0 && slash < base.length - 1) {
+    const sub = base.slice(slash + 1);
+    if (/^[\w+-]+$/.test(sub) && sub !== "octet-stream") return sub;
+  }
+  return undefined;
+}
+
+function hasFileExtension(name: string): boolean {
+  const base = name.split(/[/\\]/).pop() ?? name;
+  const dot = base.lastIndexOf(".");
+  return dot > 0 && dot < base.length - 1;
+}
+
+/** Ensures the browser `download` attribute includes `.{extension}`. */
+export function downloadFileName(
+  fileName: string,
+  mimeType?: string,
+): string {
+  const trimmed = fileName.trim();
+  if (!trimmed || hasFileExtension(trimmed)) return trimmed;
+  const ext = extFromMimeType(mimeType);
+  return ext ? `${trimmed}.${ext}` : trimmed;
+}
+
 export type StorageFileProps = {
   /** Suggested filename for the browser download dialog. */
   fileName?: string;
+  /** Used to append `.{extension}` when `fileName` has none. */
+  mimeType?: string;
   /** Direct URL (http, https, blob, data, or site-relative). */
   url?: string;
   rootHash?: string;
@@ -62,6 +106,7 @@ function storageHref(
 
 export function StorageFile({
   fileName,
+  mimeType,
   url,
   rootHash,
   src,
@@ -83,11 +128,16 @@ export function StorageFile({
     return storageHref(apiBase, rh);
   }, [url, src, rootHash, apiBase]);
 
-  const download =
-    downloadProp ??
-    (fileName && typeof fileName === "string" && fileName.trim()
-      ? fileName.trim()
-      : undefined);
+  const download = React.useMemo(() => {
+    if (typeof downloadProp === "string" && downloadProp.trim()) {
+      return downloadFileName(downloadProp, mimeType);
+    }
+    if (downloadProp != null && downloadProp !== false) return downloadProp;
+    if (fileName && typeof fileName === "string" && fileName.trim()) {
+      return downloadFileName(fileName, mimeType);
+    }
+    return undefined;
+  }, [downloadProp, fileName, mimeType]);
 
   if (!href) return null;
 

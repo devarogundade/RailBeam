@@ -407,6 +407,7 @@ function AttachmentBlock({
                 apiBase={apiBase}
                 rootHash={att.hash}
                 fileName={att.name}
+                mimeType={att.mimeType}
                 className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
                 target="_blank"
                 rel="noreferrer"
@@ -438,6 +439,7 @@ function AttachmentFileRow({
           apiBase={apiBase}
           rootHash={att.hash}
           fileName={att.name}
+          mimeType={att.mimeType}
           className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
           target="_blank"
           rel="noreferrer"

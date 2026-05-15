@@ -1597,6 +1597,7 @@ function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
         apiBase={apiBase}
         rootHash={hash}
         fileName={fu.name}
+        mimeType={att?.mimeType ?? "application/pdf"}
         className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2 py-1 text-sm font-medium text-primary hover:underline"
         target="_blank"
         rel="noreferrer"
@@ -1730,6 +1731,7 @@ function Bubble({
                     rootHash={a.rootHash}
                     url={a.url}
                     fileName={a.name}
+                    mimeType={a.mimeType}
                     className="shrink-0 text-sm font-medium text-primary hover:underline"
                     target="_blank"
                     rel="noreferrer"
