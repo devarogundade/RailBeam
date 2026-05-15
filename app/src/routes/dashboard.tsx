@@ -489,15 +489,15 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
     : row.payTo;
 
   return (
-    <div className="mt-2 space-y-2 text-[11px] leading-snug">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div className="min-w-0 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+    <div className="mt-2 w-full space-y-2 text-[11px] leading-snug">
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-2">
+        <div className="min-w-0 flex-1">
           <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Amount
           </div>
           <div className="mt-0.5 text-sm font-medium text-foreground">{formatPaymentAmountDisplay(row)}</div>
         </div>
-        <div className="min-w-0 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+        <div className="min-w-0 flex-1">
           <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Network
           </div>
@@ -509,7 +509,7 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
           ) : null}
         </div>
       </div>
-      <div className="rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+      <div className="min-w-0">
         <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Pay to
         </div>
@@ -518,7 +518,7 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
         </div>
       </div>
       {row.paidByWallet?.trim() ? (
-        <div className="rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+        <div className="min-w-0">
           <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Payer wallet
           </div>
@@ -533,7 +533,7 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
         </div>
       ) : null}
       {row.txHash?.trim() ? (
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+        <div className="flex w-full min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Settlement
           </span>
@@ -542,7 +542,7 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
               href={explorerUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 font-mono text-sm text-primary underline-offset-2 hover:underline"
+              className="inline-flex min-w-0 items-center gap-1 font-mono text-sm text-primary underline-offset-2 hover:underline"
               title={row.txHash.trim()}
             >
               {shortenHex(row.txHash.trim())}
@@ -559,11 +559,11 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
         </div>
       ) : null}
       {row.resourceUrl?.trim() ? (
-        <div className="truncate rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2 text-muted-foreground">
+        <div className="min-w-0 text-muted-foreground">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Linked resource
           </span>
-          <div className="mt-1 min-w-0">
+          <div className="mt-1 min-w-0 truncate">
             <a
               href={row.resourceUrl.trim()}
               className="text-primary underline-offset-2 hover:underline"
@@ -580,13 +580,69 @@ function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
   );
 }
 
-function onRampBadgeVariant(
-  s: OnRampRecord["status"],
-): "default" | "secondary" | "destructive" | "outline" {
-  if (s === "fulfilled") return "default";
-  if (s === "failed") return "destructive";
-  if (s === "canceled") return "outline";
-  return "secondary";
+const ON_RAMP_STATUS_LABEL: Record<OnRampRecord["status"], string> = {
+  pending_checkout: "Pending checkout",
+  pending_payment: "Awaiting payment",
+  paid_pending_transfer: "Sending tokens",
+  fulfilled: "Fulfilled",
+  failed: "Failed",
+  canceled: "Canceled",
+};
+
+const ON_RAMP_STATUS_BADGE: Record<
+  OnRampRecord["status"],
+  { className: string; dotClassName: string; pulse?: boolean }
+> = {
+  pending_checkout: {
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300",
+    dotClassName: "bg-amber-500",
+    pulse: true,
+  },
+  pending_payment: {
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300",
+    dotClassName: "bg-amber-500",
+    pulse: true,
+  },
+  paid_pending_transfer: {
+    className: "border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-300",
+    dotClassName: "bg-sky-500",
+    pulse: true,
+  },
+  fulfilled: {
+    className: "border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300",
+    dotClassName: "bg-emerald-500",
+  },
+  failed: {
+    className: "border-destructive/30 bg-destructive/10 text-destructive",
+    dotClassName: "bg-destructive",
+  },
+  canceled: {
+    className: "border-muted-foreground/35 bg-muted/50 text-muted-foreground",
+    dotClassName: "bg-muted-foreground/60",
+  },
+};
+
+function OnRampStatusBadge({ status }: { status: OnRampRecord["status"] }) {
+  const style = ON_RAMP_STATUS_BADGE[status];
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "h-6 gap-1.5 border px-2.5 py-0 text-xs font-medium normal-case tracking-normal shadow-none",
+        style.className,
+      )}
+    >
+      <span
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          style.dotClassName,
+          style.pulse && "animate-pulse",
+        )}
+        aria-hidden
+      />
+      {ON_RAMP_STATUS_LABEL[status]}
+    </Badge>
+  );
 }
 
 const REVENUE_CHART_DAYS = 30;
@@ -809,9 +865,9 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
             {data.items.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
+                className="flex w-full min-w-0 flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
               >
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{row.title}</span>
                     <PaymentRequestStatusBadge status={row.status} />
@@ -987,11 +1043,9 @@ function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
         ) : (
           <ul className="mt-3 divide-y divide-border text-sm">
             {data.items.map((row) => (
-              <li key={row.id} className="flex flex-col gap-2 py-3">
+              <li key={row.id} className="flex w-full min-w-0 flex-col gap-2 py-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={onRampBadgeVariant(row.status)} className="text-[10px] uppercase">
-                    {row.status.replaceAll("_", " ")}
-                  </Badge>
+                  <OnRampStatusBadge status={row.status} />
                   <span className="font-medium">
                     {row.tokenSymbol}{" "}
                     <span className="text-muted-foreground">
