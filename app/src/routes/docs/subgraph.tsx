@@ -20,7 +20,6 @@ function DocsSubgraph() {
       <DocSection title="Paged agents">
         <DocCode title="sdk.subgraph.agents">
           {`const sdk = new BeamSdk({ network: "testnet" });
-// Ensure BEAM_NETWORK_PRESETS[network].subgraphUrl is set (@railbeam/beam-sdk; monorepo: packages/beam-sdk/src/presets.ts)
 
 const rows = await sdk.subgraph.agents(1, 20);
 // page = 1-based, pageSize → The Graph first/skip`}
@@ -57,14 +56,11 @@ const val = await sdk.subgraph.validationByRequestHash(
         </DocCode>
       </DocSection>
 
-      <DocCallout variant="warning" title="Indexer URL lives in presets">
+      <DocCallout variant="warning" title="Subgraph URL">
         <p>
-          <code className="text-foreground">sdk.subgraph</code> reads <code className="text-foreground">subgraphUrl</code> from{" "}
-          <code className="text-foreground">BEAM_NETWORK_PRESETS</code> in <code className="text-foreground">@railbeam/beam-sdk</code>.
-          Until you paste a GraphQL HTTP endpoint there,
-          subgraph calls throw. For one-off scripts you can instead pass{" "}
-          <code className="text-foreground">overrides: &#123; subgraphUrl: &quot;…&quot; &#125;</code> to{" "}
-          <code className="text-foreground">new BeamSdk(&#123; … &#125;)</code>.
+          Subgraph calls need a GraphQL endpoint for your network. If the default is missing, pass{" "}
+          <code className="text-foreground">overrides: &#123; subgraphUrl: &quot;https://…&quot; &#125;</code> when you
+          create <code className="text-foreground">BeamSdk</code>.
         </p>
       </DocCallout>
     </DocProse>

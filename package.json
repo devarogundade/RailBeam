@@ -1,8 +1,0 @@
-{
-  "name": "beam",
-  "private": true,
-  "workspaces": ["app", "packages/beam-sdk", "packages/stardorm-api-contract"],
-  "overrides": {
-    "yaml": "2.8.4"
-  }
-}

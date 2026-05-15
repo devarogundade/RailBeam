@@ -14,7 +14,7 @@ function DocsWebSocket() {
       <DocPageHero
         eyebrow="Realtime"
         title="WebSocket sync"
-        description="Stardorm pushes lightweight invalidation hints on /ws/conversations so clients can refresh chat threads and conversation lists when data changes elsewhere. The SDK builds the URL from the same network presets as HTTP and wraps reconnecting listeners."
+        description="Stardorm pushes lightweight invalidation hints on /ws/conversations so clients can refresh chat threads and conversation lists when data changes elsewhere. The SDK builds the WebSocket URL from your configured API origin and wraps reconnecting listeners."
       />
 
       <DocSection title="Auth and URL">
@@ -23,7 +23,7 @@ function DocsWebSocket() {
           handshake. The Nest gateway accepts the JWT as <code className="text-foreground">?token=</code> on the URL
           (same pattern as the Beam web app).
         </p>
-        <DocCode title="URL from preset apiBaseUrl">
+        <DocCode title="Conversation WebSocket URL">
           {`import { BeamSdk } from "@railbeam/beam-sdk";
 
 const sdk = new BeamSdk({ network: "testnet", accessToken: jwt });
@@ -33,9 +33,7 @@ const url = sdk.realtime.conversationsWebSocketUrl();
         <DocCallout variant="info" title="Standalone helper">
           <p>
             Use <code className="text-foreground">buildBeamConversationsWebSocketUrl(apiBaseUrl, token)</code> when you
-            are not holding a <code className="text-foreground">BeamSdk</code> instance; it performs the same{" "}
-            <code className="text-foreground">http</code>→<code className="text-foreground">ws</code> switch and path
-            join as the React client.
+            already know the API base URL and JWT.
           </p>
         </DocCallout>
       </DocSection>

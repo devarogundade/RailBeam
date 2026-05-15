@@ -13,10 +13,10 @@ function DocsInstallation() {
       <DocPageHero
         eyebrow="Get started"
         title="Installation"
-        description="Add the Beam SDK from npm and edit the baked-in network table when you deploy new infrastructure."
+        description="Install the packages, construct BeamSdk, and pick a network."
       />
 
-      <DocSection title="npm dependency">
+      <DocSection title="npm">
         <DocCode title="package.json">
           {`{
   "dependencies": {
@@ -25,56 +25,36 @@ function DocsInstallation() {
   }
 }`}
         </DocCode>
-        <DocCallout variant="info" title="SDK bundles the contract types">
+        <DocCallout variant="info" title="Contract package">
           <p>
-            <code className="text-foreground">@railbeam/beam-sdk</code> depends on{" "}
-            <code className="text-foreground">@railbeam/stardorm-api-contract</code>; you only need both entries if you
-            import contract schemas without the SDK.
+            <code className="text-foreground">@railbeam/beam-sdk</code> already depends on{" "}
+            <code className="text-foreground">@railbeam/stardorm-api-contract</code>. Add the contract package only if
+            you import schemas without the SDK.
           </p>
         </DocCallout>
       </DocSection>
 
-      <DocSection title="This repository (npm workspaces)">
-        <p>
-          The Beam repo declares <code className="text-foreground">workspaces</code> in the root{" "}
-          <code className="text-foreground">package.json</code>. Run <code className="text-foreground">npm install</code>{" "}
-          from the repository root so <code className="text-foreground">^0.0.1</code> resolves to the local{" "}
-          <code className="text-foreground">packages/*</code> trees instead of the public registry (those packages are not
-          published there yet).
-        </p>
-        <DocCallout variant="info" title="SDK-only monorepo hacks">
-          <p>
-            If you are editing the SDK next to an app outside this workspace, point{" "}
-            <code className="text-foreground">vite.config.ts</code> <code className="text-foreground">resolve.alias</code>{" "}
-            at local package roots so edits compile without publishing.
-          </p>
-        </DocCallout>
-      </DocSection>
+      <DocSection title="Network">
+        <DocCode title="Construct the client">
+          {`import { BeamSdk } from "@railbeam/beam-sdk";
 
-      <DocSection title="Network presets (no constructor URLs)">
+const sdk = new BeamSdk({ network: "testnet" });`}
+        </DocCode>
         <p>
-          Defaults ship in <code className="text-foreground">@railbeam/beam-sdk</code> as{" "}
-          <code className="text-foreground">BEAM_NETWORK_PRESETS</code> (in this repo, edit{" "}
-          <code className="text-foreground">packages/beam-sdk/src/presets.ts</code> before publishing). Per-network{" "}
+          <code className="text-foreground">mainnet</code> and <code className="text-foreground">testnet</code> select
+          the Stardorm API base URL, 0G RPC, registry addresses, and subgraph endpoint bundled with that SDK version.
+          For a private stack, pass <code className="text-foreground">overrides</code> (for example{" "}
           <code className="text-foreground">apiBaseUrl</code>, <code className="text-foreground">rpcUrl</code>,{" "}
-          <code className="text-foreground">subgraphUrl</code>, and registry addresses. The shipped table targets local
-          Stardorm on <code className="text-foreground">http://127.0.0.1:3401</code>; update the file for staging or
-          production origins, and paste your GraphQL indexer URL when the subgraph is live.
+          <code className="text-foreground">subgraphUrl</code>, or contract addresses) on the same constructor.
         </p>
-        <DocCallout variant="info" title="Beam web app still uses Vite env">
-          <p>
-            The React client continues to read <code className="text-foreground">VITE_STARDORM_API_URL</code> for its own
-            axios instance — that is independent from the SDK preset table unless you wire them together yourself.
-          </p>
-        </DocCallout>
       </DocSection>
 
-      <DocSection title="Types without the SDK">
+      <DocSection title="Types only">
         <p>
-          When you only need DTOs (for example in a Cloudflare Worker), depend on{" "}
-          <code className="text-foreground">@railbeam/stardorm-api-contract</code> and import Zod schemas such as{" "}
-          <code className="text-foreground">publicPaymentRequestSchema</code> or{" "}
-          <code className="text-foreground">stardormChatSuccessSchema</code>.
+          For DTOs and Zod schemas without the SDK, depend on{" "}
+          <code className="text-foreground">@railbeam/stardorm-api-contract</code> (e.g.{" "}
+          <code className="text-foreground">publicPaymentRequestSchema</code>,{" "}
+          <code className="text-foreground">stardormChatSuccessSchema</code>).
         </p>
       </DocSection>
     </DocProse>

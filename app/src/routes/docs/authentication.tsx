@@ -57,9 +57,8 @@ sdk.getAccessToken(); // string | undefined`}
 
       <DocSection title="Transport headers">
         <p>
-          Every request automatically includes <code className="text-foreground">X-Beam-Chain-Id</code> derived from the
-          SDK&apos;s configured network (or an explicit <code className="text-foreground">chainId</code> override). This
-          mirrors the browser axios interceptor in <code className="text-foreground">stardorm-axios.ts</code>.
+          Every request automatically includes <code className="text-foreground">X-Beam-Chain-Id</code> from the SDK
+          network (or an explicit <code className="text-foreground">chainId</code> override).
         </p>
         <DocCallout variant="info" title="Errors">
           <p>

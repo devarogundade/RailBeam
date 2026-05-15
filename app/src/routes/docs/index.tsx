@@ -23,8 +23,8 @@ function DocsOverview() {
           <strong className="text-foreground">intent</strong> (what should happen),{" "}
           <strong className="text-foreground">execution</strong> (agents and HTTP flows), and{" "}
           <strong className="text-foreground">settlement</strong> (money movement you can reconcile) as one system. The
-          SDK is the boundary for teams who want that story in code—typed requests, validated responses, and network
-          presets so you are not re-wiring RPC URLs and contract tables in every service.
+          SDK is the boundary for teams who want that story in code—typed requests, validated responses, and per-network
+          defaults for API, RPC, and contracts.
         </p>
         <DocCallout title="Three things to lean on" variant="info">
           <ul className="m-0 list-disc space-y-2 pl-4">
@@ -101,7 +101,7 @@ const reply = await sdk.agents.chat({
       <DocSection title="Suggested path">
         <ol>
           <li>
-            <Link to="/docs/installation">Installation</Link> — packages, Vite aliases, and network presets.
+            <Link to="/docs/installation">Installation</Link> — packages and <code className="text-foreground">BeamSdk</code> setup.
           </li>
           <li>
             <Link to="/docs/authentication">Authentication</Link> — wallet challenge and JWT storage on the client.

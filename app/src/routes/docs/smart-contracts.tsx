@@ -17,12 +17,11 @@ function DocsSmartContracts() {
         description="The SDK bundles Identity, Reputation, and Validation registry addresses from the Stardorm Ignition deployments, plus the public 0G RPC. Use sdk.chain for cheap reads and gas-bearing writes with any viem LocalAccount."
       />
 
-      <DocSection title="Baked-in addresses">
+      <DocSection title="Registry addresses">
         <p>
-          From <code className="text-foreground">@railbeam/beam-sdk</code>, import <code className="text-foreground">BEAM_NETWORK_PRESETS</code>{" "}
-          to inspect defaults, or call <code className="text-foreground">sdk.chain.addresses</code> at runtime. Values mirror{" "}
-          <code className="text-foreground">smart-contracts/ignition/deployments/chain-16661</code> (mainnet) and{" "}
-          <code className="text-foreground">chain-16602</code> (testnet).
+          After <code className="text-foreground">new BeamSdk(&#123; network &#125;)</code>, read{" "}
+          <code className="text-foreground">sdk.chain.addresses</code> for the Identity, Reputation, and Validation
+          registry contracts on that network.
         </p>
         <DocResult title="sdk.chain.addresses (testnet)">
           {`{
@@ -130,11 +129,7 @@ await w.validation.validationResponse(
         </DocCallout>
       </DocSection>
 
-      <DocSection title="Advanced overrides">
-        <p>
-          Forks and private deployments can pass <code className="text-foreground">overrides</code> when constructing{" "}
-          <code className="text-foreground">BeamSdk</code> without editing the preset table.
-        </p>
+      <DocSection title="Custom endpoints">
         <DocCode title="Overrides">
           {`const sdk = new BeamSdk({
   network: "testnet",
