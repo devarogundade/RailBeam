@@ -1,10 +1,24 @@
 import { BadRequestException } from '@nestjs/common';
+import type { X402SupportedAsset } from '@beam/stardorm-api-contract';
 
 /** Canonical bridged USDC on 0G mainnet (6 decimals). */
 export const BEAM_USDC_E_ADDRESS =
   '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as const;
 
 export const BEAM_USDC_E_DECIMALS = 6;
+
+/** App-hosted token icon (served from `app/public/images/usdc.png`). */
+export const BEAM_USDC_E_ICON = '/images/usdc.png' as const;
+
+export function beamUsdcESupportedAsset(): X402SupportedAsset {
+  return {
+    name: 'Bridged USDC',
+    symbol: 'USDC.e',
+    icon: BEAM_USDC_E_ICON,
+    decimals: BEAM_USDC_E_DECIMALS,
+    address: BEAM_USDC_E_ADDRESS,
+  };
+}
 
 const USDC_E_LOWER = BEAM_USDC_E_ADDRESS.toLowerCase();
 

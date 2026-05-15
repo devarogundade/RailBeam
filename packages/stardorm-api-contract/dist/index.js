@@ -156,7 +156,9 @@ var HANDLER_ACTION_IDS = [
   /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
   "draft_nft_transfer",
   /** Confirms a Uniswap V3 single-hop swap on 0G mainnet; user signs approve + router in wallet. */
-  "draft_token_swap"
+  "draft_token_swap",
+  /** Direct the user to hire a marketplace specialist for a task this agent cannot run. */
+  "suggest_marketplace_hire"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -252,6 +254,34 @@ var stardormChatRichBlockSchema = zod.z.discriminatedUnion("type", [
     ).max(16).optional(),
     /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
     defaultPoolFee: zod.z.union([zod.z.literal(500), zod.z.literal(3e3), zod.z.literal(1e4)]).optional()
+  }),
+  zod.z.object({
+    type: zod.z.literal("marketplace_hire"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    specialistName: zod.z.string().min(1).max(80),
+    specialistAgentKey: zod.z.string().min(1).max(64),
+    category: zod.z.enum(["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]).optional(),
+    capability: zod.z.string().min(1).max(400).optional(),
+    userTask: zod.z.string().max(500).optional(),
+    /** App path to open the marketplace (default `/marketplace`). */
+    marketplacePath: zod.z.string().min(1).max(256).default("/marketplace"),
+    /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+    agentProfilePath: zod.z.string().min(1).max(256).optional(),
+    requiredHandler: zod.z.string().min(1).max(64).optional()
+  }),
+  zod.z.object({
+    type: zod.z.literal("transfer_checkout_form"),
+    title: zod.z.string().min(1).max(200),
+    intro: zod.z.string().max(2e3).optional(),
+    supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
+    networks: zod.z.array(
+      zod.z.object({
+        id: zod.z.string().min(1).max(64),
+        label: zod.z.string().min(1).max(120)
+      })
+    ).max(16).optional(),
+    defaultTo: zod.z.string().max(66).optional()
   })
 ]);
 var stardormChatJsonBodySchema = zod.z.object({
@@ -346,6 +376,46 @@ var executeHandlerResponseSchema = zod.z.object({
   data: zod.z.record(zod.z.string(), zod.z.unknown()).optional(),
   rich: stardormChatRichBlockSchema.optional()
 });
+var chatHandlerWalletTxResultSchema = zod.z.object({
+  kind: zod.z.literal("wallet_tx"),
+  status: zod.z.enum(["submitted", "confirmed", "failed"]),
+  txHash: zod.z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  error: zod.z.string().max(2e3).optional(),
+  network: zod.z.string().min(1).max(64).optional(),
+  chainId: zod.z.number().int().positive().optional(),
+  handler: zod.z.string().min(1).max(64).optional(),
+  updatedAt: zod.z.number().int().positive()
+});
+var chatHandlerServerResultSchema = zod.z.object({
+  kind: zod.z.literal("server"),
+  status: zod.z.enum(["completed", "failed"]).default("completed"),
+  data: zod.z.record(zod.z.string(), zod.z.unknown()).optional(),
+  updatedAt: zod.z.number().int().positive()
+});
+var chatHandlerResultSchema = zod.z.discriminatedUnion("kind", [
+  chatHandlerWalletTxResultSchema,
+  chatHandlerServerResultSchema
+]);
+var patchChatMessageResultBodySchema = zod.z.object({
+  result: chatHandlerResultSchema
+});
+var patchChatMessageResultResponseSchema = zod.z.object({
+  ok: zod.z.literal(true),
+  messageId: zod.z.string().min(1),
+  result: chatHandlerResultSchema,
+  rich: zod.z.object({
+    type: zod.z.literal("tx"),
+    title: zod.z.string(),
+    rows: zod.z.array(
+      zod.z.object({
+        label: zod.z.string(),
+        value: zod.z.string()
+      })
+    ).optional()
+  }).optional()
+});
+
+// src/conversation.ts
 var chatHistoryQuerySchema = zod.z.object({
   limit: zod.z.coerce.number().int().min(1).max(100).default(40),
   /** When omitted, the server uses the user’s active conversation. */
@@ -405,6 +475,8 @@ var chatHistoryMessageSchema = zod.z.object({
   attachments: zod.z.array(chatHistoryAttachmentSchema).optional(),
   rich: stardormChatRichBlockSchema.optional(),
   handlerCta: chatHistoryHandlerCtaSchema.optional(),
+  /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
+  result: chatHandlerResultSchema.optional(),
   followUp: chatFollowUpSchema.optional(),
   model: zod.z.string().optional(),
   verified: zod.z.boolean().optional(),
@@ -952,6 +1024,34 @@ var draftTokenSwapInputSchema = zod.z.object({
   deadlineUnix: zod.z.number().int().positive().optional(),
   note: zod.z.string().max(500).optional()
 });
+var transferFormNetworkOptionSchema = zod.z.object({
+  id: zod.z.string().min(1).max(64),
+  label: zod.z.string().min(1).max(120)
+});
+var transferFormCtaParamsSchema = zod.z.object({
+  _transferForm: zod.z.literal(true),
+  supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: zod.z.array(transferFormNetworkOptionSchema).max(16).optional(),
+  intro: zod.z.string().max(2e3).optional(),
+  /** When set, pre-fill recipient in the form. */
+  defaultTo: zod.z.string().trim().refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), "defaultTo must be 0x\u202640").transform((s) => s.toLowerCase()).optional()
+});
+function isTransferFormCtaParams(v) {
+  return transferFormCtaParamsSchema.safeParse(v).success;
+}
+var marketplaceSpecialistAgentKeySchema = zod.z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9-]*$/i);
+var suggestMarketplaceHireInputSchema = zod.z.object({
+  specialistAgentKey: marketplaceSpecialistAgentKeySchema,
+  specialistName: zod.z.string().min(1).max(80).optional(),
+  category: zod.z.enum(["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]).optional(),
+  /** One line: what the specialist runs for the user (handler names ok). */
+  capability: zod.z.string().min(1).max(400).optional(),
+  /** Short description of what the user was trying to do. */
+  userTask: zod.z.string().min(1).max(500).optional(),
+  intro: zod.z.string().max(2e3).optional(),
+  /** Optional handler the user needs after hiring (for display only). */
+  requiredHandler: handlerActionIdSchema.optional()
+});
 
 exports.HANDLER_ACTION_IDS = HANDLER_ACTION_IDS;
 exports.ISO_3166_1_ALPHA2_CODES = ISO_3166_1_ALPHA2_CODES;
@@ -974,6 +1074,9 @@ exports.billingRangeEndOfDay = billingRangeEndOfDay;
 exports.buildStardormCatalogResponse = buildStardormCatalogResponse;
 exports.catalogResponseSchema = catalogResponseSchema;
 exports.chatFollowUpSchema = chatFollowUpSchema;
+exports.chatHandlerResultSchema = chatHandlerResultSchema;
+exports.chatHandlerServerResultSchema = chatHandlerServerResultSchema;
+exports.chatHandlerWalletTxResultSchema = chatHandlerWalletTxResultSchema;
 exports.chatHistoryAttachmentSchema = chatHistoryAttachmentSchema;
 exports.chatHistoryHandlerCtaSchema = chatHistoryHandlerCtaSchema;
 exports.chatHistoryMessageSchema = chatHistoryMessageSchema;
@@ -1015,7 +1118,9 @@ exports.isHandlerActionId = isHandlerActionId;
 exports.isIso3166Alpha2 = isIso3166Alpha2;
 exports.isOnRampFormCtaParams = isOnRampFormCtaParams;
 exports.isSwapFormCtaParams = isSwapFormCtaParams;
+exports.isTransferFormCtaParams = isTransferFormCtaParams;
 exports.isoCountryDisplayName = isoCountryDisplayName;
+exports.marketplaceSpecialistAgentKeySchema = marketplaceSpecialistAgentKeySchema;
 exports.meOnRampsQuerySchema = meOnRampsQuerySchema;
 exports.mePaymentRequestsQuerySchema = mePaymentRequestsQuerySchema;
 exports.onRampFormCtaParamsSchema = onRampFormCtaParamsSchema;
@@ -1024,6 +1129,8 @@ exports.onRampRecordSchema = onRampRecordSchema;
 exports.onRampRecordStatusSchema = onRampRecordStatusSchema;
 exports.onRampTokensInputSchema = onRampTokensInputSchema;
 exports.onRampsListResponseSchema = onRampsListResponseSchema;
+exports.patchChatMessageResultBodySchema = patchChatMessageResultBodySchema;
+exports.patchChatMessageResultResponseSchema = patchChatMessageResultResponseSchema;
 exports.paymentRequestStatusSchema = paymentRequestStatusSchema;
 exports.paymentRequestTypeSchema = paymentRequestTypeSchema;
 exports.paymentRequestsListResponseSchema = paymentRequestsListResponseSchema;
@@ -1045,9 +1152,12 @@ exports.stardormChatSuccessSchema = stardormChatSuccessSchema;
 exports.storageUploadBodySchema = storageUploadBodySchema;
 exports.storageUploadResponseSchema = storageUploadResponseSchema;
 exports.stripeKycInputSchema = stripeKycInputSchema;
+exports.suggestMarketplaceHireInputSchema = suggestMarketplaceHireInputSchema;
 exports.swapFormCtaParamsSchema = swapFormCtaParamsSchema;
 exports.swapFormNetworkOptionSchema = swapFormNetworkOptionSchema;
 exports.taxRateForCountry = taxRateForCountry;
+exports.transferFormCtaParamsSchema = transferFormCtaParamsSchema;
+exports.transferFormNetworkOptionSchema = transferFormNetworkOptionSchema;
 exports.updateUserBodySchema = updateUserBodySchema;
 exports.userAvatarPresetSchema = userAvatarPresetSchema;
 exports.userKycStatusDocumentSchema = userKycStatusDocumentSchema;

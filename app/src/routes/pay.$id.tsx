@@ -11,12 +11,11 @@ import {
   useWriteContract,
 } from "wagmi";
 import { formatUnits } from "viem";
-import { zeroGMainnet, zeroGTestnet } from "viem/chains";
 import { publicPaymentRequestSchema } from "@railbeam/stardorm-api-contract";
 import type { PublicPaymentRequest } from "@railbeam/stardorm-api-contract";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
-import { resolvePaymentChainId } from "@/lib/payment-chain";
+import { paymentNetworkLabel, resolvePaymentChainId } from "@/lib/payment-chain";
 import {
   isBeamUsdcEAddress,
   settleX402CheckoutViaAccess,
@@ -121,15 +120,6 @@ function formatCheckoutAmountLine(
   };
 }
 
-function networkLabel(networkRaw: string, chainId: number | null): string {
-  if (chainId === zeroGTestnet.id) return zeroGTestnet.name;
-  if (chainId === zeroGMainnet.id) return zeroGMainnet.name;
-  if (chainId != null) return `Chain ${chainId}`;
-  const n = networkRaw.trim();
-  if (n) return n;
-  return "Unknown network";
-}
-
 function checkoutTypeLabel(type: PublicPaymentRequest["type"]): string {
   return type === "x402" ? "API access (x402)" : "Direct wallet payment";
 }
@@ -137,15 +127,15 @@ function checkoutTypeLabel(type: PublicPaymentRequest["type"]): string {
 function statusDisplay(status: PublicPaymentRequest["status"]): PayCheckoutStatusPresentation {
   switch (status) {
     case "pending":
-      return { label: "Awaiting payment", className: "text-amber-200" };
+      return { label: "Awaiting payment", className: "text-warning" };
     case "paid":
-      return { label: "Paid", className: "text-emerald-200" };
+      return { label: "Paid", className: "text-success" };
     case "expired":
-      return { label: "Expired", className: "text-white/60" };
+      return { label: "Expired", className: "text-muted-foreground" };
     case "cancelled":
-      return { label: "Cancelled", className: "text-red-200" };
+      return { label: "Cancelled", className: "text-destructive" };
     default:
-      return { label: status, className: "text-white/60" };
+      return { label: status, className: "text-muted-foreground" };
   }
 }
 
@@ -241,16 +231,18 @@ function PayCheckoutPage() {
     payment.facilitatorSettlement === true &&
     isBeamUsdcEAddress(payment.asset);
 
+  const needsNetworkSwitch =
+    Boolean(address) && targetChainId != null && chainId !== targetChainId;
+
   const payDisabled =
     !payment ||
     payment.status !== "pending" ||
-    !address ||
     targetChainId == null ||
     q.isPending ||
     confirmPay.isPending ||
     postSubmitSettling ||
     x402Paying ||
-    (useX402Facilitator && !walletClient);
+    (useX402Facilitator && Boolean(address) && !walletClient);
 
   const walletPayBusy =
     switching ||
@@ -262,7 +254,8 @@ function PayCheckoutPage() {
   const amountPresentation =
     payment != null ? formatCheckoutAmountLine(payment.amount, payment.decimals) : null;
   const statusPresentation = payment != null ? statusDisplay(payment.status) : null;
-  const friendlyNetwork = payment != null ? networkLabel(payment.network, targetChainId) : "";
+  const friendlyNetwork =
+    payment != null ? paymentNetworkLabel(payment.network, targetChainId) : "";
   const apiBaseResolved = getStardormApiBase()?.replace(/\/$/, "") ?? "";
 
   const onConnect = () => {
@@ -370,7 +363,12 @@ function PayCheckoutPage() {
   };
 
   const onPay = () => {
-    if (payment?.type === "x402" && !isBeamUsdcEAddress(payment.asset)) {
+    if (!address) {
+      onConnect();
+      return;
+    }
+    if (!payment || targetChainId == null) return;
+    if (payment.type === "x402" && !isBeamUsdcEAddress(payment.asset)) {
       toast.error("Unsupported asset", {
         description: "x402 checkout only supports USDC.e on 0G mainnet.",
       });
@@ -411,6 +409,7 @@ function PayCheckoutPage() {
         postSubmitSettling={postSubmitSettling || x402Paying}
         onPay={onPay}
         payUsesX402={useX402Facilitator}
+        needsNetworkSwitch={needsNetworkSwitch}
       />
 
       <AlertDialog

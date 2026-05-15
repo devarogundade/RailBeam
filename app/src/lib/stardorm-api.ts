@@ -1,6 +1,9 @@
 import axios from "axios";
 import {
   chatHistoryResponseSchema,
+  patchChatMessageResultBodySchema,
+  patchChatMessageResultResponseSchema,
+  type ChatHandlerResult,
   creditCardFundQuoteSchema,
   creditCardPublicSchema,
   creditCardSensitiveDetailsSchema,
@@ -100,6 +103,7 @@ export function mapHistoryToChatMessages(hist: ChatHistoryResponse, apiBase: str
     status: "delivered" as const,
     ...(m.rich ? { rich: m.rich } : {}),
     ...(m.handlerCta ? { handlerCta: m.handlerCta } : {}),
+    ...(m.result ? { result: m.result } : {}),
     ...(m.followUp ? { followUp: m.followUp } : {}),
     ...(typeof m.model === "string" ? { model: m.model } : {}),
     ...(typeof m.verified === "boolean" ? { verified: m.verified } : {}),
@@ -181,6 +185,28 @@ export async function uploadStardormUserFile(
   try {
     const { data } = await stardormAxios.post<unknown>("/users/me/files", fd);
     return userUploadResultSchema.parse(data);
+  } catch (e: unknown) {
+    return { error: axiosErrorMessage(e) };
+  }
+}
+
+export async function stardormPatchChatMessageResult(
+  messageId: string,
+  result: ChatHandlerResult,
+): Promise<
+  ReturnType<typeof patchChatMessageResultResponseSchema.parse> | { error: string }
+> {
+  if (!getStardormApiBase()) return { error: "API not configured" };
+  const parsedBody = patchChatMessageResultBodySchema.safeParse({ result });
+  if (!parsedBody.success) {
+    return { error: "Invalid result payload" };
+  }
+  try {
+    const { data } = await stardormAxios.patch<unknown>(
+      `/users/me/chat/messages/${encodeURIComponent(messageId)}/result`,
+      parsedBody.data,
+    );
+    return patchChatMessageResultResponseSchema.parse(data);
   } catch (e: unknown) {
     return { error: axiosErrorMessage(e) };
   }

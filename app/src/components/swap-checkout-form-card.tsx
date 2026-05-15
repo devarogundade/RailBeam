@@ -14,11 +14,9 @@ import {
 import { parseUnits } from "viem";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  BEAM_MAINNET_CAIP2,
-  BEAM_MAINNET_SWAP_ROUTER,
-  isSwapNetworkBlocked,
-} from "@/lib/beam-swap-config";
+import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
+import { BeamCurrentNetworkNote } from "@/components/beam-current-network-note";
+import { BEAM_MAINNET_SWAP_ROUTER, isSwapNetworkBlocked } from "@/lib/beam-swap-config";
 
 type SwapFormRich = Extract<StardormChatRichBlock, { type: "swap_checkout_form" }>;
 
@@ -33,13 +31,7 @@ export function SwapCheckoutFormCard({
   disabled?: boolean;
   onConfirmSwap: (params: Record<string, unknown>) => void | Promise<void>;
 }) {
-  const networks = React.useMemo(
-    () =>
-      rich.networks?.length
-        ? rich.networks
-        : [{ id: BEAM_MAINNET_CAIP2, label: "0G Mainnet" }],
-    [rich.networks],
-  );
+  const { networkId } = useBeamEffectiveCaip2Network();
 
   const [tokenInAddr, setTokenInAddr] = React.useState(
     () => rich.supportedAssets[0]?.address ?? "",
@@ -47,7 +39,6 @@ export function SwapCheckoutFormCard({
   const [tokenOutAddr, setTokenOutAddr] = React.useState(
     () => rich.supportedAssets[1]?.address ?? rich.supportedAssets[0]?.address ?? "",
   );
-  const [networkId, setNetworkId] = React.useState(() => networks[0]?.id ?? BEAM_MAINNET_CAIP2);
   const [amountHuman, setAmountHuman] = React.useState("");
   const [minOutHuman, setMinOutHuman] = React.useState("");
   const [poolFee, setPoolFee] = React.useState(String(rich.defaultPoolFee ?? 3000));
@@ -57,8 +48,7 @@ export function SwapCheckoutFormCard({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const net = networkId.trim();
-    const blocked = isSwapNetworkBlocked(net);
+    const blocked = isSwapNetworkBlocked(networkId);
     if (blocked) {
       toast.error("Network not supported", { description: blocked });
       return;
@@ -100,7 +90,7 @@ export function SwapCheckoutFormCard({
     }
     const deadlineUnix = Math.floor(Date.now() / 1000) + 20 * 60;
     void onConfirmSwap({
-      network: net,
+      network: networkId,
       tokenIn: tokenIn.address.trim().toLowerCase(),
       tokenInSymbol: tokenIn.symbol,
       tokenInDecimals: tokenIn.decimals,
@@ -176,21 +166,6 @@ export function SwapCheckoutFormCard({
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label className="text-xs">Network</Label>
-        <RadioGroup value={networkId} onValueChange={setNetworkId} className="grid gap-1.5">
-          {networks.map((n) => (
-            <label
-              key={n.id}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-1 py-1 text-sm hover:bg-(--btn-secondary-bg)"
-            >
-              <RadioGroupItem value={n.id} id={`swap-net-${n.id}`} disabled={disabled} />
-              <span>{n.label}</span>
-              <span className="ml-auto truncate text-[11px] text-muted-foreground">{n.id}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
       <Button type="submit" size="sm" className="w-full font-semibold" loading={disabled} disabled={disabled}>
         {disabled ? "Confirming…" : "Confirm swap draft"}
       </Button>
@@ -206,10 +181,11 @@ function SwapFormHeader({ rich }: { rich: SwapFormRich }) {
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{rich.intro}</p>
       ) : (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Single-hop swap on 0G mainnet via the Beam router. You will approve token-in if needed,
-          then sign <span className="font-mono">exactInputSingle</span>.
+          Single-hop swap via the Beam router. You will approve token-in if needed, then sign{" "}
+          <span className="font-mono">exactInputSingle</span>.
         </p>
       )}
+      <BeamCurrentNetworkNote className="mt-2" />
     </div>
   );
 }

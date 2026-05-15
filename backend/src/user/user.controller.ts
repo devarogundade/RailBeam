@@ -47,6 +47,8 @@ import {
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
+  patchChatMessageResultBodySchema,
+  patchChatMessageResultResponseSchema,
   meOnRampsQuerySchema,
   mePaymentRequestsQuerySchema,
   onRampsListResponseSchema,
@@ -281,6 +283,23 @@ export class UserController {
         cardId.trim(),
         body.amountCents,
         clientEvmChainId,
+      ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/chat/messages/:messageId/result')
+  async patchChatMessageResult(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Param('messageId') messageId: string,
+    @Body() raw: unknown,
+  ) {
+    const body = parseBody(patchChatMessageResultBodySchema, raw);
+    return patchChatMessageResultResponseSchema.parse(
+      await this.users.patchChatMessageResult(
+        wallet.walletAddress,
+        messageId.trim(),
+        body.result,
       ),
     );
   }

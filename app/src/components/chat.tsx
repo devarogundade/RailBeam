@@ -25,6 +25,8 @@ import {
   isTransferDraftHandler,
 } from "@/components/transfer-draft-handler-cta";
 import { SwapCheckoutFormCard } from "@/components/swap-checkout-form-card";
+import { TransferCheckoutFormCard } from "@/components/transfer-checkout-form-card";
+import { MarketplaceHireRichCard } from "@/components/marketplace-hire-rich-card";
 import { SwapHandlerCtaRow, isTokenSwapHandler } from "@/components/swap-handler-cta";
 import { ChatMessageContent } from "@/components/chat-message-content";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,7 +78,10 @@ import {
   mapHistoryToChatMessages,
   stardormChat,
   stardormExecuteHandler,
+  stardormPatchChatMessageResult,
 } from "@/lib/stardorm-api";
+import { patchChatMessageInCache } from "@/lib/patch-chat-message-result";
+import type { ChatHandlerResult } from "@railbeam/stardorm-api-contract";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { toast } from "sonner";
 import { useStardormCatalog } from "@/lib/hooks/use-stardorm-catalog";
@@ -595,6 +600,18 @@ export function Chat() {
     [activeAgentId_, openConversationId, queryClient, userKey],
   );
 
+  const persistWalletTxResult = React.useCallback(
+    async (messageId: string, result: ChatHandlerResult) => {
+      if (!userKey || !openConversationId) return;
+      patchChatMessageInCache(queryClient, userKey, openConversationId, messageId, result);
+      const res = await stardormPatchChatMessageResult(messageId, result);
+      if ("error" in res && res.error) {
+        toast.error("Could not save transaction status", { description: res.error });
+      }
+    },
+    [userKey, openConversationId, queryClient],
+  );
+
   if (!activeAgent) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted-foreground">
@@ -945,6 +962,9 @@ export function Chat() {
                   apiBase={getStardormApiBase()}
                   executingHandlerForId={executingHandlerForId}
                   onRunHandlerCta={(msg, override) => void runHandlerCta(msg, override)}
+                  onPersistWalletTxResult={(messageId, result) =>
+                    void persistWalletTxResult(messageId, result)
+                  }
                 />
               ))}
             </>
@@ -1398,12 +1418,21 @@ function isSwapFormCtaParams(params: Record<string, unknown> | undefined): boole
   return params != null && params._swapForm === true;
 }
 
+function isTransferFormCtaParams(params: Record<string, unknown> | undefined): boolean {
+  return params != null && params._transferForm === true;
+}
+
+function walletTxConfirmed(m: Msg): boolean {
+  return m.result?.kind === "wallet_tx" && m.result.status === "confirmed";
+}
+
 type CheckoutFormRich = Extract<
   StardormChatRichBlock,
   | { type: "x402_checkout_form" }
   | { type: "on_ramp_checkout_form" }
   | { type: "credit_card_checkout_form" }
   | { type: "swap_checkout_form" }
+  | { type: "transfer_checkout_form" }
 >;
 
 /** Rich form blocks need `handlerCta` to run the server handler; show context if it is missing. */
@@ -1605,12 +1634,14 @@ function Bubble({
   apiBase,
   executingHandlerForId,
   onRunHandlerCta,
+  onPersistWalletTxResult,
 }: {
   m: Msg;
   agents: Agent[];
   apiBase?: string;
   executingHandlerForId: string | null;
   onRunHandlerCta: (m: Msg, overrideParams?: Record<string, unknown>) => void | Promise<void>;
+  onPersistWalletTxResult: (messageId: string, result: ChatHandlerResult) => void | Promise<void>;
 }) {
   const isUser = m.role === "user";
   const agent = resolveCatalogAgentForChatBubble(m.agentId, agents);
@@ -1750,11 +1781,26 @@ function Bubble({
         {m.rich?.type === "swap_checkout_form" && !isUser && !m.handlerCta && (
           <CheckoutRichUnavailableNotice rich={m.rich} />
         )}
+        {m.rich?.type === "transfer_checkout_form" && !isUser && m.handlerCta && (
+          <TransferCheckoutFormCard
+            rich={m.rich}
+            disabled={executingHandlerForId === m.id}
+            onConfirmTransfer={(params) => void onRunHandlerCta(m, params)}
+          />
+        )}
+        {m.rich?.type === "transfer_checkout_form" && !isUser && !m.handlerCta && (
+          <CheckoutRichUnavailableNotice rich={m.rich} />
+        )}
+        {m.rich?.type === "marketplace_hire" && !isUser && (
+          <MarketplaceHireRichCard rich={m.rich} />
+        )}
         {m.rich &&
           m.rich.type !== "x402_checkout_form" &&
           m.rich.type !== "on_ramp_checkout_form" &&
           m.rich.type !== "credit_card_checkout_form" &&
-          m.rich.type !== "swap_checkout_form" && (
+          m.rich.type !== "swap_checkout_form" &&
+          m.rich.type !== "transfer_checkout_form" &&
+          m.rich.type !== "marketplace_hire" && (
           <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface-elevated">
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1803,18 +1849,22 @@ function Bubble({
           m.rich?.type !== "on_ramp_checkout_form" &&
           m.rich?.type !== "credit_card_checkout_form" &&
           m.rich?.type !== "swap_checkout_form" &&
+          m.rich?.type !== "transfer_checkout_form" &&
           (m.handlerCta.handler === "generate_tax_report" ? (
             <TaxReportHandlerCtaRow
               m={m}
               disabled={executingHandlerForId === m.id}
               onRunHandlerCta={onRunHandlerCta}
             />
-          ) : isTransferDraftHandler(m.handlerCta.handler) ? (
+          ) : isTransferDraftHandler(m.handlerCta.handler) &&
+            !isTransferFormCtaParams(m.handlerCta.params as Record<string, unknown>) ? (
             <TransferDraftHandlerCtaRow
               messageId={m.id}
               handler={m.handlerCta.handler}
               params={m.handlerCta.params as Record<string, unknown>}
               label={handlerCtaLabel(m.handlerCta.handler)}
+              txConfirmed={walletTxConfirmed(m)}
+              onPersistResult={(result) => onPersistWalletTxResult(m.id, result)}
             />
           ) : isTokenSwapHandler(m.handlerCta.handler) &&
             !isSwapFormCtaParams(m.handlerCta.params as Record<string, unknown>) ? (
@@ -1822,6 +1872,8 @@ function Bubble({
               messageId={m.id}
               params={m.handlerCta.params as Record<string, unknown>}
               label={handlerCtaLabel(m.handlerCta.handler)}
+              txConfirmed={walletTxConfirmed(m)}
+              onPersistResult={(result) => onPersistWalletTxResult(m.id, result)}
             />
           ) : (
             <div className="flex flex-wrap gap-2 px-0.5">

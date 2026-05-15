@@ -154,7 +154,9 @@ var HANDLER_ACTION_IDS = [
   /** Confirms an NFT (ERC-721 / ERC-1155) transfer draft; user signs in their wallet / Beam Send. */
   "draft_nft_transfer",
   /** Confirms a Uniswap V3 single-hop swap on 0G mainnet; user signs approve + router in wallet. */
-  "draft_token_swap"
+  "draft_token_swap",
+  /** Direct the user to hire a marketplace specialist for a task this agent cannot run. */
+  "suggest_marketplace_hire"
 ];
 function isHandlerActionId(id) {
   return HANDLER_ACTION_IDS.includes(id);
@@ -250,6 +252,34 @@ var stardormChatRichBlockSchema = z.discriminatedUnion("type", [
     ).max(16).optional(),
     /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
     defaultPoolFee: z.union([z.literal(500), z.literal(3e3), z.literal(1e4)]).optional()
+  }),
+  z.object({
+    type: z.literal("marketplace_hire"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2e3).optional(),
+    specialistName: z.string().min(1).max(80),
+    specialistAgentKey: z.string().min(1).max(64),
+    category: z.enum(["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]).optional(),
+    capability: z.string().min(1).max(400).optional(),
+    userTask: z.string().max(500).optional(),
+    /** App path to open the marketplace (default `/marketplace`). */
+    marketplacePath: z.string().min(1).max(256).default("/marketplace"),
+    /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+    agentProfilePath: z.string().min(1).max(256).optional(),
+    requiredHandler: z.string().min(1).max(64).optional()
+  }),
+  z.object({
+    type: z.literal("transfer_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2e3).optional(),
+    supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+    networks: z.array(
+      z.object({
+        id: z.string().min(1).max(64),
+        label: z.string().min(1).max(120)
+      })
+    ).max(16).optional(),
+    defaultTo: z.string().max(66).optional()
   })
 ]);
 var stardormChatJsonBodySchema = z.object({
@@ -344,6 +374,46 @@ var executeHandlerResponseSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
   rich: stardormChatRichBlockSchema.optional()
 });
+var chatHandlerWalletTxResultSchema = z.object({
+  kind: z.literal("wallet_tx"),
+  status: z.enum(["submitted", "confirmed", "failed"]),
+  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  error: z.string().max(2e3).optional(),
+  network: z.string().min(1).max(64).optional(),
+  chainId: z.number().int().positive().optional(),
+  handler: z.string().min(1).max(64).optional(),
+  updatedAt: z.number().int().positive()
+});
+var chatHandlerServerResultSchema = z.object({
+  kind: z.literal("server"),
+  status: z.enum(["completed", "failed"]).default("completed"),
+  data: z.record(z.string(), z.unknown()).optional(),
+  updatedAt: z.number().int().positive()
+});
+var chatHandlerResultSchema = z.discriminatedUnion("kind", [
+  chatHandlerWalletTxResultSchema,
+  chatHandlerServerResultSchema
+]);
+var patchChatMessageResultBodySchema = z.object({
+  result: chatHandlerResultSchema
+});
+var patchChatMessageResultResponseSchema = z.object({
+  ok: z.literal(true),
+  messageId: z.string().min(1),
+  result: chatHandlerResultSchema,
+  rich: z.object({
+    type: z.literal("tx"),
+    title: z.string(),
+    rows: z.array(
+      z.object({
+        label: z.string(),
+        value: z.string()
+      })
+    ).optional()
+  }).optional()
+});
+
+// src/conversation.ts
 var chatHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(40),
   /** When omitted, the server uses the user’s active conversation. */
@@ -403,6 +473,8 @@ var chatHistoryMessageSchema = z.object({
   attachments: z.array(chatHistoryAttachmentSchema).optional(),
   rich: stardormChatRichBlockSchema.optional(),
   handlerCta: chatHistoryHandlerCtaSchema.optional(),
+  /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
+  result: chatHandlerResultSchema.optional(),
   followUp: chatFollowUpSchema.optional(),
   model: z.string().optional(),
   verified: z.boolean().optional(),
@@ -950,7 +1022,35 @@ var draftTokenSwapInputSchema = z.object({
   deadlineUnix: z.number().int().positive().optional(),
   note: z.string().max(500).optional()
 });
+var transferFormNetworkOptionSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().min(1).max(120)
+});
+var transferFormCtaParamsSchema = z.object({
+  _transferForm: z.literal(true),
+  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: z.array(transferFormNetworkOptionSchema).max(16).optional(),
+  intro: z.string().max(2e3).optional(),
+  /** When set, pre-fill recipient in the form. */
+  defaultTo: z.string().trim().refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), "defaultTo must be 0x\u202640").transform((s) => s.toLowerCase()).optional()
+});
+function isTransferFormCtaParams(v) {
+  return transferFormCtaParamsSchema.safeParse(v).success;
+}
+var marketplaceSpecialistAgentKeySchema = z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9-]*$/i);
+var suggestMarketplaceHireInputSchema = z.object({
+  specialistAgentKey: marketplaceSpecialistAgentKeySchema,
+  specialistName: z.string().min(1).max(80).optional(),
+  category: z.enum(["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]).optional(),
+  /** One line: what the specialist runs for the user (handler names ok). */
+  capability: z.string().min(1).max(400).optional(),
+  /** Short description of what the user was trying to do. */
+  userTask: z.string().min(1).max(500).optional(),
+  intro: z.string().max(2e3).optional(),
+  /** Optional handler the user needs after hiring (for display only). */
+  requiredHandler: handlerActionIdSchema.optional()
+});
 
-export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

@@ -456,16 +456,16 @@ type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
  * Source of truth for backend handler ids implemented in
  * `stardorm/backend/src/handlers/handlers.service.ts`. Keep in sync.
  */
-declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"];
+declare const HANDLER_ACTION_IDS: readonly ["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"];
 type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];
 declare function isHandlerActionId(id: string): id is HandlerActionId;
-declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+declare const handlerActionIdSchema: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
 declare const handlersListResponseSchema: z.ZodObject<{
-    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>, "many">;
+    handlers: z.ZodArray<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>, "many">;
 }, "strip", z.ZodTypeAny, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap")[];
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire")[];
 }, {
-    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap")[];
+    handlers: ("generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire")[];
 }>;
 type HandlersListResponse = z.infer<typeof handlersListResponseSchema>;
 
@@ -630,16 +630,16 @@ declare const userUploadResultSchema: z.ZodObject<{
     txHash?: string | undefined;
 }>;
 declare const executeHandlerBodySchema: z.ZodObject<{
-    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
     params: z.ZodOptional<z.ZodUnknown>;
     /** Mongo id of the chat message that displayed the handler CTA (required). */
     ctaMessageId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     ctaMessageId: string;
     params?: unknown;
 }, {
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     ctaMessageId: string;
     params?: unknown;
 }>;
@@ -992,6 +992,113 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"marketplace_hire">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        specialistName: z.ZodString;
+        specialistAgentKey: z.ZodString;
+        category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+        capability: z.ZodOptional<z.ZodString>;
+        userTask: z.ZodOptional<z.ZodString>;
+        marketplacePath: z.ZodDefault<z.ZodString>;
+        agentProfilePath: z.ZodOptional<z.ZodString>;
+        requiredHandler: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>;
 }, "strip", z.ZodTypeAny, {
     message: string;
@@ -1078,6 +1185,35 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         name: string;
@@ -1170,6 +1306,35 @@ declare const executeHandlerResponseSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         name: string;
@@ -1555,6 +1720,115 @@ declare const stardormChatRichBlockSchema: z.ZodDiscriminatedUnion<"type", [z.Zo
         id: string;
     }[] | undefined;
     defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"marketplace_hire">;
+    title: z.ZodString;
+    intro: z.ZodOptional<z.ZodString>;
+    specialistName: z.ZodString;
+    specialistAgentKey: z.ZodString;
+    category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+    capability: z.ZodOptional<z.ZodString>;
+    userTask: z.ZodOptional<z.ZodString>;
+    /** App path to open the marketplace (default `/marketplace`). */
+    marketplacePath: z.ZodDefault<z.ZodString>;
+    /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+    agentProfilePath: z.ZodOptional<z.ZodString>;
+    requiredHandler: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    type: "marketplace_hire";
+    title: string;
+    specialistName: string;
+    specialistAgentKey: string;
+    marketplacePath: string;
+    category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+    intro?: string | undefined;
+    capability?: string | undefined;
+    userTask?: string | undefined;
+    agentProfilePath?: string | undefined;
+    requiredHandler?: string | undefined;
+}, {
+    type: "marketplace_hire";
+    title: string;
+    specialistName: string;
+    specialistAgentKey: string;
+    category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+    intro?: string | undefined;
+    capability?: string | undefined;
+    userTask?: string | undefined;
+    marketplacePath?: string | undefined;
+    agentProfilePath?: string | undefined;
+    requiredHandler?: string | undefined;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"transfer_checkout_form">;
+    title: z.ZodString;
+    intro: z.ZodOptional<z.ZodString>;
+    supportedAssets: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        symbol: z.ZodString;
+        icon: z.ZodString;
+        decimals: z.ZodNumber;
+        address: z.ZodString;
+        usdValue: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }, {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }>, "many">;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    defaultTo: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    type: "transfer_checkout_form";
+    title: string;
+    supportedAssets: {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }[];
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}, {
+    type: "transfer_checkout_form";
+    title: string;
+    supportedAssets: {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }[];
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
 }>]>;
 type StardormChatRichBlock = z.infer<typeof stardormChatRichBlockSchema>;
 declare const stardormChatJsonBodySchema: z.ZodObject<{
@@ -1567,16 +1841,16 @@ declare const stardormChatJsonBodySchema: z.ZodObject<{
 type StardormChatJsonBody = z.infer<typeof stardormChatJsonBodySchema>;
 declare const stardormChatStructuredSchema: z.ZodObject<{
     text: z.ZodString;
-    handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>>;
+    handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>>;
     params: z.ZodOptional<z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     text: string;
     params?: unknown;
-    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
 }, {
     text: string;
     params?: unknown;
-    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+    handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
 }>;
 declare const stardormChatComputeSchema: z.ZodObject<{
     model: z.ZodString;
@@ -1622,16 +1896,16 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     reply: z.ZodString;
     structured: z.ZodOptional<z.ZodObject<{
         text: z.ZodString;
-        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>>;
+        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>>;
         params: z.ZodOptional<z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     }, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     }>>;
     /** Structured card rows for the client (model or server-generated). */
     rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
@@ -1970,6 +2244,115 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"marketplace_hire">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        specialistName: z.ZodString;
+        specialistAgentKey: z.ZodString;
+        category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+        capability: z.ZodOptional<z.ZodString>;
+        userTask: z.ZodOptional<z.ZodString>;
+        /** App path to open the marketplace (default `/marketplace`). */
+        marketplacePath: z.ZodDefault<z.ZodString>;
+        /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+        agentProfilePath: z.ZodOptional<z.ZodString>;
+        requiredHandler: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>;
     /** Files the server uploaded to 0G Storage from the user's chat turn (echoed for immediate render). */
     attachments: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -2023,7 +2406,7 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2108,6 +2491,35 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -2129,7 +2541,7 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2214,6 +2626,35 @@ declare const stardormChatSuccessSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -2236,16 +2677,16 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     reply: z.ZodString;
     structured: z.ZodOptional<z.ZodObject<{
         text: z.ZodString;
-        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>>;
+        handler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>>;
         params: z.ZodOptional<z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     }, {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     }>>;
     /** Structured card rows for the client (model or server-generated). */
     rich: z.ZodOptional<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
@@ -2584,6 +3025,115 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"marketplace_hire">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        specialistName: z.ZodString;
+        specialistAgentKey: z.ZodString;
+        category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+        capability: z.ZodOptional<z.ZodString>;
+        userTask: z.ZodOptional<z.ZodString>;
+        /** App path to open the marketplace (default `/marketplace`). */
+        marketplacePath: z.ZodDefault<z.ZodString>;
+        /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+        agentProfilePath: z.ZodOptional<z.ZodString>;
+        requiredHandler: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>;
     /** Files the server uploaded to 0G Storage from the user's chat turn (echoed for immediate render). */
     attachments: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -2637,7 +3187,7 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2722,6 +3272,35 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -2743,7 +3322,7 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
     structured?: {
         text: string;
         params?: unknown;
-        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | undefined;
+        handler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
     } | undefined;
     rich?: {
         type: "report";
@@ -2828,6 +3407,35 @@ declare const stardormChatClientResultSchema: z.ZodUnion<[z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -2884,14 +3492,14 @@ declare const chatHistoryAttachmentSchema: z.ZodObject<{
     size?: string | undefined;
 }>;
 declare const chatHistoryHandlerCtaSchema: z.ZodObject<{
-    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+    handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
     params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     params: Record<string, unknown>;
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
 }, {
     params: Record<string, unknown>;
-    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+    handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
 }>;
 /** Post-execute affordances derived from handler result (x402 checkout, tax PDF, …). */
 declare const chatFollowUpSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
@@ -3315,17 +3923,168 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"marketplace_hire">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        specialistName: z.ZodString;
+        specialistAgentKey: z.ZodString;
+        category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+        capability: z.ZodOptional<z.ZodString>;
+        userTask: z.ZodOptional<z.ZodString>;
+        marketplacePath: z.ZodDefault<z.ZodString>;
+        agentProfilePath: z.ZodOptional<z.ZodString>;
+        requiredHandler: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }, {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    }>, z.ZodObject<{
+        type: z.ZodLiteral<"transfer_checkout_form">;
+        title: z.ZodString;
+        intro: z.ZodOptional<z.ZodString>;
+        supportedAssets: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            symbol: z.ZodString;
+            icon: z.ZodString;
+            decimals: z.ZodNumber;
+            address: z.ZodString;
+            usdValue: z.ZodOptional<z.ZodNumber>;
+        }, "strip", z.ZodTypeAny, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }, {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }>, "many">;
+        networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            label: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            id: string;
+        }, {
+            label: string;
+            id: string;
+        }>, "many">>;
+        defaultTo: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
+    }, {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     }>]>>;
     handlerCta: z.ZodOptional<z.ZodObject<{
-        handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+        handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
         params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     }, "strip", z.ZodTypeAny, {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     }, {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     }>>;
+    /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
+    result: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+        kind: z.ZodLiteral<"wallet_tx">;
+        status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+        txHash: z.ZodOptional<z.ZodString>;
+        error: z.ZodOptional<z.ZodString>;
+        network: z.ZodOptional<z.ZodString>;
+        chainId: z.ZodOptional<z.ZodNumber>;
+        handler: z.ZodOptional<z.ZodString>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }>, z.ZodObject<{
+        kind: z.ZodLiteral<"server">;
+        status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+        data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    }, {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    }>]>>;
     followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
         kind: z.ZodLiteral<"x402_checkout">;
         /** App-relative path, e.g. `/pay/<mongoId>`. */
@@ -3486,6 +4245,35 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        marketplacePath: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -3494,9 +4282,24 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         hash: string;
         size?: string | undefined;
     }[] | undefined;
+    result?: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    } | undefined;
     handlerCta?: {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     } | undefined;
     followUp?: {
         kind: "x402_checkout";
@@ -3612,6 +4415,35 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
             id: string;
         }[] | undefined;
         defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+    } | {
+        type: "marketplace_hire";
+        title: string;
+        specialistName: string;
+        specialistAgentKey: string;
+        category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+        intro?: string | undefined;
+        capability?: string | undefined;
+        userTask?: string | undefined;
+        marketplacePath?: string | undefined;
+        agentProfilePath?: string | undefined;
+        requiredHandler?: string | undefined;
+    } | {
+        type: "transfer_checkout_form";
+        title: string;
+        supportedAssets: {
+            symbol: string;
+            name: string;
+            icon: string;
+            decimals: number;
+            address: string;
+            usdValue?: number | undefined;
+        }[];
+        intro?: string | undefined;
+        networks?: {
+            label: string;
+            id: string;
+        }[] | undefined;
+        defaultTo?: string | undefined;
     } | undefined;
     attachments?: {
         id: string;
@@ -3620,9 +4452,24 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         hash: string;
         size?: string | undefined;
     }[] | undefined;
+    result?: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    } | undefined;
     handlerCta?: {
         params: Record<string, unknown>;
-        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+        handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
     } | undefined;
     followUp?: {
         kind: "x402_checkout";
@@ -4007,17 +4854,168 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"marketplace_hire">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            specialistName: z.ZodString;
+            specialistAgentKey: z.ZodString;
+            category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+            capability: z.ZodOptional<z.ZodString>;
+            userTask: z.ZodOptional<z.ZodString>;
+            marketplacePath: z.ZodDefault<z.ZodString>;
+            agentProfilePath: z.ZodOptional<z.ZodString>;
+            requiredHandler: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
-            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         }, "strip", z.ZodTypeAny, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }>>;
+        /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
+        result: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"wallet_tx">;
+            status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+            txHash: z.ZodOptional<z.ZodString>;
+            error: z.ZodOptional<z.ZodString>;
+            network: z.ZodOptional<z.ZodString>;
+            chainId: z.ZodOptional<z.ZodNumber>;
+            handler: z.ZodOptional<z.ZodString>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"server">;
+            status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+            data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        }, {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        }>]>>;
         followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
             kind: z.ZodLiteral<"x402_checkout">;
             /** App-relative path, e.g. `/pay/<mongoId>`. */
@@ -4178,6 +5176,35 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -4186,9 +5213,24 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -4304,6 +5346,35 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -4312,9 +5383,24 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -4438,6 +5524,35 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -4446,9 +5561,24 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -4570,6 +5700,35 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -4578,9 +5737,24 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -5129,17 +6303,167 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"marketplace_hire">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            specialistName: z.ZodString;
+            specialistAgentKey: z.ZodString;
+            category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+            capability: z.ZodOptional<z.ZodString>;
+            userTask: z.ZodOptional<z.ZodString>;
+            marketplacePath: z.ZodDefault<z.ZodString>;
+            agentProfilePath: z.ZodOptional<z.ZodString>;
+            requiredHandler: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
-            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         }, "strip", z.ZodTypeAny, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }>>;
+        result: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"wallet_tx">;
+            status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+            txHash: z.ZodOptional<z.ZodString>;
+            error: z.ZodOptional<z.ZodString>;
+            network: z.ZodOptional<z.ZodString>;
+            chainId: z.ZodOptional<z.ZodNumber>;
+            handler: z.ZodOptional<z.ZodString>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"server">;
+            status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+            data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        }, {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        }>]>>;
         followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
             kind: z.ZodLiteral<"x402_checkout">;
             payPath: z.ZodString;
@@ -5298,6 +6622,35 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -5306,9 +6659,24 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -5424,6 +6792,35 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -5432,9 +6829,24 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -5553,6 +6965,35 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -5561,9 +7002,24 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -5684,6 +7140,35 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -5692,9 +7177,24 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -6118,17 +7618,167 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"marketplace_hire">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            specialistName: z.ZodString;
+            specialistAgentKey: z.ZodString;
+            category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+            capability: z.ZodOptional<z.ZodString>;
+            userTask: z.ZodOptional<z.ZodString>;
+            marketplacePath: z.ZodDefault<z.ZodString>;
+            agentProfilePath: z.ZodOptional<z.ZodString>;
+            requiredHandler: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }, {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        }>, z.ZodObject<{
+            type: z.ZodLiteral<"transfer_checkout_form">;
+            title: z.ZodString;
+            intro: z.ZodOptional<z.ZodString>;
+            supportedAssets: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                symbol: z.ZodString;
+                icon: z.ZodString;
+                decimals: z.ZodNumber;
+                address: z.ZodString;
+                usdValue: z.ZodOptional<z.ZodNumber>;
+            }, "strip", z.ZodTypeAny, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }, {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }>, "many">;
+            networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                label: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                label: string;
+                id: string;
+            }, {
+                label: string;
+                id: string;
+            }>, "many">>;
+            defaultTo: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
+        }, {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         }>]>>;
         handlerCta: z.ZodOptional<z.ZodObject<{
-            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap"]>;
+            handler: z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>;
             params: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         }, "strip", z.ZodTypeAny, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }, {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         }>>;
+        result: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"wallet_tx">;
+            status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+            txHash: z.ZodOptional<z.ZodString>;
+            error: z.ZodOptional<z.ZodString>;
+            network: z.ZodOptional<z.ZodString>;
+            chainId: z.ZodOptional<z.ZodNumber>;
+            handler: z.ZodOptional<z.ZodString>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }, {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"server">;
+            status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+            data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+            updatedAt: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        }, {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        }>]>>;
         followUp: z.ZodOptional<z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
             kind: z.ZodLiteral<"x402_checkout">;
             payPath: z.ZodString;
@@ -6287,6 +7937,35 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -6295,9 +7974,24 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -6413,6 +8107,35 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -6421,9 +8144,24 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -6542,6 +8280,35 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            marketplacePath: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -6550,9 +8317,24 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            status: "failed" | "completed";
+            updatedAt: number;
+            kind: "server";
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -6673,6 +8455,35 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
                 id: string;
             }[] | undefined;
             defaultPoolFee?: 500 | 3000 | 10000 | undefined;
+        } | {
+            type: "marketplace_hire";
+            title: string;
+            specialistName: string;
+            specialistAgentKey: string;
+            category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+            intro?: string | undefined;
+            capability?: string | undefined;
+            userTask?: string | undefined;
+            marketplacePath?: string | undefined;
+            agentProfilePath?: string | undefined;
+            requiredHandler?: string | undefined;
+        } | {
+            type: "transfer_checkout_form";
+            title: string;
+            supportedAssets: {
+                symbol: string;
+                name: string;
+                icon: string;
+                decimals: number;
+                address: string;
+                usdValue?: number | undefined;
+            }[];
+            intro?: string | undefined;
+            networks?: {
+                label: string;
+                id: string;
+            }[] | undefined;
+            defaultTo?: string | undefined;
         } | undefined;
         attachments?: {
             id: string;
@@ -6681,9 +8492,24 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             hash: string;
             size?: string | undefined;
         }[] | undefined;
+        result?: {
+            status: "submitted" | "confirmed" | "failed";
+            updatedAt: number;
+            kind: "wallet_tx";
+            txHash?: string | undefined;
+            handler?: string | undefined;
+            error?: string | undefined;
+            network?: string | undefined;
+            chainId?: number | undefined;
+        } | {
+            updatedAt: number;
+            kind: "server";
+            status?: "failed" | "completed" | undefined;
+            data?: Record<string, unknown> | undefined;
+        } | undefined;
         handlerCta?: {
             params: Record<string, unknown>;
-            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap";
+            handler: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire";
         } | undefined;
         followUp?: {
             kind: "x402_checkout";
@@ -6984,10 +8810,10 @@ declare const publicPaymentRequestSchema: z.ZodObject<{
     status: "pending" | "paid" | "expired" | "cancelled";
     id: string;
     title: string;
+    network: string;
     asset: string;
     amount: string;
     payTo: string;
-    network: string;
     description?: string | undefined;
     txHash?: string | undefined;
     decimals?: number | undefined;
@@ -7009,10 +8835,10 @@ declare const publicPaymentRequestSchema: z.ZodObject<{
     status: "pending" | "paid" | "expired" | "cancelled";
     id: string;
     title: string;
+    network: string;
     asset: string;
     amount: string;
     payTo: string;
-    network: string;
     description?: string | undefined;
     txHash?: string | undefined;
     decimals?: number | undefined;
@@ -7085,10 +8911,10 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         status: "pending" | "paid" | "expired" | "cancelled";
         id: string;
         title: string;
+        network: string;
         asset: string;
         amount: string;
         payTo: string;
-        network: string;
         description?: string | undefined;
         txHash?: string | undefined;
         decimals?: number | undefined;
@@ -7110,10 +8936,10 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         status: "pending" | "paid" | "expired" | "cancelled";
         id: string;
         title: string;
+        network: string;
         asset: string;
         amount: string;
         payTo: string;
-        network: string;
         description?: string | undefined;
         txHash?: string | undefined;
         decimals?: number | undefined;
@@ -7137,10 +8963,10 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         status: "pending" | "paid" | "expired" | "cancelled";
         id: string;
         title: string;
+        network: string;
         asset: string;
         amount: string;
         payTo: string;
-        network: string;
         description?: string | undefined;
         txHash?: string | undefined;
         decimals?: number | undefined;
@@ -7164,10 +8990,10 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         status: "pending" | "paid" | "expired" | "cancelled";
         id: string;
         title: string;
+        network: string;
         asset: string;
         amount: string;
         payTo: string;
-        network: string;
         description?: string | undefined;
         txHash?: string | undefined;
         decimals?: number | undefined;
@@ -7320,7 +9146,7 @@ declare const onRampRecordSchema: z.ZodObject<{
     createdAt: z.ZodOptional<z.ZodDate>;
     updatedAt: z.ZodOptional<z.ZodDate>;
 }, "strip", z.ZodTypeAny, {
-    status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+    status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
     id: string;
     walletAddress: string;
     network: string;
@@ -7338,7 +9164,7 @@ declare const onRampRecordSchema: z.ZodObject<{
     fulfillmentTxHash?: string | undefined;
     errorMessage?: string | undefined;
 }, {
-    status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+    status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
     id: string;
     walletAddress: string;
     network: string;
@@ -7386,7 +9212,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
         createdAt: z.ZodOptional<z.ZodDate>;
         updatedAt: z.ZodOptional<z.ZodDate>;
     }, "strip", z.ZodTypeAny, {
-        status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
         id: string;
         walletAddress: string;
         network: string;
@@ -7404,7 +9230,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
         fulfillmentTxHash?: string | undefined;
         errorMessage?: string | undefined;
     }, {
-        status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
         id: string;
         walletAddress: string;
         network: string;
@@ -7424,7 +9250,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
         id: string;
         walletAddress: string;
         network: string;
@@ -7444,7 +9270,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
     }[];
 }, {
     items: {
-        status: "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "failed" | "canceled";
+        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
         id: string;
         walletAddress: string;
         network: string;
@@ -8236,4 +10062,419 @@ declare const draftTokenSwapInputSchema: z.ZodObject<{
 }>;
 type DraftTokenSwapInput = z.infer<typeof draftTokenSwapInputSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SwapFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+declare const transferFormNetworkOptionSchema: z.ZodObject<{
+    id: z.ZodString;
+    label: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    label: string;
+    id: string;
+}, {
+    label: string;
+    id: string;
+}>;
+/** Persisted on the chat CTA row until the user submits the transfer form. */
+declare const transferFormCtaParamsSchema: z.ZodObject<{
+    _transferForm: z.ZodLiteral<true>;
+    supportedAssets: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        symbol: z.ZodString;
+        icon: z.ZodString;
+        decimals: z.ZodNumber;
+        address: z.ZodString;
+        usdValue: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }, {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }>, "many">;
+    networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        label: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        label: string;
+        id: string;
+    }, {
+        label: string;
+        id: string;
+    }>, "many">>;
+    intro: z.ZodOptional<z.ZodString>;
+    /** When set, pre-fill recipient in the form. */
+    defaultTo: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string, string>>;
+}, "strip", z.ZodTypeAny, {
+    supportedAssets: {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }[];
+    _transferForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}, {
+    supportedAssets: {
+        symbol: string;
+        name: string;
+        icon: string;
+        decimals: number;
+        address: string;
+        usdValue?: number | undefined;
+    }[];
+    _transferForm: true;
+    intro?: string | undefined;
+    networks?: {
+        label: string;
+        id: string;
+    }[] | undefined;
+    defaultTo?: string | undefined;
+}>;
+type TransferFormCtaParams = z.infer<typeof transferFormCtaParamsSchema>;
+declare function isTransferFormCtaParams(v: unknown): v is TransferFormCtaParams;
+
+/** Known Beam catalog specialist keys (subgraph / marketplace). */
+declare const marketplaceSpecialistAgentKeySchema: z.ZodString;
+declare const suggestMarketplaceHireInputSchema: z.ZodObject<{
+    specialistAgentKey: z.ZodString;
+    specialistName: z.ZodOptional<z.ZodString>;
+    category: z.ZodOptional<z.ZodEnum<["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"]>>;
+    /** One line: what the specialist runs for the user (handler names ok). */
+    capability: z.ZodOptional<z.ZodString>;
+    /** Short description of what the user was trying to do. */
+    userTask: z.ZodOptional<z.ZodString>;
+    intro: z.ZodOptional<z.ZodString>;
+    /** Optional handler the user needs after hiring (for display only). */
+    requiredHandler: z.ZodOptional<z.ZodEnum<["generate_tax_report", "create_x402_payment", "on_ramp_tokens", "complete_stripe_kyc", "create_credit_card", "generate_payment_invoice", "generate_financial_activity_report", "draft_native_transfer", "draft_erc20_transfer", "draft_nft_transfer", "draft_token_swap", "suggest_marketplace_hire"]>>;
+}, "strip", z.ZodTypeAny, {
+    specialistAgentKey: string;
+    category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+    intro?: string | undefined;
+    specialistName?: string | undefined;
+    capability?: string | undefined;
+    userTask?: string | undefined;
+    requiredHandler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+}, {
+    specialistAgentKey: string;
+    category?: "Payments" | "Taxes" | "Reports" | "DeFi" | "Compliance" | "General" | undefined;
+    intro?: string | undefined;
+    specialistName?: string | undefined;
+    capability?: string | undefined;
+    userTask?: string | undefined;
+    requiredHandler?: "generate_tax_report" | "create_x402_payment" | "on_ramp_tokens" | "complete_stripe_kyc" | "create_credit_card" | "generate_payment_invoice" | "generate_financial_activity_report" | "draft_native_transfer" | "draft_erc20_transfer" | "draft_nft_transfer" | "draft_token_swap" | "suggest_marketplace_hire" | undefined;
+}>;
+type SuggestMarketplaceHireInput = z.infer<typeof suggestMarketplaceHireInputSchema>;
+
+/** Outcome after a wallet-signed handler CTA (transfer, swap, …). */
+declare const chatHandlerWalletTxResultSchema: z.ZodObject<{
+    kind: z.ZodLiteral<"wallet_tx">;
+    status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+    txHash: z.ZodOptional<z.ZodString>;
+    error: z.ZodOptional<z.ZodString>;
+    network: z.ZodOptional<z.ZodString>;
+    chainId: z.ZodOptional<z.ZodNumber>;
+    handler: z.ZodOptional<z.ZodString>;
+    updatedAt: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    status: "submitted" | "confirmed" | "failed";
+    updatedAt: number;
+    kind: "wallet_tx";
+    txHash?: string | undefined;
+    handler?: string | undefined;
+    error?: string | undefined;
+    network?: string | undefined;
+    chainId?: number | undefined;
+}, {
+    status: "submitted" | "confirmed" | "failed";
+    updatedAt: number;
+    kind: "wallet_tx";
+    txHash?: string | undefined;
+    handler?: string | undefined;
+    error?: string | undefined;
+    network?: string | undefined;
+    chainId?: number | undefined;
+}>;
+type ChatHandlerWalletTxResult = z.infer<typeof chatHandlerWalletTxResultSchema>;
+/** Outcome after `execute-handler` (server job, checkout created, draft recorded, …). */
+declare const chatHandlerServerResultSchema: z.ZodObject<{
+    kind: z.ZodLiteral<"server">;
+    status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+    data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    updatedAt: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    status: "failed" | "completed";
+    updatedAt: number;
+    kind: "server";
+    data?: Record<string, unknown> | undefined;
+}, {
+    updatedAt: number;
+    kind: "server";
+    status?: "failed" | "completed" | undefined;
+    data?: Record<string, unknown> | undefined;
+}>;
+type ChatHandlerServerResult = z.infer<typeof chatHandlerServerResultSchema>;
+declare const chatHandlerResultSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+    kind: z.ZodLiteral<"wallet_tx">;
+    status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+    txHash: z.ZodOptional<z.ZodString>;
+    error: z.ZodOptional<z.ZodString>;
+    network: z.ZodOptional<z.ZodString>;
+    chainId: z.ZodOptional<z.ZodNumber>;
+    handler: z.ZodOptional<z.ZodString>;
+    updatedAt: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    status: "submitted" | "confirmed" | "failed";
+    updatedAt: number;
+    kind: "wallet_tx";
+    txHash?: string | undefined;
+    handler?: string | undefined;
+    error?: string | undefined;
+    network?: string | undefined;
+    chainId?: number | undefined;
+}, {
+    status: "submitted" | "confirmed" | "failed";
+    updatedAt: number;
+    kind: "wallet_tx";
+    txHash?: string | undefined;
+    handler?: string | undefined;
+    error?: string | undefined;
+    network?: string | undefined;
+    chainId?: number | undefined;
+}>, z.ZodObject<{
+    kind: z.ZodLiteral<"server">;
+    status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+    data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    updatedAt: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    status: "failed" | "completed";
+    updatedAt: number;
+    kind: "server";
+    data?: Record<string, unknown> | undefined;
+}, {
+    updatedAt: number;
+    kind: "server";
+    status?: "failed" | "completed" | undefined;
+    data?: Record<string, unknown> | undefined;
+}>]>;
+type ChatHandlerResult = z.infer<typeof chatHandlerResultSchema>;
+declare const patchChatMessageResultBodySchema: z.ZodObject<{
+    result: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+        kind: z.ZodLiteral<"wallet_tx">;
+        status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+        txHash: z.ZodOptional<z.ZodString>;
+        error: z.ZodOptional<z.ZodString>;
+        network: z.ZodOptional<z.ZodString>;
+        chainId: z.ZodOptional<z.ZodNumber>;
+        handler: z.ZodOptional<z.ZodString>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }>, z.ZodObject<{
+        kind: z.ZodLiteral<"server">;
+        status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+        data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    }, {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    }>]>;
+}, "strip", z.ZodTypeAny, {
+    result: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    };
+}, {
+    result: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    };
+}>;
+type PatchChatMessageResultBody = z.infer<typeof patchChatMessageResultBodySchema>;
+declare const patchChatMessageResultResponseSchema: z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    messageId: z.ZodString;
+    result: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+        kind: z.ZodLiteral<"wallet_tx">;
+        status: z.ZodEnum<["submitted", "confirmed", "failed"]>;
+        txHash: z.ZodOptional<z.ZodString>;
+        error: z.ZodOptional<z.ZodString>;
+        network: z.ZodOptional<z.ZodString>;
+        chainId: z.ZodOptional<z.ZodNumber>;
+        handler: z.ZodOptional<z.ZodString>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }, {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    }>, z.ZodObject<{
+        kind: z.ZodLiteral<"server">;
+        status: z.ZodDefault<z.ZodEnum<["completed", "failed"]>>;
+        data: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+        updatedAt: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    }, {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    }>]>;
+    rich: z.ZodOptional<z.ZodObject<{
+        type: z.ZodLiteral<"tx">;
+        title: z.ZodString;
+        rows: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            value: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            value: string;
+        }, {
+            label: string;
+            value: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }, {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    result: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        status: "failed" | "completed";
+        updatedAt: number;
+        kind: "server";
+        data?: Record<string, unknown> | undefined;
+    };
+    ok: true;
+    messageId: string;
+    rich?: {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | undefined;
+}, {
+    result: {
+        status: "submitted" | "confirmed" | "failed";
+        updatedAt: number;
+        kind: "wallet_tx";
+        txHash?: string | undefined;
+        handler?: string | undefined;
+        error?: string | undefined;
+        network?: string | undefined;
+        chainId?: number | undefined;
+    } | {
+        updatedAt: number;
+        kind: "server";
+        status?: "failed" | "completed" | undefined;
+        data?: Record<string, unknown> | undefined;
+    };
+    ok: true;
+    messageId: string;
+    rich?: {
+        type: "tx";
+        title: string;
+        rows?: {
+            label: string;
+            value: string;
+        }[] | undefined;
+    } | undefined;
+}>;
+type PatchChatMessageResultResponse = z.infer<typeof patchChatMessageResultResponseSchema>;
+
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHandlerResult, type ChatHandlerServerResult, type ChatHandlerWalletTxResult, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PatchChatMessageResultBody, type PatchChatMessageResultResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SuggestMarketplaceHireInput, type SwapFormCtaParams, type TransferFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

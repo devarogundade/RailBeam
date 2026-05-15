@@ -21,9 +21,11 @@ import {
   offerOnRampCheckoutFormToolArgsSchema,
   offerCreditCardCheckoutFormToolArgsSchema,
   offerSwapCheckoutFormToolArgsSchema,
+  offerTransferCheckoutFormToolArgsSchema,
   x402CheckoutFormCtaParamsSchema,
   creditCardFormCtaParamsSchema,
   swapFormCtaParamsSchema,
+  transferFormCtaParamsSchema,
   type GenerateTaxReportToolArgs,
   type X402Input,
   type CreateX402PaymentToolArgs,
@@ -42,6 +44,7 @@ import {
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
   draftTokenSwapInputSchema,
+  suggestMarketplaceHireInputSchema,
 } from '@beam/stardorm-api-contract';
 import type { OpenAiCompletionAssistantMessage } from '../og/chat-completion.schema';
 import {
@@ -55,6 +58,15 @@ import {
   BEAM_MAINNET_SWAP_ROUTER,
   defaultBeamSwapFormPayload,
 } from '../beam/beam-swap.config';
+import {
+  beamKnownAssetsPromptBlock,
+  defaultBeamTransferFormPayload,
+  normalizeErc20TransferToolArgs,
+} from '../beam/beam-transfer.config';
+import {
+  BEAM_MARKETPLACE_SPECIALIST_DEFAULTS,
+  marketplaceHireRichFromInput,
+} from '../beam/beam-marketplace-specialists';
 
 function formatBase10Integer(raw: string): string {
   const digits = raw.replace(/\s+/g, '');
@@ -107,6 +119,7 @@ const OFFER_X402_CHECKOUT_FORM = 'offer_x402_checkout_form' as const;
 const OFFER_ON_RAMP_CHECKOUT_FORM = 'offer_on_ramp_checkout_form' as const;
 const OFFER_CREDIT_CARD_CHECKOUT_FORM = 'offer_credit_card_checkout_form' as const;
 const OFFER_SWAP_CHECKOUT_FORM = 'offer_swap_checkout_form' as const;
+const OFFER_TRANSFER_CHECKOUT_FORM = 'offer_transfer_checkout_form' as const;
 
 function handlerIdsForJsonContract(): string {
   return HANDLER_ACTION_IDS.map((h) => `"${h}"`).join('|');
@@ -262,11 +275,14 @@ export const agentComputeReplySchema = z
       }
     }
     if (handler === 'draft_erc20_transfer') {
+      const form = transferFormCtaParamsSchema.safeParse(params);
+      if (form.success) return;
       const r = draftErc20TransferInputSchema.safeParse(params);
       if (!r.success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Invalid params for draft_erc20_transfer',
+          message:
+            'Invalid params for draft_erc20_transfer (need full transfer fields or a transfer checkout form payload)',
           path: ['params'],
         });
       }
@@ -290,6 +306,16 @@ export const agentComputeReplySchema = z
           code: z.ZodIssueCode.custom,
           message:
             'Invalid params for draft_token_swap (need full swap fields or a swap checkout form payload)',
+          path: ['params'],
+        });
+      }
+    }
+    if (handler === 'suggest_marketplace_hire') {
+      const r = suggestMarketplaceHireInputSchema.safeParse(params);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid params for suggest_marketplace_hire',
           path: ['params'],
         });
       }
@@ -368,7 +394,9 @@ export type AgentComputeReplyWithParams =
   | {
       text: string;
       handler: 'draft_erc20_transfer';
-      params: z.infer<typeof draftErc20TransferInputSchema>;
+      params:
+        | z.infer<typeof draftErc20TransferInputSchema>
+        | z.infer<typeof transferFormCtaParamsSchema>;
       rich?: AgentRichCard;
     }
   | {
@@ -383,6 +411,12 @@ export type AgentComputeReplyWithParams =
       params:
         | z.infer<typeof draftTokenSwapInputSchema>
         | z.infer<typeof swapFormCtaParamsSchema>;
+      rich?: AgentRichCard;
+    }
+  | {
+      text: string;
+      handler: 'suggest_marketplace_hire';
+      params: z.infer<typeof suggestMarketplaceHireInputSchema>;
       rich?: AgentRichCard;
     };
 
@@ -500,6 +534,26 @@ export function asTypedAgentReply(
     return { text: r.text, handler: 'draft_native_transfer', params: p, rich: filledRich };
   }
   if (r.handler === 'draft_erc20_transfer') {
+    const formTry = transferFormCtaParamsSchema.safeParse(r.params);
+    if (formTry.success) {
+      const defaults = defaultBeamTransferFormPayload();
+      const filledRich: AgentRichCard | undefined =
+        rich ??
+        ({
+          type: 'transfer_checkout_form',
+          title: 'Token transfer',
+          supportedAssets: formTry.data.supportedAssets,
+          networks: formTry.data.networks ?? defaults.networks,
+          intro: formTry.data.intro,
+          defaultTo: formTry.data.defaultTo,
+        } as unknown as AgentRichCard);
+      return {
+        text: r.text,
+        handler: 'draft_erc20_transfer',
+        params: formTry.data,
+        rich: filledRich,
+      };
+    }
     const p = draftErc20TransferInputSchema.parse(r.params);
     const filledRich = rich ?? txRichFromErc20Draft(p);
     return { text: r.text, handler: 'draft_erc20_transfer', params: p, rich: filledRich };
@@ -533,6 +587,16 @@ export function asTypedAgentReply(
     const p = draftTokenSwapInputSchema.parse(r.params);
     const filledRich = rich ?? txRichFromTokenSwapDraft(p);
     return { text: r.text, handler: 'draft_token_swap', params: p, rich: filledRich };
+  }
+  if (r.handler === 'suggest_marketplace_hire') {
+    const p = suggestMarketplaceHireInputSchema.parse(r.params);
+    const filledRich = rich ?? marketplaceHireRichFromInput(p);
+    return {
+      text: r.text,
+      handler: 'suggest_marketplace_hire',
+      params: p,
+      rich: filledRich,
+    };
   }
   return { text: r.text, rich };
 }
@@ -580,12 +644,14 @@ export function buildAgentOutputContract(
           '- If the user asks for a virtual company payment card, billing profile on file, or card spend balance: tell them to hire **Capita** (agentKey `capita`, Payments), switch to that agent, then ask again.',
           '- If the user asks for a wallet invoice or PDF covering their checkouts, on-ramp, cards, and KYC: tell them to hire **Ledger** (agentKey `ledger`, Payments), switch to that agent, then ask again.',
           '- If the user asks for an activity snapshot or treasury-style counts across payments, on-ramp, cards, and KYC: tell them to hire **Scribe** or **Audita** (Reports), or **Settler** (Payments for settlements), switch agents, then ask again.',
-          '- Whenever any bullet above applies, you MUST also set "rich" to {"type":"report",...}: title names the task; rows include Specialist (display name + agentKey in backticks + category), What they run (one line), Next steps (marketplace → hire → switch active agent → ask again). Do not answer with text alone for those redirects.',
+          '- Whenever any bullet above applies, set handler `suggest_marketplace_hire` with `specialistAgentKey` and matching `rich` type `marketplace_hire`. Do not answer with text alone.',
         ].join('\n')
       : '';
   return [
     'You are a Stardorm financial agent.',
     STARDORM_AGENT_CAIP2_NETWORKS,
+    beamKnownAssetsPromptBlock(),
+    beamMarketplaceSpecialistsPromptBlock(),
     'Your entire reply MUST be a single JSON object only (no markdown, no prose outside JSON).',
     `JSON shape: {"text": string, "handler"?: ${handlerIdsForJsonContract()}|null, "params"?: object|null, "rich"?: …}`,
     'Rules:',
@@ -630,7 +696,10 @@ export function buildAgentOutputContract(
       ? '- draft_native_transfer params: `network` (CAIP-2 `eip155:<chainId>`), `to` (0x…40 recipient), `valueWei` (positive integer string wei), optional `note`. Never invent addresses or amounts.'
       : '',
     allowed.includes('draft_erc20_transfer')
-      ? '- draft_erc20_transfer params: `network` (CAIP-2), `token` (ERC-20 contract 0x…40), `tokenDecimals` (0–36), optional `tokenSymbol`, `to` (0x…40), `amountWei` (positive integer string base units), optional `note`. Never invent contracts or amounts.'
+      ? [
+          '- draft_erc20_transfer (JSON-only): use when the user message states `network` (or mainnet/testnet), `to` (0x…40), human or wei amount, and token (USDC.e / USDC.e contract — never ask for USDC.e address on 0G).',
+          '- Transfer checkout form: params `{"_transferForm":true,"supportedAssets":[...], ...}` and matching `rich` type `transfer_checkout_form` when any required field is missing; use only tokens from the supported list.',
+        ].join('\n')
       : '',
     allowed.includes('draft_nft_transfer')
       ? '- draft_nft_transfer params: `network` (CAIP-2), `contract` (NFT collection 0x…40), `standard` (`erc721` default or `erc1155`), `to` (0x…40), `tokenId` (decimal string). For ERC-1155 include required positive integer string `amount`; omit `amount` for ERC-721. Optional `note`. Never invent token ids or contracts.'
@@ -642,6 +711,7 @@ export function buildAgentOutputContract(
           '- Swap checkout form: params `{"_swapForm":true,"supportedAssets":[...], ...}` and matching `rich` type `swap_checkout_form` when any field is missing; use only tokens from the supported list.',
         ].join('\n')
       : '',
+    '- suggest_marketplace_hire params: `specialistAgentKey` (required), optional `specialistName`, `category`, `capability`, `userTask`, `intro`, `requiredHandler`. Use matching `rich` type `marketplace_hire`.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -697,7 +767,17 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
   if (handler === 'draft_token_swap') {
     return 'I can save a Uniswap V3 swap on 0G mainnet you confirm — your wallet will approve the router if needed, then call exactInputSingle.';
   }
+  if (handler === 'suggest_marketplace_hire') {
+    return 'You will need a marketplace specialist for that — see the card below.';
+  }
   return 'I can run that action on request.';
+}
+
+function beamMarketplaceSpecialistsPromptBlock(): string {
+  const rows = Object.entries(BEAM_MARKETPLACE_SPECIALIST_DEFAULTS).map(
+    ([key, meta]) => `${key} (${meta.category}): ${meta.capability}`,
+  );
+  return ['Beam marketplace specialists (agentKey → capability):', ...rows].join('\n');
 }
 
 function fmtTaxDatePart(p: { year: number; month: number; day: number }): string {
@@ -1009,7 +1089,8 @@ export function agentReplyFromChatCompletion(
         };
       }
       if (name === 'draft_erc20_transfer') {
-        const full = draftErc20TransferInputSchema.safeParse(rec);
+        const normalized = normalizeErc20TransferToolArgs(rec);
+        const full = draftErc20TransferInputSchema.safeParse(normalized);
         if (!full.success) continue;
         const richCard = txRichFromErc20Draft(full.data);
         return {
@@ -1201,6 +1282,72 @@ export function agentReplyFromChatCompletion(
         'Pick the tokens and amount in the form below (0G mainnet only), then tap **Confirm swap draft**. Your wallet will approve the router if needed, then sign the swap.';
       return { text, handler: 'draft_token_swap', params, rich };
     }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (
+        name !== OFFER_TRANSFER_CHECKOUT_FORM ||
+        !allowedHandlers.includes('draft_erc20_transfer')
+      ) {
+        continue;
+      }
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const rec = parsedArgs as Record<string, unknown>;
+      const parsed = offerTransferCheckoutFormToolArgsSchema.safeParse(rec);
+      if (!parsed.success) continue;
+      const defaults = defaultBeamTransferFormPayload();
+      const params = transferFormCtaParamsSchema.parse({
+        _transferForm: true as const,
+        supportedAssets: parsed.data.supportedAssets,
+        networks: parsed.data.networks ?? defaults.networks,
+        intro: parsed.data.intro,
+        defaultTo: parsed.data.defaultTo,
+      });
+      const rich = {
+        type: 'transfer_checkout_form' as const,
+        title: parsed.data.formTitle ?? 'Token transfer',
+        intro: parsed.data.intro,
+        supportedAssets: params.supportedAssets,
+        networks: params.networks,
+        defaultTo: params.defaultTo,
+      } as AgentRichCard;
+      const offerText =
+        content.trim() ||
+        'Pick the token, recipient, and amount in the form below (0G mainnet or testnet), then tap **Confirm transfer draft**. Your wallet will sign the ERC-20 transfer.';
+      return { text: offerText, handler: 'draft_erc20_transfer', params, rich };
+    }
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const name = tc.function?.name;
+      if (name !== 'suggest_marketplace_hire') continue;
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments?.trim() || '{}');
+      } catch {
+        continue;
+      }
+      if (!parsedArgs || typeof parsedArgs !== 'object') continue;
+      const full = suggestMarketplaceHireInputSchema.safeParse(parsedArgs);
+      if (!full.success) continue;
+      const rich = marketplaceHireRichFromInput(full.data);
+      const text =
+        content.trim() ||
+        `Hire **${rich.specialistName}** on the marketplace, set them as this chat’s active agent, then ask again.`;
+      return {
+        text,
+        handler: 'suggest_marketplace_hire',
+        params: full.data,
+        rich,
+      };
+    }
   }
   return structuredReplyFromModelContent(content, allowedHandlers);
 }
@@ -1231,15 +1378,22 @@ export function buildAgentToolCallingSystemPrompt(
       ? ['generate_financial_activity_report']
       : []),
     ...(allowed.includes('draft_native_transfer') ? ['draft_native_transfer'] : []),
-    ...(allowed.includes('draft_erc20_transfer') ? ['draft_erc20_transfer'] : []),
+    ...(allowed.includes('draft_erc20_transfer')
+      ? ['draft_erc20_transfer', 'offer_transfer_checkout_form']
+      : []),
     ...(allowed.includes('draft_nft_transfer') ? ['draft_nft_transfer'] : []),
     ...(allowed.includes('draft_token_swap')
       ? ['draft_token_swap', 'offer_swap_checkout_form']
+      : []),
+    ...(allowed.includes('suggest_marketplace_hire')
+      ? ['suggest_marketplace_hire']
       : []),
   ].join(', ');
   return [
     'You are Stardorm chat: a concise financial assistant.',
     STARDORM_AGENT_CAIP2_NETWORKS,
+    beamKnownAssetsPromptBlock(),
+    beamMarketplaceSpecialistsPromptBlock(),
     'Put the user-visible answer in the message content (plain language).',
     toolNames
       ? `When a one-tap server action is appropriate, call at most one function tool from this list: ${toolNames}.`
@@ -1283,7 +1437,12 @@ export function buildAgentToolCallingSystemPrompt(
       ? 'For native transfers: call **draft_native_transfer** only when the user message states `network` (CAIP-2), full `to` address, and `valueWei` as a positive integer wei string. Remind them to tap **Confirm transfer draft** — the server records the plan; they sign in Beam Send or their wallet.'
       : '',
     allowed.includes('draft_erc20_transfer')
-      ? 'For ERC-20 transfers: call **draft_erc20_transfer** only when the user states `network`, `token` contract, `tokenDecimals`, `to`, and `amountWei` (base units string). Optional `tokenSymbol`. Remind them to tap **Confirm transfer draft** then sign in their wallet.'
+      ? [
+          'For ERC-20 transfers: USDC.e on 0G mainnet is `0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E` (6 decimals). Map “mainnet” → `eip155:16661`, “testnet” → `eip155:16602`. Never ask the user for the USDC.e contract if they said USDC.e / USDCE on 0G.',
+          'If the user already states network (or mainnet/testnet), recipient `to`, amount (convert to `amountWei`), and token (symbol or address), call **draft_erc20_transfer** with those exact values.',
+          'If anything is missing, call **offer_transfer_checkout_form** with `supportedAssets` (and optional `networks`, optional `defaultTo` when they gave a recipient only).',
+          'After proposing a transfer draft, remind them to tap **Send token transfer** (or confirm the form first) — the chat card will show the transaction hash when the wallet broadcast completes.',
+        ].join(' ')
       : '',
     allowed.includes('draft_nft_transfer')
       ? 'For NFT transfers: call **draft_nft_transfer** when the user states `network`, collection `contract`, `to`, `tokenId`, and `standard` (erc721 vs erc1155). For ERC-1155 include `amount`. Remind them to tap **Confirm transfer draft** then sign the safeTransferFrom (or equivalent) in their wallet.'
@@ -1298,11 +1457,11 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     !allowed.includes('complete_stripe_kyc')
       ? [
-          'KYC / identity: if the user asks to start identity verification, KYC, Stripe Identity, or ID checks, explain that **Passport** (agentKey `passport`, Compliance) owns the `complete_stripe_kyc` action on Beam.',
-          'Tell them to open the agent marketplace, hire or subscribe to Passport, set Passport as this chat’s active agent, then ask again for the one-tap **Start identity verification** button.',
-          'Never say you have no tool or that the product lacks verification—this agent’s toolkit is different from Passport’s.',
+          'KYC / identity: if the user asks to start identity verification, KYC, Stripe Identity, or ID checks, call **suggest_marketplace_hire** with specialistAgentKey `passport` and userTask like "complete identity verification".',
+          'Never say you have no tool or that the product lacks verification—route to Passport on the marketplace.',
         ].join(' ')
       : '',
+    'When the user asks for any capability you do not have tools for (see your allowed handler list), call **suggest_marketplace_hire** with the right specialistAgentKey instead of asking them to guess contract addresses or listing steps only in prose.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -1348,27 +1507,20 @@ export function enrichAgentReplyWithMarketplaceRouting(args: {
       looksLikeToolDenialAssistantText(reply.text) || !reply.text.trim()
         ? canned
         : reply.text;
+    const rich = marketplaceHireRichFromInput({
+      specialistAgentKey: 'passport',
+      userTask: 'complete identity verification',
+      capability: 'Stripe Identity (`complete_stripe_kyc`)',
+    });
     return {
       text,
-      rich: {
-        type: 'report',
-        title: 'Hire Passport for identity verification',
-        rows: [
-          {
-            label: 'Specialist',
-            value: 'Passport · Compliance · agentKey `passport`',
-          },
-          {
-            label: 'What they run',
-            value: 'Stripe Identity (`complete_stripe_kyc`) for your Beam account',
-          },
-          {
-            label: 'Next steps',
-            value:
-              'Marketplace → hire Passport → switch active chat agent → ask to verify again',
-          },
-        ],
+      handler: 'suggest_marketplace_hire',
+      params: {
+        specialistAgentKey: 'passport',
+        userTask: 'complete identity verification',
+        capability: 'Stripe Identity (`complete_stripe_kyc`)',
       },
+      rich,
     };
   }
 

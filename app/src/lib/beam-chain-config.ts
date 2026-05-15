@@ -36,6 +36,20 @@ export function isBeamConfiguredChainId(chainId: number | undefined): boolean {
   return beamNetworkFromChainId(chainId) != null;
 }
 
+/** CAIP-2 network id for API payloads (`eip155:<chainId>`). */
+export function beamCaip2FromChainId(chainId: number): string {
+  const tier = beamNetworkFromChainId(chainId);
+  if (tier === "mainnet") return BEAM_CAIP2.mainnet;
+  if (tier === "testnet") return BEAM_CAIP2.testnet;
+  return `eip155:${chainId}`;
+}
+
+export function beamNetworkLabelFromChainId(chainId: number): string {
+  if (chainId === BEAM_CHAIN_IDS.mainnet) return zeroGMainnet.name;
+  if (chainId === BEAM_CHAIN_IDS.testnet) return zeroGTestnet.name;
+  return `Chain ${chainId}`;
+}
+
 /** Supported ERC-20 (or native) checkout tokens — extend per deployment. */
 export type BeamTokenConfig = {
   address: `0x${string}`;

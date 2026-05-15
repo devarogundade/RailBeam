@@ -91,7 +91,7 @@ const x402SupportedAssetJsonSchema: Record<string, unknown> = {
       type: 'string',
       minLength: 1,
       maxLength: 512,
-      description: 'Icon URL or app path (e.g. /images/0g.png).',
+      description: 'Icon URL or app path (e.g. /images/usdc.png for USDC.e, /images/0g.png for native).',
     },
     decimals: { type: 'integer', minimum: 0, maximum: 36 },
     address: {
@@ -510,12 +510,55 @@ const draftNativeTransferTool: OpenAiChatTool = {
   },
 };
 
+const offerTransferCheckoutFormTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'offer_transfer_checkout_form',
+    description:
+      'Show the token transfer form when the user wants to send ERC-20 on 0G but their message does NOT already state every required field (`network` CAIP-2, token contract or known symbol like USDC.e, human or wei `amount`, full `to` 0x…40). Pass `supportedAssets` from the deployment list (USDC.e on mainnet) and optional `networks`, optional `defaultTo`. Never invent token contracts or amounts.',
+    parameters: {
+      type: 'object',
+      properties: {
+        formTitle: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+        },
+        intro: { type: 'string', maxLength: 2000 },
+        supportedAssets: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 24,
+          items: x402SupportedAssetJsonSchema,
+        },
+        networks: {
+          type: 'array',
+          maxItems: 16,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 64 },
+              label: { type: 'string', minLength: 1, maxLength: 120 },
+            },
+            required: ['id', 'label'],
+          },
+        },
+        defaultTo: {
+          ...evmAddress20Property,
+          description: 'Optional recipient pre-fill when the user already gave `to`.',
+        },
+      },
+      required: ['supportedAssets'],
+    },
+  },
+};
+
 const draftErc20TransferTool: OpenAiChatTool = {
   type: 'function',
   function: {
     name: 'draft_erc20_transfer',
     description:
-      'When the user already stated every field, offer a server action that records an ERC-20 transfer draft. The server does not broadcast — the user signs `transfer` in their wallet.',
+      'When the user already stated every field, offer a server action that records an ERC-20 transfer draft. Use known Beam tokens without asking: USDC.e on 0G mainnet is `0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E` (6 decimals); mainnet `eip155:16661`, testnet `eip155:16602`. Convert human amounts to base units (e.g. 0.01 USDC.e → amountWei `10000`). If network, token, amount, or recipient is missing, call offer_transfer_checkout_form instead. The server does not broadcast — the user signs `transfer` in their wallet.',
     parameters: {
       type: 'object',
       properties: {
@@ -698,6 +741,60 @@ const draftNftTransferTool: OpenAiChatTool = {
   },
 };
 
+const suggestMarketplaceHireTool: OpenAiChatTool = {
+  type: 'function',
+  function: {
+    name: 'suggest_marketplace_hire',
+    description:
+      'When the user asks for a task this chat agent cannot run (missing handler tools), call this to show a marketplace hire card. Pass `specialistAgentKey` (e.g. passport, ledger, ramp, fiscus, capita, scribe). Optional `specialistName`, `category`, `capability`, `userTask`, `intro`, `requiredHandler`. Never invent unknown agent keys—use the Beam specialist list from system instructions.',
+    parameters: {
+      type: 'object',
+      properties: {
+        specialistAgentKey: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 64,
+          description:
+            'Catalog agentKey for the specialist (e.g. passport, ledger, ramp, fiscus, capita).',
+        },
+        specialistName: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 80,
+          description: 'Display name override (default from deployment catalog).',
+        },
+        category: {
+          type: 'string',
+          enum: ['Payments', 'Taxes', 'Reports', 'DeFi', 'Compliance', 'General'],
+        },
+        capability: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 400,
+          description: 'One line: what the specialist runs after hire.',
+        },
+        userTask: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 500,
+          description: 'Short label for what the user wanted (e.g. verify identity).',
+        },
+        intro: {
+          type: 'string',
+          maxLength: 2000,
+          description: 'Optional extra instructions shown on the card.',
+        },
+        requiredHandler: {
+          type: 'string',
+          description:
+            'Optional handler id the user needs after hiring (e.g. complete_stripe_kyc).',
+        },
+      },
+      required: ['specialistAgentKey'],
+    },
+  },
+};
+
 export function buildOpenAiHandlerTools(
   allowed: readonly HandlerActionId[],
 ): OpenAiChatTool[] {
@@ -731,6 +828,7 @@ export function buildOpenAiHandlerTools(
   }
   if (allowed.includes('draft_erc20_transfer')) {
     out.push(draftErc20TransferTool);
+    out.push(offerTransferCheckoutFormTool);
   }
   if (allowed.includes('draft_nft_transfer')) {
     out.push(draftNftTransferTool);
@@ -738,6 +836,9 @@ export function buildOpenAiHandlerTools(
   if (allowed.includes('draft_token_swap')) {
     out.push(draftTokenSwapTool);
     out.push(offerSwapCheckoutFormTool);
+  }
+  if (allowed.includes('suggest_marketplace_hire')) {
+    out.push(suggestMarketplaceHireTool);
   }
   return out;
 }

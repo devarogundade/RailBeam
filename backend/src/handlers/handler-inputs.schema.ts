@@ -341,3 +341,27 @@ export type OfferSwapCheckoutFormToolArgs = z.infer<
 
 export { swapFormCtaParamsSchema, isSwapFormCtaParams } from '@beam/stardorm-api-contract';
 export type { SwapFormCtaParams } from '@beam/stardorm-api-contract';
+
+export {
+  transferFormCtaParamsSchema,
+  isTransferFormCtaParams,
+} from '@beam/stardorm-api-contract';
+export type { TransferFormCtaParams } from '@beam/stardorm-api-contract';
+
+/** OpenAI tool `offer_transfer_checkout_form` arguments. */
+export const offerTransferCheckoutFormToolArgsSchema = z.object({
+  formTitle: z.string().min(1).max(200).optional(),
+  intro: z.string().max(2000).optional(),
+  supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: x402CheckoutFormNetworksSchema,
+  defaultTo: z
+    .string()
+    .trim()
+    .refine((s) => /^0x[a-fA-F0-9]{40}$/.test(s), 'defaultTo must be 0x…40')
+    .transform((s) => s.toLowerCase())
+    .optional(),
+});
+
+export type OfferTransferCheckoutFormToolArgs = z.infer<
+  typeof offerTransferCheckoutFormToolArgsSchema
+>;

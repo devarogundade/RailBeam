@@ -3,6 +3,11 @@ import {
   beamEvmTierFromChainId,
   type BeamEvmTier,
 } from '../beam/beam-evm-chain';
+import {
+  BEAM_USDC_E_ADDRESS,
+  BEAM_USDC_E_DECIMALS,
+  BEAM_USDC_E_ICON,
+} from '../beam/beam-usdc-e.config';
 
 /** Default JSON-RPC endpoints for 0G (override with `OG_RPC_URL_MAINNET` / `OG_RPC_URL_TESTNET`). */
 export const OG_RPC = {
@@ -64,12 +69,11 @@ export const OG_NATIVE: {
 
 /** Canonical bridged USDC on 0G mainnet (chain id 16661). */
 const MAINNET_USDC_E: OgTokenConfig = {
-  address: '0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E',
+  address: BEAM_USDC_E_ADDRESS,
   symbol: 'USDC.e',
-  decimals: 6,
+  decimals: BEAM_USDC_E_DECIMALS,
   name: 'Bridged USDC',
-  image:
-    'https://assets.coingecko.com/coins/images/6319/large/USD_Coin_icon.png',
+  image: BEAM_USDC_E_ICON,
   usdValue: 1,
 };
 

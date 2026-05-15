@@ -97,6 +97,39 @@ export const stardormChatRichBlockSchema = z.discriminatedUnion("type", [
     /** Default V3 fee tier when the form does not override (500, 3000, 10000). */
     defaultPoolFee: z.union([z.literal(500), z.literal(3000), z.literal(10000)]).optional(),
   }),
+  z.object({
+    type: z.literal("marketplace_hire"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    specialistName: z.string().min(1).max(80),
+    specialistAgentKey: z.string().min(1).max(64),
+    category: z
+      .enum(["Payments", "Taxes", "Reports", "DeFi", "Compliance", "General"])
+      .optional(),
+    capability: z.string().min(1).max(400).optional(),
+    userTask: z.string().max(500).optional(),
+    /** App path to open the marketplace (default `/marketplace`). */
+    marketplacePath: z.string().min(1).max(256).default("/marketplace"),
+    /** App path to the specialist profile when known (e.g. `/agents/chain-2`). */
+    agentProfilePath: z.string().min(1).max(256).optional(),
+    requiredHandler: z.string().min(1).max(64).optional(),
+  }),
+  z.object({
+    type: z.literal("transfer_checkout_form"),
+    title: z.string().min(1).max(200),
+    intro: z.string().max(2000).optional(),
+    supportedAssets: z.array(x402SupportedAssetSchema).min(1).max(24),
+    networks: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(64),
+          label: z.string().min(1).max(120),
+        }),
+      )
+      .max(16)
+      .optional(),
+    defaultTo: z.string().max(66).optional(),
+  }),
 ]);
 
 export type StardormChatRichBlock = z.infer<typeof stardormChatRichBlockSchema>;

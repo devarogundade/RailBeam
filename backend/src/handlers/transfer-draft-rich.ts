@@ -1,4 +1,7 @@
-import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
+import type {
+  ChatHandlerResult,
+  StardormChatRichBlock,
+} from '@beam/stardorm-api-contract';
 import type {
   DraftErc20TransferInput,
   DraftNativeTransferInput,
@@ -53,6 +56,40 @@ export function txRichFromErc20Draft(
       ...(d.note?.trim() ? [{ label: 'Note', value: d.note.trim() }] : []),
     ],
   };
+}
+
+function shortenTxHash(hash: string): string {
+  const t = hash.trim().toLowerCase();
+  if (t.length <= 18) return t;
+  return `${t.slice(0, 10)}…${t.slice(-8)}`;
+}
+
+/** Append or replace transaction outcome rows on a `tx` rich card. */
+export function mergeTxRichWithHandlerResult(
+  rich: StardormChatRichBlock | undefined,
+  result: ChatHandlerResult,
+): StardormChatRichBlock | undefined {
+  if (!rich || rich.type !== 'tx') return rich;
+  const baseRows = [...(rich.rows ?? [])].filter(
+    (r) => r.label !== 'Transaction status' && r.label !== 'Tx hash',
+  );
+  if (result.kind === 'wallet_tx') {
+    const statusLabel =
+      result.status === 'confirmed'
+        ? 'Confirmed'
+        : result.status === 'failed'
+          ? 'Failed'
+          : 'Submitted';
+    baseRows.push({ label: 'Transaction status', value: statusLabel });
+    if (result.txHash) {
+      baseRows.push({ label: 'Tx hash', value: shortenTxHash(result.txHash) });
+    } else if (result.error) {
+      baseRows.push({ label: 'Error', value: result.error.slice(0, 400) });
+    }
+  } else if (result.kind === 'server' && result.status === 'failed') {
+    baseRows.push({ label: 'Transaction status', value: 'Failed' });
+  }
+  return { ...rich, rows: baseRows };
 }
 
 export function txRichFromNftDraft(d: DraftNftTransferInput): StardormChatRichBlock {

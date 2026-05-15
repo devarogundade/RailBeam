@@ -3,7 +3,9 @@ import { useConnection, useSwitchChain } from "wagmi";
 import {
   BEAM_CHAIN_IDS,
   type BeamNetworkId,
+  beamCaip2FromChainId,
   beamNetworkFromChainId,
+  beamNetworkLabelFromChainId,
 } from "@/lib/beam-chain-config";
 import {
   readStoredBeamNetwork,
@@ -105,4 +107,17 @@ export function useBeamNetwork(): BeamNetworkContextValue {
   const v = React.useContext(Ctx);
   if (!v) throw new Error("useBeamNetwork must be used inside BeamNetworkProvider");
   return v;
+}
+
+/** CAIP-2 network + label for the chain selected in the header (or connected wallet). */
+export function useBeamEffectiveCaip2Network() {
+  const { effectiveChainId } = useBeamNetwork();
+  return React.useMemo(
+    () => ({
+      networkId: beamCaip2FromChainId(effectiveChainId),
+      label: beamNetworkLabelFromChainId(effectiveChainId),
+      chainId: effectiveChainId,
+    }),
+    [effectiveChainId],
+  );
 }

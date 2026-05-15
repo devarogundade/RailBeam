@@ -17,6 +17,7 @@ import {
   DraftNftTransferHandlerService,
 } from './transfer-draft-handlers.service';
 import { DraftTokenSwapHandlerService } from './swap-draft-handlers.service';
+import { MarketplaceHireHandlerService } from './marketplace-hire-handler.service';
 
 @Module({
   imports: [StardormMongoModule, PaymentsModule, StripeModule, CreditCardsModule],
@@ -33,6 +34,7 @@ import { DraftTokenSwapHandlerService } from './swap-draft-handlers.service';
     DraftErc20TransferHandlerService,
     DraftNftTransferHandlerService,
     DraftTokenSwapHandlerService,
+    MarketplaceHireHandlerService,
   ],
   exports: [HandlersService],
 })

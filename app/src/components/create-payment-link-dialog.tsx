@@ -32,10 +32,9 @@ import { X402PaymentLinkActions } from "@/components/x402-payment-link-actions";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { stardormInvokeHandler, uploadStardormUserFile } from "@/lib/stardorm-api";
 import { invalidateBeamHttpDashboardLists } from "@/lib/query-invalidation";
-import {
-  X402_CHECKOUT_NETWORKS,
-  x402CheckoutSupportedAssets,
-} from "@/lib/x402-checkout-config";
+import { x402CheckoutSupportedAssets } from "@/lib/x402-checkout-config";
+import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
+import { BeamCurrentNetworkNote } from "@/components/beam-current-network-note";
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -85,15 +84,13 @@ export function CreatePaymentLinkDialog({
 }) {
   const { address } = useAccount();
   const queryClient = useQueryClient();
+  const { networkId } = useBeamEffectiveCaip2Network();
   const supportedAssets = React.useMemo(() => x402CheckoutSupportedAssets(), []);
 
   const [checkoutType, setCheckoutType] = React.useState<PaymentCheckoutType>("x402");
   const [resourceId, setResourceId] = React.useState<string>(() => crypto.randomUUID());
   const [assetAddr, setAssetAddr] = React.useState<string>(
     () => supportedAssets[0]?.address ?? "",
-  );
-  const [networkId, setNetworkId] = React.useState<string>(
-    () => X402_CHECKOUT_NETWORKS[0]?.id ?? "",
   );
   const [amountHuman, setAmountHuman] = React.useState("");
   const [payTo, setPayTo] = React.useState("");
@@ -112,7 +109,6 @@ export function CreatePaymentLinkDialog({
     setCheckoutType("x402");
     setResourceId(crypto.randomUUID());
     setAssetAddr(supportedAssets[0]?.address ?? "");
-    setNetworkId(X402_CHECKOUT_NETWORKS[0]?.id ?? "");
     setAmountHuman("");
     setPayTo(address?.trim() ?? "");
     setTitle("");
@@ -148,7 +144,6 @@ export function CreatePaymentLinkDialog({
       } catch {
         throw new Error("Invalid amount for this token’s decimals");
       }
-      if (!networkId.trim()) throw new Error("Pick a network");
       const rid = resourceId.trim();
       if (checkoutType === "x402" && !rid) throw new Error("Resource id is required");
 
@@ -172,7 +167,7 @@ export function CreatePaymentLinkDialog({
         checkoutType,
         amount: amountWei,
         currency,
-        network: networkId.trim(),
+        network: networkId,
         payTo: pt.toLowerCase(),
         decimals: selected.decimals,
       };
@@ -272,8 +267,6 @@ export function CreatePaymentLinkDialog({
               assetAddr={assetAddr}
               setAssetAddr={setAssetAddr}
               selected={selected}
-              networkId={networkId}
-              setNetworkId={setNetworkId}
               resourceId={resourceId}
               setResourceId={setResourceId}
               amountHuman={amountHuman}
@@ -318,8 +311,6 @@ function PaymentLinkFormBody(props: {
   assetAddr: string;
   setAssetAddr: (v: string) => void;
   selected: X402SupportedAsset | undefined;
-  networkId: string;
-  setNetworkId: (v: string) => void;
   resourceId: string;
   setResourceId: (v: string) => void;
   amountHuman: string;
@@ -349,8 +340,6 @@ function PaymentLinkFormBody(props: {
     assetAddr,
     setAssetAddr,
     selected,
-    networkId,
-    setNetworkId,
     resourceId,
     setResourceId,
     amountHuman,
@@ -440,23 +429,7 @@ function PaymentLinkFormBody(props: {
         />
       </Field>
 
-      <Field label="Network">
-        <RadioGroup value={networkId} onValueChange={setNetworkId} className="grid gap-1.5">
-          {X402_CHECKOUT_NETWORKS.map((n) => (
-            <label
-              key={n.id}
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-1 py-1 text-sm hover:bg-(--btn-secondary-bg)",
-                pending && "pointer-events-none opacity-60",
-              )}
-            >
-              <RadioGroupItem value={n.id} id={`dash-net-${n.id}`} />
-              <span>{n.label}</span>
-              <span className="ml-auto truncate text-[11px] text-muted-foreground">{n.id}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </Field>
+      <BeamCurrentNetworkNote />
 
       <Field label="Pay to (0x…)" htmlFor="pay-to">
         <Input

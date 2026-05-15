@@ -25,6 +25,8 @@ export const HANDLER_ACTION_IDS = [
   "draft_nft_transfer",
   /** Confirms a Uniswap V3 single-hop swap on 0G mainnet; user signs approve + router in wallet. */
   "draft_token_swap",
+  /** Direct the user to hire a marketplace specialist for a task this agent cannot run. */
+  "suggest_marketplace_hire",
 ] as const;
 
 export type HandlerActionId = (typeof HANDLER_ACTION_IDS)[number];

@@ -56,6 +56,9 @@ import {
   draftNativeTransferInputSchema,
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
+  draftTokenSwapInputSchema,
+  chatHandlerResultSchema,
+  type ChatHandlerResult,
   type CreditCardFundQuote,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
@@ -65,7 +68,14 @@ import {
   X402InputSchema,
   isX402CheckoutFormCtaParams,
   isCreditCardFormCtaParams,
+  isTransferFormCtaParams,
+  isSwapFormCtaParams,
 } from 'src/handlers/handler-inputs.schema';
+import {
+  mergeTxRichWithHandlerResult,
+  txRichFromErc20Draft,
+} from 'src/handlers/transfer-draft-rich';
+import { txRichFromTokenSwapDraft } from 'src/handlers/swap-draft-rich';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
 import { CreditCardFundingService } from 'src/credit-cards/credit-card-funding.service';
 import { FinancialSnapshotsService } from 'src/mongo/financial-snapshots.service';
@@ -312,6 +322,11 @@ export class UserService {
           }
         : {};
     const followUp = this.followUpFromPersistedMessage(row);
+    const result = this.handlerResultFromPersisted(row);
+    const richWithResult =
+      rich && result
+        ? mergeTxRichWithHandlerResult(rich, result) ?? rich
+        : rich;
     return {
       id,
       role,
@@ -319,11 +334,37 @@ export class UserService {
       content: typeof row.content === 'string' ? row.content : '',
       createdAt: typeof row.createdAt === 'number' ? row.createdAt : Date.now(),
       ...(atts?.length ? { attachments: atts } : {}),
-      ...(rich ? { rich } : {}),
+      ...(richWithResult ? { rich: richWithResult } : {}),
       ...(handlerCta ? { handlerCta } : {}),
+      ...(result ? { result } : {}),
       ...(followUp ? { followUp } : {}),
       ...computeMeta,
     };
+  }
+
+  private handlerResultFromPersisted(row: {
+    handlerResultData?: unknown;
+  }): ChatHandlerResult | undefined {
+    const hr = row.handlerResultData;
+    if (!hr || typeof hr !== 'object') return undefined;
+    const d = hr as Record<string, unknown>;
+    if (d.kind === 'wallet_tx' && typeof d.status === 'string') {
+      const parsed = chatHandlerResultSchema.safeParse(d);
+      return parsed.success ? parsed.data : undefined;
+    }
+    if (d.kind === 'server' || d.payPath || d.stripeCheckoutUrl) {
+      const updatedAt =
+        typeof d.updatedAt === 'number' && d.updatedAt > 0
+          ? d.updatedAt
+          : Date.now();
+      return chatHandlerResultSchema.parse({
+        kind: 'server',
+        status: 'completed',
+        data: d,
+        updatedAt,
+      });
+    }
+    return undefined;
   }
 
   /** Native unfund payouts are testnet-only until mainnet treasury policy is defined. */
@@ -370,7 +411,11 @@ export class UserService {
       keys,
       clientEvmChainId,
     );
-    return mergeHandlerSets(perAgent);
+    const merged = mergeHandlerSets(perAgent);
+    if (!merged.includes('suggest_marketplace_hire')) {
+      merged.push('suggest_marketplace_hire');
+    }
+    return merged;
   }
 
   private async resolveCatalogAgentKeyForHandlerFromSubgraph(
@@ -812,7 +857,11 @@ export class UserService {
   }): ChatFollowUpPayload | undefined {
     const hr = row.handlerResultData;
     if (hr && typeof hr === 'object') {
-      const d = hr as Record<string, unknown>;
+      const raw = hr as Record<string, unknown>;
+      const d =
+        raw.kind === 'server' && raw.data && typeof raw.data === 'object'
+          ? (raw.data as Record<string, unknown>)
+          : raw;
       const creditCardId =
         typeof d.creditCardId === 'string' ? d.creditCardId : null;
       const dashboardPathRaw =
@@ -1608,7 +1657,8 @@ export class UserService {
     }
 
     const handlerCta =
-      structured.handler != null
+      structured.handler != null &&
+      structured.handler !== 'suggest_marketplace_hire'
         ? {
             handler: structured.handler,
             params: JSON.parse(JSON.stringify(structured.params)) as Record<
@@ -1812,6 +1862,10 @@ export class UserService {
       body.handler === 'on_ramp_tokens' && isOnRampFormCtaParams(storedParams);
     const creditCardFormCta =
       body.handler === 'create_credit_card' && isCreditCardFormCtaParams(storedParams);
+    const transferFormCta =
+      body.handler === 'draft_erc20_transfer' && isTransferFormCtaParams(storedParams);
+    const swapFormCta =
+      body.handler === 'draft_token_swap' && isSwapFormCtaParams(storedParams);
     let execParams: unknown = body.params ?? {};
     if (checkoutFormCta) {
       const parsed = X402InputSchema.safeParse(execParams);
@@ -1866,6 +1920,12 @@ export class UserService {
       if (!UserService.jsonParamsEqual(storedParams, execParams)) {
         throw new BadRequestException('Params do not match this chat action');
       }
+    } else if (transferFormCta) {
+      const parsed = draftErc20TransferInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
     } else if (body.handler === 'draft_erc20_transfer') {
       const parsed = draftErc20TransferInputSchema.safeParse(execParams);
       if (!parsed.success) {
@@ -1875,6 +1935,12 @@ export class UserService {
       if (!UserService.jsonParamsEqual(storedParams, execParams)) {
         throw new BadRequestException('Params do not match this chat action');
       }
+    } else if (swapFormCta) {
+      const parsed = draftTokenSwapInputSchema.safeParse(execParams);
+      if (!parsed.success) {
+        throw new BadRequestException(parsed.error.flatten());
+      }
+      execParams = parsed.data;
     } else if (body.handler === 'draft_nft_transfer') {
       const parsed = draftNftTransferInputSchema.safeParse(execParams);
       if (!parsed.success) {
@@ -1911,6 +1977,61 @@ export class UserService {
       );
     }
 
+    if (transferFormCta || swapFormCta) {
+      const result = await this.handlers.dispatch(
+        body.handler,
+        execParams,
+        {
+          walletAddress: wallet,
+          ...(clientEvmChainId != null ? { clientEvmChainId } : {}),
+        },
+      );
+      const richCard =
+        result.rich ??
+        (transferFormCta && body.handler === 'draft_erc20_transfer'
+          ? txRichFromErc20Draft(
+              draftErc20TransferInputSchema.parse(execParams),
+            )
+          : swapFormCta && body.handler === 'draft_token_swap'
+            ? txRichFromTokenSwapDraft(draftTokenSwapInputSchema.parse(execParams))
+            : undefined);
+      const handlerId = body.handler;
+      const paramsForCta =
+        transferFormCta || swapFormCta
+          ? (execParams as Record<string, unknown>)
+          : storedParams;
+      await this.chatMessageModel.updateOne(
+        {
+          _id: new Types.ObjectId(ctaId),
+          userId: user._id,
+          conversationId: conv._id,
+        },
+        {
+          $set: {
+            content:
+              result.message.trim() ||
+              ctaMsg.content ||
+              'Transfer draft ready — sign in your wallet.',
+            ...(richCard ? { rich: richCard } : {}),
+            handlerCta: { handler: handlerId, params: paramsForCta },
+          },
+        },
+      );
+      conv.lastMessageAt = new Date();
+      await conv.save();
+      const updated = await this.chatMessageModel.findById(ctaId).exec();
+      if (updated) {
+        this.pushThreadMessages(wallet, String(conv._id), [
+          this.persistedRowToHistoryMessage(updated),
+        ]);
+      }
+      return {
+        message: result.message,
+        data: result.data,
+        rich: richCard,
+      };
+    }
+
     const result = await this.handlers.dispatch(
       body.handler,
       execParams,
@@ -1943,6 +2064,12 @@ export class UserService {
       hash: a.rootHash,
     }));
     const persistAgentKey = issuingAgentKey;
+    const serverResult: ChatHandlerResult = {
+      kind: 'server',
+      status: 'completed',
+      data: result.data,
+      updatedAt: Date.now(),
+    };
     const handlerReply = await this.chatMessageModel.create({
       conversationId: conv._id,
       userId: user._id,
@@ -1951,7 +2078,7 @@ export class UserService {
       content: result.message,
       attachments: outAtt?.length ? outAtt : undefined,
       rich,
-      handlerResultData: result.data,
+      handlerResultData: serverResult,
       createdAt: Date.now(),
     });
     await this.chatMessageModel.updateOne(
@@ -1972,6 +2099,80 @@ export class UserService {
       attachments: result.attachments,
       data: result.data,
       rich,
+    };
+  }
+
+  async patchChatMessageResult(
+    walletAddress: string,
+    messageId: string,
+    result: ChatHandlerResult,
+  ): Promise<{
+    ok: true;
+    messageId: string;
+    result: ChatHandlerResult;
+    rich?: AgentRichCard;
+  }> {
+    const wallet = this.normalizeWallet(walletAddress);
+    const user = await this.userModel.findOne({ walletAddress: wallet }).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const id = messageId.trim();
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid message id');
+    }
+    const parsed = chatHandlerResultSchema.safeParse(result);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.flatten());
+    }
+
+    const msg = await this.chatMessageModel
+      .findOne({ _id: new Types.ObjectId(id), userId: user._id })
+      .exec();
+    if (!msg) {
+      throw new NotFoundException('Message not found');
+    }
+
+    const richParsed = msg.rich
+      ? stardormChatRichBlockSchema.safeParse(msg.rich)
+      : undefined;
+    const mergedRich =
+      richParsed?.success && richParsed.data.type === 'tx'
+        ? mergeTxRichWithHandlerResult(richParsed.data, parsed.data)
+        : richParsed?.success
+          ? richParsed.data
+          : undefined;
+
+    await this.chatMessageModel.updateOne(
+      { _id: msg._id, userId: user._id },
+      {
+        $set: {
+          handlerResultData: parsed.data,
+          ...(mergedRich ? { rich: mergedRich } : {}),
+        },
+      },
+    );
+
+    const updated = await this.chatMessageModel.findById(msg._id).exec();
+    if (updated) {
+      this.pushThreadMessages(wallet, String(updated.conversationId), [
+        this.persistedRowToHistoryMessage(updated),
+      ]);
+    }
+
+    return {
+      ok: true,
+      messageId: id,
+      result: parsed.data,
+      ...(mergedRich && mergedRich.type === 'tx'
+        ? {
+            rich: {
+              type: 'tx' as const,
+              title: mergedRich.title,
+              rows: mergedRich.rows,
+            },
+          }
+        : {}),
     };
   }
 }

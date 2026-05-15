@@ -7,6 +7,7 @@ import {
 } from "wagmi";
 import { maxUint256 } from "viem";
 import { toast } from "sonner";
+import type { ChatHandlerResult } from "@railbeam/stardorm-api-contract";
 import { useApp } from "@/lib/app-state";
 import { Button } from "@/components/ui/button";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
@@ -41,10 +42,14 @@ export function SwapHandlerCtaRow({
   messageId,
   params,
   label,
+  txConfirmed,
+  onPersistResult,
 }: {
   messageId: string;
   params: Record<string, unknown>;
   label: string;
+  txConfirmed?: boolean;
+  onPersistResult?: (result: ChatHandlerResult) => void | Promise<void>;
 }) {
   const { address, connect } = useApp();
   const chainId = useChainId();
@@ -167,8 +172,28 @@ export function SwapHandlerCtaRow({
       });
       await waitForWriteContractReceipt(publicClient, swapHash);
       setLastHash(swapHash);
+      const network = typeof params.network === "string" ? params.network.trim() : undefined;
+      await onPersistResult?.({
+        kind: "wallet_tx",
+        status: "confirmed",
+        txHash: swapHash,
+        network,
+        chainId: targetChainId,
+        handler: "draft_token_swap",
+        updatedAt: Date.now(),
+      });
       toast.success("Swap submitted", { description: swapHash });
     } catch (e) {
+      const network = typeof params.network === "string" ? params.network.trim() : undefined;
+      void onPersistResult?.({
+        kind: "wallet_tx",
+        status: "failed",
+        error: errMsg(e),
+        network,
+        chainId: targetChainId,
+        handler: "draft_token_swap",
+        updatedAt: Date.now(),
+      });
       toast.error(step === "approve" ? "Approve failed" : "Swap failed", {
         description: errMsg(e),
       });
@@ -188,7 +213,7 @@ export function SwapHandlerCtaRow({
         size="sm"
         variant="secondary"
         loading={busy}
-        disabled={busy}
+        disabled={busy || txConfirmed === true}
         onClick={() => void onSwap()}
       >
         {busy ? busyLabel : label}

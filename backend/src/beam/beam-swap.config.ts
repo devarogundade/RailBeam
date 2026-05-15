@@ -1,5 +1,6 @@
 import type { X402SupportedAsset } from '@beam/stardorm-api-contract';
 import { BEAM_EVM_CHAIN_IDS } from './beam-evm-chain';
+import { BEAM_USDC_E_ADDRESS, beamUsdcESupportedAsset } from './beam-usdc-e.config';
 
 /** Uniswap V3-style swap router on 0G mainnet. */
 export const BEAM_MAINNET_SWAP_ROUTER =
@@ -10,8 +11,7 @@ export const BEAM_MAINNET_CAIP2 = `eip155:${BEAM_EVM_CHAIN_IDS.mainnet}` as cons
 export const BEAM_TESTNET_CAIP2 = `eip155:${BEAM_EVM_CHAIN_IDS.testnet}` as const;
 
 /** Canonical bridged USDC on 0G mainnet. */
-export const BEAM_MAINNET_USDC_E =
-  '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as const;
+export const BEAM_MAINNET_USDC_E = BEAM_USDC_E_ADDRESS;
 
 /**
  * Wrapped native 0G for router `tokenIn` / `tokenOut` (set via env if deployment differs).
@@ -24,15 +24,7 @@ export function beamMainnetWrappedNativeAddress(): `0x${string}` | undefined {
 }
 
 export function beamMainnetSwapSupportedAssets(): X402SupportedAsset[] {
-  const assets: X402SupportedAsset[] = [
-    {
-      name: 'Bridged USDC',
-      symbol: 'USDC.e',
-      icon: '/images/usdc.png',
-      decimals: 6,
-      address: BEAM_MAINNET_USDC_E,
-    },
-  ];
+  const assets: X402SupportedAsset[] = [beamUsdcESupportedAsset()];
   const wNative = beamMainnetWrappedNativeAddress();
   if (wNative) {
     assets.unshift({

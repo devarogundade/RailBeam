@@ -6,14 +6,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { parseUnits } from "viem";
 import { cn } from "@/lib/utils";
+import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
 import { toast } from "sonner";
+import { BeamCurrentNetworkNote } from "@/components/beam-current-network-note";
 
 type X402FormRich = Extract<StardormChatRichBlock, { type: "x402_checkout_form" }>;
-
-const DEFAULT_NETWORKS = [
-  { id: "eip155:16661", label: "0G Mainnet" },
-  { id: "eip155:16602", label: "0G Galileo testnet" },
-] as const;
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
@@ -26,18 +23,11 @@ export function X402CheckoutFormCard({
   disabled?: boolean;
   onCreateLink: (params: Record<string, unknown>) => void | Promise<void>;
 }) {
-  const networks = React.useMemo(
-    () =>
-      rich.networks?.length
-        ? rich.networks
-        : [...DEFAULT_NETWORKS].map((n) => ({ id: n.id, label: n.label })),
-    [rich.networks],
-  );
+  const { networkId } = useBeamEffectiveCaip2Network();
 
   const [assetAddr, setAssetAddr] = React.useState(
     () => rich.supportedAssets[0]?.address ?? "",
   );
-  const [networkId, setNetworkId] = React.useState(() => networks[0]?.id ?? "");
   const [amountHuman, setAmountHuman] = React.useState("");
   const [payTo, setPayTo] = React.useState("");
   const [title, setTitle] = React.useState("");
@@ -47,12 +37,6 @@ export function X402CheckoutFormCard({
       setAssetAddr(rich.supportedAssets[0]?.address ?? "");
     }
   }, [rich.supportedAssets, assetAddr]);
-
-  React.useEffect(() => {
-    if (!networks.some((n) => n.id === networkId)) {
-      setNetworkId(networks[0]?.id ?? "");
-    }
-  }, [networks, networkId]);
 
   const selected = rich.supportedAssets.find((a) => a.address === assetAddr);
 
@@ -79,16 +63,12 @@ export function X402CheckoutFormCard({
       toast.error("Invalid amount for this token’s decimals");
       return;
     }
-    if (!networkId.trim()) {
-      toast.error("Pick a network");
-      return;
-    }
     const id = crypto.randomUUID();
     const params: Record<string, unknown> = {
       id,
       amount: amountWei,
       currency: selected.address.trim().toLowerCase(),
-      network: networkId.trim(),
+      network: networkId,
       payTo: pt.toLowerCase(),
       decimals: selected.decimals,
     };
@@ -110,10 +90,11 @@ export function X402CheckoutFormCard({
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{rich.intro}</p>
         ) : (
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-            Enter the amount in token units, confirm the network, and paste the wallet that should receive the payment.
+            Enter the amount in token units and paste the wallet that should receive the payment.
             Then create the link to share with your payer.
           </p>
         )}
+        <BeamCurrentNetworkNote className="mt-2" />
         {rich.resourceUrl ? (
           <p className="mt-2 text-xs">
             <span className="text-muted-foreground">Resource: </span>
@@ -181,22 +162,6 @@ export function X402CheckoutFormCard({
           onChange={(e) => setAmountHuman(e.target.value)}
           disabled={disabled}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Network</Label>
-        <RadioGroup value={networkId} onValueChange={setNetworkId} className="grid gap-1.5">
-          {networks.map((n) => (
-            <label
-              key={n.id}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-1 py-1 text-sm hover:bg-(--btn-secondary-bg)"
-            >
-              <RadioGroupItem value={n.id} id={`net-${n.id}`} />
-              <span>{n.label}</span>
-              <span className="ml-auto truncate text-[11px] text-muted-foreground">{n.id}</span>
-            </label>
-          ))}
-        </RadioGroup>
       </div>
 
       <div className="space-y-2">

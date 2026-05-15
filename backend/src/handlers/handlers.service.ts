@@ -14,6 +14,7 @@ import {
   DraftNftTransferHandlerService,
 } from './transfer-draft-handlers.service';
 import { DraftTokenSwapHandlerService } from './swap-draft-handlers.service';
+import { MarketplaceHireHandlerService } from './marketplace-hire-handler.service';
 
 @Injectable()
 export class HandlersService {
@@ -29,6 +30,7 @@ export class HandlersService {
     private readonly draftErc20: DraftErc20TransferHandlerService,
     private readonly draftNft: DraftNftTransferHandlerService,
     private readonly draftSwap: DraftTokenSwapHandlerService,
+    private readonly marketplaceHire: MarketplaceHireHandlerService,
   ) {}
 
   async dispatch(
@@ -62,6 +64,8 @@ export class HandlersService {
         return this.draftNft.handle(body, ctx);
       case 'draft_token_swap':
         return this.draftSwap.handle(body, ctx);
+      case 'suggest_marketplace_hire':
+        return this.marketplaceHire.handle(body, ctx);
     }
   }
 }

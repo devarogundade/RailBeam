@@ -3,7 +3,10 @@ import {
   draftErc20TransferInputSchema,
   draftNativeTransferInputSchema,
   draftNftTransferInputSchema,
+  isTransferFormCtaParams,
+  transferFormCtaParamsSchema,
 } from '@beam/stardorm-api-contract';
+import { defaultBeamTransferFormPayload } from '../beam/beam-transfer.config';
 import type {
   HandlerContext,
   HandlerMessage,
@@ -47,6 +50,27 @@ export class DraftErc20TransferHandlerService implements HandlerService {
   readonly id = 'draft_erc20_transfer' as const;
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
+    if (isTransferFormCtaParams(raw)) {
+      const form = transferFormCtaParamsSchema.parse(raw);
+      const defaults = defaultBeamTransferFormPayload();
+      return {
+        message:
+          'Pick the token, recipient, and amount in the form below, then tap **Confirm transfer draft**. Your wallet will sign the ERC-20 transfer on the selected network.',
+        rich: {
+          type: 'transfer_checkout_form',
+          title: 'Token transfer',
+          intro: form.intro,
+          supportedAssets: form.supportedAssets,
+          networks: form.networks ?? defaults.networks,
+          ...(form.defaultTo ? { defaultTo: form.defaultTo } : {}),
+        },
+        data: {
+          kind: 'erc20_transfer_form',
+          walletAddress: ctx.walletAddress,
+        },
+      };
+    }
+
     const parsed = draftErc20TransferInputSchema.safeParse(raw);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());

@@ -57,6 +57,8 @@ type PayCheckoutViewProps = {
   onPay: () => void;
   /** When true, settlement uses x402 wallet authorization (not a manual transfer). */
   payUsesX402?: boolean;
+  /** Wallet is connected but on a different chain than the payment requires. */
+  needsNetworkSwitch?: boolean;
 };
 
 export function PayCheckoutView(props: PayCheckoutViewProps) {
@@ -86,22 +88,29 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
     postSubmitSettling,
     onPay,
     payUsesX402 = false,
+    needsNetworkSwitch = false,
   } = props;
 
-  const payButtonLabel = confirmPayPending
-    ? "Recording payment…"
-    : postSubmitSettling
-      ? payUsesX402
-        ? "Authorizing x402 payment…"
-        : "Confirming on-chain…"
-      : switching || sendingNative || sendingErc20
-        ? "Confirm in wallet…"
-        : "Pay now";
+  const payButtonLabel = !address
+    ? "Connect wallet"
+    : confirmPayPending
+      ? "Recording payment…"
+      : postSubmitSettling
+        ? payUsesX402
+          ? "Authorizing x402 payment…"
+          : "Confirming on-chain…"
+        : switching
+          ? "Confirm in wallet…"
+          : needsNetworkSwitch
+            ? `Switch to ${friendlyNetwork}`
+            : sendingNative || sendingErc20
+              ? "Confirm in wallet…"
+              : "Pay now";
 
   return (
     <CheckoutShell>
-      <header className="flex items-center justify-between border-b border-slate-200/80 bg-white px-4 py-3 lg:hidden">
-        <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
+        <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <CoinIcon className="h-5 w-5" />
           Beam
         </Link>
@@ -109,11 +118,11 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="relative flex flex-col bg-[#0a2540] text-white lg:w-[min(100%,480px)] lg:shrink-0 xl:w-[42%]">
-          <div className="hidden border-b border-white/10 px-6 py-4 lg:block">
+        <aside className="relative flex flex-col bg-surface-elevated text-foreground lg:w-[min(100%,480px)] lg:shrink-0 xl:w-[42%]">
+          <div className="hidden border-b border-border px-6 py-4 lg:block">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-sm font-medium text-white/90 transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90 transition-colors hover:text-foreground"
             >
               <CoinIcon className="h-5 w-5" />
               Beam
@@ -123,35 +132,31 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
           <div className="flex flex-1 flex-col px-6 py-8 lg:px-10 lg:py-12">
             <Link
               to="/"
-              className="mb-8 inline-flex items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white lg:hidden"
+              className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
 
             {!apiConfigured ? (
-              <p className="text-sm text-white/80">
-                Set <code className="rounded bg-white/10 px-1 py-0.5">VITE_STARDORM_API_URL</code> to load
+              <p className="text-sm text-muted-foreground">
+                Set <code className="rounded bg-foreground/10 px-1 py-0.5">VITE_STARDORM_API_URL</code> to load
                 this checkout.
               </p>
             ) : loading ? (
               <SummarySkeleton />
             ) : loadError ? (
-              <p className="text-sm text-red-200">{loadError}</p>
+              <p className="text-sm text-destructive">{loadError}</p>
             ) : payment == null ? (
-              <div className="text-white">
+              <div>
                 <EmptyState
                   icon={ShoppingBag}
                   title="This checkout is unavailable"
                   description="The link may be wrong, expired, or removed. Ask the sender for a new link."
-                  className="border-white/15 bg-white/5 text-white [&_p]:text-white/70"
                 >
                   <Link
                     to="/"
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "border-white/25 bg-transparent text-white no-underline hover:bg-white/10",
-                    )}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}
                   >
                     Back to Beam
                   </Link>
@@ -181,9 +186,9 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
           </AsideFooter>
         </aside>
 
-        <section className="flex flex-1 flex-col bg-white">
-          <div className="hidden items-center justify-between border-b border-slate-100 px-10 py-4 lg:flex">
-            <p className="text-sm font-medium text-slate-900">Complete your payment</p>
+        <section className="flex flex-1 flex-col bg-background">
+          <div className="hidden items-center justify-between border-b border-border px-10 py-4 lg:flex">
+            <p className="text-sm font-medium text-foreground">Complete your payment</p>
             <WalletConnectChip address={address} onConnect={onConnect} />
           </div>
 
@@ -212,7 +217,7 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
             )}
           </div>
 
-          <footer className="border-t border-slate-100 px-6 py-4 text-center text-xs text-slate-500 sm:px-10">
+          <footer className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground sm:px-10">
             <span className="inline-flex items-center gap-1.5">
               <Lock className="h-3 w-3" />
               Payments settle on-chain. Beam records your transaction after confirmation.
@@ -226,13 +231,13 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
 
 function CheckoutShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-[#f6f9fc] text-slate-900">{children}</div>
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">{children}</div>
   );
 }
 
 function AsideFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-auto hidden border-t border-white/10 px-10 py-5 text-xs text-white/50 lg:block">
+    <div className="mt-auto hidden border-t border-border px-10 py-5 text-xs text-muted-foreground lg:block">
       {children}
     </div>
   );
@@ -250,7 +255,7 @@ function WalletConnectChip({
       type="button"
       size="sm"
       variant="outline"
-      className="border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50"
+      className="shadow-sm"
       onClick={onConnect}
     >
       <Wallet className="mr-1.5 h-3.5 w-3.5" />
@@ -290,18 +295,18 @@ function CheckoutSummaryPanel({
 
   return (
     <div className="flex flex-col">
-      <p className="text-xs font-medium uppercase tracking-widest text-white/55">{checkoutTypeLabel}</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{checkoutTypeLabel}</p>
       <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight sm:text-[1.75rem]">
         {payment.title}
       </h1>
       {payment.description ? (
-        <p className="mt-3 max-w-md text-sm leading-relaxed text-white/75">{payment.description}</p>
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">{payment.description}</p>
       ) : null}
 
       {statusPresentation ? (
         <div
           className={cn(
-            "mt-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium",
+            "mt-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-foreground/5 px-3 py-1 text-xs font-medium",
             statusPresentation.className,
           )}
         >
@@ -311,24 +316,24 @@ function CheckoutSummaryPanel({
       ) : null}
 
       {amountPresentation ? (
-        <div className="mt-10 border-t border-white/10 pt-8">
-          <p className="text-sm text-white/60">Total due</p>
+        <div className="mt-10 border-t border-border pt-8">
+          <p className="text-sm text-muted-foreground">Total due</p>
           <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight sm:text-[2.5rem]">
             {amountPresentation.primary}
           </p>
-          <p className="mt-2 text-sm text-white/55">
+          <p className="mt-2 text-sm text-muted-foreground">
             {tokenLabel}
             {payment.decimals != null ? ` · ${payment.decimals} decimals` : ""}
             {" · "}
             {friendlyNetwork}
           </p>
           {amountPresentation.hint ? (
-            <p className="mt-2 text-xs leading-snug text-white/45">{amountPresentation.hint}</p>
+            <p className="mt-2 text-xs leading-snug text-muted-foreground/80">{amountPresentation.hint}</p>
           ) : null}
         </div>
       ) : null}
 
-      <ul className="mt-8 space-y-3 border-t border-white/10 pt-6 text-sm">
+      <ul className="mt-8 space-y-3 border-t border-border pt-6 text-sm">
         <SummaryLine label="Pay to" value={shortenMiddle(payment.payTo, 8, 6)} title={payment.payTo} />
         {!isNativeAsset(payment.asset) && isEvmAddress(payment.asset) ? (
           <SummaryLine label="Token" value={shortenMiddle(payment.asset, 10, 8)} title={payment.asset} />
@@ -338,7 +343,7 @@ function CheckoutSummaryPanel({
         ) : null}
         {payment.resourceUrl ? (
           <li className="flex items-start justify-between gap-4">
-            <span className="text-white/55">Resource</span>
+            <span className="text-muted-foreground">Resource</span>
             <a
               href={payment.resourceUrl}
               target="_blank"
@@ -369,8 +374,8 @@ function SummaryLine({
 }) {
   return (
     <li className="flex items-start justify-between gap-4">
-      <span className="text-white/55">{label}</span>
-      <span className="font-mono text-xs text-white/90 sm:text-sm" title={title}>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono text-xs text-foreground sm:text-sm" title={title}>
         {value}
       </span>
     </li>
@@ -386,9 +391,9 @@ function AttachmentBlock({
 }) {
   const att = payment.attachment!;
   return (
-    <div className="mt-8 overflow-hidden rounded-lg border border-white/15 bg-white/5">
+    <div className="mt-8 overflow-hidden rounded-lg border border-border bg-foreground/5">
       <div className="px-4 py-3">
-        <p className="text-xs font-medium text-white/55">Included</p>
+        <p className="text-xs font-medium text-muted-foreground">Included</p>
         <p className="mt-0.5 truncate text-sm font-medium" title={att.name}>
           {att.name}
         </p>
@@ -397,12 +402,12 @@ function AttachmentBlock({
         <>
           <StorageImage rootHash={att.hash} alt="" className="max-h-44 w-full object-cover" />
           {apiBase ? (
-            <div className="flex justify-end border-t border-white/10 px-4 py-2">
+            <div className="flex justify-end border-t border-border px-4 py-2">
               <StorageFile
                 apiBase={apiBase}
                 rootHash={att.hash}
                 fileName={att.name}
-                className="text-xs font-medium text-white/90 underline-offset-2 hover:underline"
+                className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -426,21 +431,21 @@ function AttachmentFileRow({
   att: NonNullable<PublicPaymentRequest["attachment"]>;
 }) {
   return (
-    <div className="flex items-center gap-2 border-t border-white/10 px-4 py-3">
-      <FileText className="h-4 w-4 shrink-0 text-white/50" />
+    <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
       {apiBase ? (
         <StorageFile
           apiBase={apiBase}
           rootHash={att.hash}
           fileName={att.name}
-          className="text-xs font-medium text-white/90 underline-offset-2 hover:underline"
+          className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
           target="_blank"
           rel="noreferrer"
         >
           Download file
         </StorageFile>
       ) : (
-        <span className="text-xs text-white/50">{att.mimeType}</span>
+        <span className="text-xs text-muted-foreground">{att.mimeType}</span>
       )}
     </div>
   );
@@ -486,24 +491,24 @@ function CheckoutPaymentPanel({
         <WalletConnectChip address={address} onConnect={onConnect} />
       </div>
 
-      <h2 className="text-lg font-semibold text-slate-900">Pay with crypto wallet</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+      <h2 className="text-lg font-semibold text-foreground">Pay with crypto wallet</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         {payUsesX402
           ? `Connect a wallet on ${friendlyNetwork}, then sign the x402 payment authorization in your wallet. Settlement is recorded automatically.`
           : `Connect a wallet on ${friendlyNetwork}, then approve the transfer. We'll confirm once the transaction is on-chain.`}
       </p>
 
-      <div className="mt-8 space-y-0 rounded-lg border border-slate-200 bg-slate-50/80 p-5">
+      <div className="mt-8 space-y-0 rounded-lg border border-border bg-surface p-5">
         <PaymentDetailRow
           label="Wallet"
           value={
             address ? (
-              <span className="font-mono text-sm text-slate-900">{shortenMiddle(address, 8, 6)}</span>
+              <span className="font-mono text-sm text-foreground">{shortenMiddle(address, 8, 6)}</span>
             ) : (
               <button
                 type="button"
                 onClick={onConnect}
-                className="text-sm font-medium text-[#635bff] hover:underline"
+                className="text-sm font-medium text-primary hover:underline"
               >
                 Connect to continue
               </button>
@@ -533,7 +538,7 @@ function CheckoutPaymentPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-slate-600"
+              className="h-8 px-2 text-muted-foreground"
               onClick={() =>
                 void navigator.clipboard.writeText(payment.payTo).then(
                   () => toast.success("Address copied"),
@@ -550,26 +555,22 @@ function CheckoutPaymentPanel({
       {isPaid ? (
         <PaidBanner payment={payment} statusPresentation={statusPresentation} shortenMiddle={shortenMiddle} />
       ) : !isPending ? (
-        <p className="mt-8 text-sm text-slate-600">
+        <p className="mt-8 text-sm text-muted-foreground">
           This checkout is {statusPresentation?.label?.toLowerCase() ?? payment.status} and no longer
           accepts payment.
         </p>
-      ) : targetChainId == null ? (
-        <p className="mt-8 text-sm text-red-600">
-          Unknown network &quot;{payment.network}&quot;. The seller must use a supported chain id.
-        </p>
-      ) : (
+      ) : targetChainId != null ? (
         <Button
           type="button"
           size="lg"
-          className="mt-8 h-12 w-full rounded-md bg-[#635bff] text-base font-semibold text-white shadow-sm hover:bg-[#5851e6] disabled:opacity-60"
+          className="mt-8 h-12 w-full text-base font-semibold"
           loading={walletPayBusy}
           disabled={payDisabled}
           onClick={() => void onPay()}
         >
           {payButtonLabel}
         </Button>
-      )}
+      ) : null}
 
       {payment.resourceUrl && isPaid ? (
         <Button type="button" variant="outline" className="mt-4 w-full" asChild>
@@ -582,8 +583,8 @@ function CheckoutPaymentPanel({
 
       {payment.type === "x402" && payment.x402Payload ? (
         <details className="mt-8 text-xs">
-          <summary className="cursor-pointer font-medium text-slate-600">Technical details (x402)</summary>
-          <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] text-slate-700">
+          <summary className="cursor-pointer font-medium text-muted-foreground">Technical details (x402)</summary>
+          <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border bg-surface p-3 font-mono text-[11px] text-foreground/80">
             {JSON.stringify(payment.x402Payload, null, 2)}
           </pre>
         </details>
@@ -602,13 +603,13 @@ function PaidBanner({
   shortenMiddle: (value: string, headChars?: number, tailChars?: number) => string;
 }) {
   return (
-    <div className="mt-8 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+    <div className="mt-8 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
       <p className="font-medium">Payment complete</p>
-      <p className="mt-1 text-emerald-800/90">
+      <p className="mt-1 text-success/90">
         {statusPresentation?.label ?? "Paid"}. No further action is required.
       </p>
       {payment.txHash ? (
-        <p className="mt-2 font-mono text-xs text-emerald-800/80" title={payment.txHash}>
+        <p className="mt-2 font-mono text-xs text-success/80" title={payment.txHash}>
           Tx {shortenMiddle(payment.txHash, 12, 10)}
         </p>
       ) : null}
@@ -626,11 +627,11 @@ function PaymentDetailRow({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 py-3 first:pt-0 last:border-0 last:pb-0">
-      <span className="text-sm text-slate-500">{label}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-border py-3 first:pt-0 last:border-0 last:pb-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-1 text-right">
         {typeof value === "string" ? (
-          <span className="text-sm font-medium text-slate-900">{value}</span>
+          <span className="text-sm font-medium text-foreground">{value}</span>
         ) : (
           value
         )}
@@ -643,10 +644,10 @@ function PaymentDetailRow({
 function SummarySkeleton() {
   return (
     <div className="space-y-4" aria-hidden>
-      <Skeleton className="h-3 w-24 bg-white/15" />
-      <Skeleton className="h-8 w-3/4 max-w-xs bg-white/15" />
-      <Skeleton className="h-4 w-full max-w-sm bg-white/10" />
-      <Skeleton className="mt-6 h-12 w-40 bg-white/15" />
+      <Skeleton className="h-3 w-24 bg-foreground/10" />
+      <Skeleton className="h-8 w-3/4 max-w-xs bg-foreground/10" />
+      <Skeleton className="h-4 w-full max-w-sm bg-foreground/8" />
+      <Skeleton className="mt-6 h-12 w-40 bg-foreground/10" />
     </div>
   );
 }
@@ -656,7 +657,7 @@ function PaymentSkeleton() {
     <div className="w-full max-w-md space-y-4" aria-hidden>
       <Skeleton className="h-6 w-48" />
       <Skeleton className="h-4 w-full max-w-sm" />
-      <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-5">
+      <div className="space-y-3 rounded-lg border border-border bg-surface p-5">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-2/3" />

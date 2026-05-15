@@ -7,6 +7,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { toast } from "sonner";
+import type { ChatHandlerResult } from "@railbeam/stardorm-api-contract";
 import { useApp } from "@/lib/app-state";
 import { Button } from "@/components/ui/button";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
@@ -88,11 +89,16 @@ export function TransferDraftHandlerCtaRow({
   handler,
   params,
   label,
+  txConfirmed,
+  onPersistResult,
 }: {
   messageId: string;
   handler: TransferDraftHandlerKind;
   params: Record<string, unknown>;
   label: string;
+  /** When set, the CTA stays disabled (tx already broadcast). */
+  txConfirmed?: boolean;
+  onPersistResult?: (result: ChatHandlerResult) => void | Promise<void>;
 }) {
   const { address, connect } = useApp();
   const chainId = useChainId();
@@ -105,6 +111,9 @@ export function TransferDraftHandlerCtaRow({
   React.useEffect(() => {
     setLastHash(null);
   }, [messageId]);
+
+  const network =
+    typeof params.network === "string" ? params.network.trim() : undefined;
 
   const busy = sendingNative || writing;
 
@@ -208,10 +217,30 @@ export function TransferDraftHandlerCtaRow({
 
       await waitForWriteContractReceipt(publicClient, hash);
       setLastHash(hash);
+      const result: ChatHandlerResult = {
+        kind: "wallet_tx",
+        status: "confirmed",
+        txHash: hash,
+        network,
+        chainId: targetChainId,
+        handler,
+        updatedAt: Date.now(),
+      };
+      await onPersistResult?.(result);
       toast.success("Transfer submitted", {
         description: `${hash.slice(0, 10)}…${hash.slice(-6)}`,
       });
     } catch (e) {
+      const fail: ChatHandlerResult = {
+        kind: "wallet_tx",
+        status: "failed",
+        error: errMsg(e),
+        network,
+        chainId: targetChainId,
+        handler,
+        updatedAt: Date.now(),
+      };
+      void onPersistResult?.(fail);
       toast.error("Transfer failed", { description: errMsg(e) });
     }
   };
@@ -223,10 +252,10 @@ export function TransferDraftHandlerCtaRow({
         size="sm"
         variant="secondary"
         loading={busy}
-        disabled={busy || lastHash != null}
+        disabled={busy || lastHash != null || txConfirmed === true}
         onClick={() => void onSend()}
       >
-        {busy ? "Sending…" : lastHash != null ? "Sent" : label}
+        {busy ? "Sending…" : lastHash != null || txConfirmed ? "Sent" : label}
       </Button>
     </div>
   );

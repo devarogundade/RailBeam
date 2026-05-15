@@ -61,6 +61,9 @@ export class ChatRichBlock {
       'on_ramp_checkout_form',
       'credit_card_checkout_form',
       'credit_card',
+      'swap_checkout_form',
+      'transfer_checkout_form',
+      'marketplace_hire',
     ],
   })
   type: string;

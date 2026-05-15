@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { handlerActionIdSchema } from "./handlers.js";
 import { stardormChatRichBlockSchema } from "./chat-api.js";
+import { chatHandlerResultSchema } from "./handler-result.js";
 
 export const chatHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(40),
@@ -68,6 +69,8 @@ export const chatHistoryMessageSchema = z.object({
   attachments: z.array(chatHistoryAttachmentSchema).optional(),
   rich: stardormChatRichBlockSchema.optional(),
   handlerCta: chatHistoryHandlerCtaSchema.optional(),
+  /** Wallet or server outcome for this bubble (tx hash, checkout ids, …). */
+  result: chatHandlerResultSchema.optional(),
   followUp: chatFollowUpSchema.optional(),
   model: z.string().optional(),
   verified: z.boolean().optional(),

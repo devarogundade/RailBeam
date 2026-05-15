@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   chatHistoryHandlerCtaSchema,
   chatFollowUpSchema,
+  chatHandlerResultSchema,
   stardormChatRichBlockSchema,
 } from "@railbeam/stardorm-api-contract";
 
@@ -30,6 +31,7 @@ export const chatMessageSchema = z.object({
   status: z.enum(["sent", "delivered", "seen"]).optional(),
   rich: stardormChatRichBlockSchema.optional(),
   handlerCta: chatHandlerCtaSchema.optional(),
+  result: chatHandlerResultSchema.optional(),
   followUp: chatFollowUpSchema.optional(),
   /** 0G inference metadata (agent turns). */
   model: z.string().optional(),
@@ -42,4 +44,5 @@ export type MessageRole = z.infer<typeof messageRoleSchema>;
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 export type ChatHandlerCta = z.infer<typeof chatHandlerCtaSchema>;
 export type ChatFollowUp = z.infer<typeof chatFollowUpSchema>;
+export type ChatHandlerResult = z.infer<typeof chatHandlerResultSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;

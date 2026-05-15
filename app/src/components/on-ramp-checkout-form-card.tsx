@@ -6,14 +6,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { parseUnits } from "viem";
 import { cn } from "@/lib/utils";
+import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
 import { toast } from "sonner";
+import { BeamCurrentNetworkNote } from "@/components/beam-current-network-note";
 
 type OnRampFormRich = Extract<StardormChatRichBlock, { type: "on_ramp_checkout_form" }>;
-
-const DEFAULT_NETWORKS = [
-  { id: "eip155:16661", label: "0G Mainnet" },
-  { id: "eip155:16602", label: "0G Galileo testnet" },
-] as const;
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
@@ -26,18 +23,11 @@ export function OnRampCheckoutFormCard({
   disabled?: boolean;
   onCreateCheckout: (params: Record<string, unknown>) => void | Promise<void>;
 }) {
-  const networks = React.useMemo(
-    () =>
-      rich.networks?.length
-        ? rich.networks
-        : [...DEFAULT_NETWORKS].map((n) => ({ id: n.id, label: n.label })),
-    [rich.networks],
-  );
+  const { networkId } = useBeamEffectiveCaip2Network();
 
   const [assetAddr, setAssetAddr] = React.useState(
     () => rich.supportedAssets[0]?.address ?? "",
   );
-  const [networkId, setNetworkId] = React.useState(() => networks[0]?.id ?? "");
   const [recipient, setRecipient] = React.useState("");
   const [amountHuman, setAmountHuman] = React.useState("");
   const [usdHuman, setUsdHuman] = React.useState("");
@@ -47,12 +37,6 @@ export function OnRampCheckoutFormCard({
       setAssetAddr(rich.supportedAssets[0]?.address ?? "");
     }
   }, [rich.supportedAssets, assetAddr]);
-
-  React.useEffect(() => {
-    if (!networks.some((n) => n.id === networkId)) {
-      setNetworkId(networks[0]?.id ?? "");
-    }
-  }, [networks, networkId]);
 
   const selected = rich.supportedAssets.find((a) => a.address === assetAddr);
 
@@ -90,13 +74,9 @@ export function OnRampCheckoutFormCard({
       toast.error("USD charge too small");
       return;
     }
-    if (!networkId.trim()) {
-      toast.error("Pick a network");
-      return;
-    }
     const params: Record<string, unknown> = {
       recipientWallet: rec.toLowerCase(),
-      network: networkId.trim(),
+      network: networkId,
       tokenAddress: selected.address.trim().toLowerCase(),
       tokenDecimals: selected.decimals,
       tokenSymbol: selected.symbol.trim(),
@@ -117,21 +97,18 @@ export function OnRampCheckoutFormCard({
       <div className="border-b border-border pb-2">
         <h3 className="text-sm font-semibold">{rich.title}</h3>
         {rich.intro ? (
-          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{rich.intro}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{rich.intro}</p>
         ) : (
-          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Choose a supported token and how much you want credited on-chain, then enter the USD amount to charge on your card (Stripe). After payment settles, tokens are sent from the Beam on-ramp treasury.
           </p>
         )}
+        <BeamCurrentNetworkNote className="mt-2" />
       </div>
 
       <div className="space-y-2">
         <Label className="text-xs">Asset</Label>
-        <RadioGroup
-          value={assetAddr}
-          onValueChange={setAssetAddr}
-          className="grid gap-2"
-        >
+        <RadioGroup value={assetAddr} onValueChange={setAssetAddr} className="grid gap-2">
           {rich.supportedAssets.map((a) => (
             <label
               key={a.address}
@@ -143,21 +120,16 @@ export function OnRampCheckoutFormCard({
               )}
             >
               <RadioGroupItem value={a.address} id={`onramp-asset-${a.address}`} />
-              <img
-                src={a.icon}
-                alt=""
-                className="h-8 w-8 rounded-full bg-pill object-cover"
-              />
+              <img src={a.icon} alt="" className="h-8 w-8 rounded-full bg-pill object-cover" />
               <div className="min-w-0 flex-1">
                 <div className="font-medium">
-                  {a.name}{" "}
-                  <span className="text-muted-foreground">({a.symbol})</span>
+                  {a.name} <span className="text-muted-foreground">({a.symbol})</span>
                 </div>
-                {a.usdValue != null && (
+                {a.usdValue != null ? (
                   <div className="text-[11px] text-muted-foreground">
                     Spot hint ≈ ${a.usdValue.toFixed(4)} USD
                   </div>
-                )}
+                ) : null}
               </div>
             </label>
           ))}
@@ -192,22 +164,6 @@ export function OnRampCheckoutFormCard({
           onChange={(e) => setUsdHuman(e.target.value)}
           disabled={disabled}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Network</Label>
-        <RadioGroup value={networkId} onValueChange={setNetworkId} className="grid gap-1.5">
-          {networks.map((n) => (
-            <label
-              key={n.id}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-1 py-1 text-sm hover:bg-(--btn-secondary-bg)"
-            >
-              <RadioGroupItem value={n.id} id={`onramp-net-${n.id}`} />
-              <span>{n.label}</span>
-              <span className="ml-auto truncate text-[11px] text-muted-foreground">{n.id}</span>
-            </label>
-          ))}
-        </RadioGroup>
       </div>
 
       <div className="space-y-2">

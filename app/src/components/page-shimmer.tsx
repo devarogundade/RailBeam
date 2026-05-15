@@ -96,8 +96,8 @@ export function PageRoutePending({
 }) {
   if (variant === "pay") {
     return (
-      <div className="flex min-h-dvh flex-col bg-[#f6f9fc]">
-        <div className="flex items-center justify-between border-b border-slate-200/80 bg-white px-4 py-3 lg:hidden">
+      <div className="flex min-h-dvh flex-col bg-background">
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
           <div className="flex items-center gap-2">
             <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
             <Skeleton className="h-5 w-14" />
@@ -105,10 +105,10 @@ export function PageRoutePending({
           <Skeleton className="h-9 w-36 rounded-md" />
         </div>
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <aside className="bg-[#0a2540] px-6 py-10 lg:w-[min(100%,480px)] lg:px-10 lg:py-12 xl:w-[42%]">
+          <aside className="bg-surface-elevated px-6 py-10 lg:w-[min(100%,480px)] lg:px-10 lg:py-12 xl:w-[42%]">
             <PayCheckoutSummarySkeleton />
           </aside>
-          <section className="flex flex-1 flex-col bg-white px-6 py-10 sm:px-10 lg:max-w-xl lg:py-12">
+          <section className="flex flex-1 flex-col bg-background px-6 py-10 sm:px-10 lg:max-w-xl lg:py-12">
             <PayCheckoutPaymentPanelSkeleton />
           </section>
         </div>
@@ -419,10 +419,10 @@ export function ValidationsListSkeleton() {
 export function PayCheckoutSummarySkeleton() {
   return (
     <div className="space-y-4" aria-hidden>
-      <Skeleton className="h-3 w-24 bg-white/15" />
-      <Skeleton className="h-8 w-3/4 max-w-xs bg-white/15" />
-      <Skeleton className="h-4 w-full max-w-sm bg-white/10" />
-      <Skeleton className="mt-6 h-12 w-40 bg-white/15" />
+      <Skeleton className="h-3 w-24 bg-foreground/10" />
+      <Skeleton className="h-8 w-3/4 max-w-xs bg-foreground/10" />
+      <Skeleton className="h-4 w-full max-w-sm bg-foreground/8" />
+      <Skeleton className="mt-6 h-12 w-40 bg-foreground/10" />
     </div>
   );
 }
@@ -432,7 +432,7 @@ export function PayCheckoutPaymentPanelSkeleton() {
     <div className="w-full space-y-4" aria-hidden>
       <Skeleton className="h-6 w-48" />
       <Skeleton className="h-4 w-full max-w-sm" />
-      <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-5">
+      <div className="space-y-3 rounded-lg border border-border bg-surface p-5">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-2/3" />
