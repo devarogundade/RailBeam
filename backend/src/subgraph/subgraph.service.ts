@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { beamEvmTierFromChainId } from '../beam/beam-evm-chain';
 import {
   fetchActiveSubscribedChainAgentIdsForUser,
+  fetchOwnedCloneChainAgentIdsForUser,
   getAgentByChainAgentId as fetchAgentByChainAgentId,
   getAgentById as fetchAgentById,
   getFeedbacksByAgentId as fetchFeedbacksByAgentId,
@@ -96,6 +97,28 @@ export class SubgraphService {
     if (!/^0x[a-f0-9]{40}$/.test(w)) return [];
     try {
       return await fetchActiveSubscribedChainAgentIdsForUser(
+        w as `0x${string}`,
+        url,
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Registry clone tokens owned by the wallet (`isCloned: true`). These are excluded
+   * from hire subscriptions but should still unlock handler tools in chat.
+   */
+  async getOwnedCloneChainAgentIdsForUser(
+    walletAddress: string,
+    clientEvmChainId?: number | null,
+  ): Promise<number[]> {
+    const url = this.subgraphUrlForClientEvmChain(clientEvmChainId);
+    if (!url) return [];
+    const w = walletAddress.trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(w)) return [];
+    try {
+      return await fetchOwnedCloneChainAgentIdsForUser(
         w as `0x${string}`,
         url,
       );

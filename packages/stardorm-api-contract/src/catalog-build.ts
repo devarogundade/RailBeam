@@ -1,6 +1,24 @@
 /**
+ * Ignition seed registration order → on-chain `agentId` (1-based).
+ * Keep aligned with `smart-contracts/ignition/data/seedAgentUris.ts` `catalogJson` key order.
+ */
+export const STARDORM_CATALOG_AGENT_KEYS_ORDERED = [
+  "beam-default",
+  "ledger",
+  "fiscus",
+  "scribe",
+  "yieldr",
+  "audita",
+  "settler",
+  "quanta",
+  "ramp",
+  "passport",
+  "capita",
+] as const;
+
+/**
  * Resolve catalog / chat `agentKey` values to ERC-8004 registry `agentId`.
- * Supports numeric strings, `beam-default` (token 1), and `chain-{id}`.
+ * Supports numeric strings, catalog slugs (`capita`, `ledger`, …), `beam-default`, and `chain-{id}`.
  */
 export function resolveStardormChainAgentId(agentKey: string): number | null {
   const trimmed = agentKey.trim();
@@ -14,10 +32,15 @@ export function resolveStardormChainAgentId(agentKey: string): number | null {
     const n = Number.parseInt(m[1], 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
+  const slug = trimmed.toLowerCase();
+  const idx = (
+    STARDORM_CATALOG_AGENT_KEYS_ORDERED as readonly string[]
+  ).indexOf(slug);
+  if (idx >= 0) return idx + 1;
   return null;
 }
 
-/** Reverse of `resolveStardormChainAgentId`: registry id → canonical catalog id. */
+/** Reverse of `resolveStardormChainAgentId`: registry id → catalog slug when known. */
 export function resolveStardormAgentKey(
   chainAgentId: number | bigint | string,
 ): string | null {
@@ -26,6 +49,13 @@ export function resolveStardormAgentKey(
       ? Number.parseInt(chainAgentId, 10)
       : Number(chainAgentId);
   if (!Number.isFinite(n) || n <= 0) return null;
-  if (n === 1) return "beam-default";
+  const idx = n - 1;
+  if (
+    idx >= 0 &&
+    idx < STARDORM_CATALOG_AGENT_KEYS_ORDERED.length &&
+    STARDORM_CATALOG_AGENT_KEYS_ORDERED[idx]
+  ) {
+    return STARDORM_CATALOG_AGENT_KEYS_ORDERED[idx];
+  }
   return `chain-${n}`;
 }

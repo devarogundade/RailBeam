@@ -164,14 +164,21 @@ export const stardormChatAttachmentSchema = z.object({
 
 export type StardormChatAttachment = z.infer<typeof stardormChatAttachmentSchema>;
 
+/** JSON APIs sometimes emit `null` for omitted optional fields. */
+function nullishOptional<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === null ? undefined : v), schema);
+}
+
 export const stardormChatSuccessSchema = z.object({
   agentKey: z.string().min(1),
   reply: z.string(),
-  structured: stardormChatStructuredSchema.optional(),
+  structured: nullishOptional(stardormChatStructuredSchema.optional()),
   /** Structured card rows for the client (model or server-generated). */
-  rich: stardormChatRichBlockSchema.optional(),
+  rich: nullishOptional(stardormChatRichBlockSchema.optional()),
   /** Files the server uploaded to 0G Storage from the user's chat turn (echoed for immediate render). */
-  attachments: z.array(stardormChatAttachmentSchema).optional(),
+  attachments: nullishOptional(
+    z.array(stardormChatAttachmentSchema).optional(),
+  ),
   compute: stardormChatComputeSchema,
 });
 

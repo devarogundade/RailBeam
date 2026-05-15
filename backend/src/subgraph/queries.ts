@@ -101,6 +101,21 @@ export const GET_VALIDATION_BY_REQUEST_HASH = /* GraphQL */ `
   }
 `;
 
+/** Paginated registry agents cloned to `owner` (wallet as `Bytes`). */
+export const GET_AGENTS_CLONED_BY_OWNER_PAGE = /* GraphQL */ `
+  query AgentsClonedByOwnerPage($first: Int!, $skip: Int!, $owner: Bytes!) {
+    agents(
+      first: $first
+      skip: $skip
+      orderBy: blockTimestamp
+      orderDirection: desc
+      where: { isCloned: true, owner: $owner }
+    ) {
+      agentId
+    }
+  }
+`;
+
 /** Paginated `userSubscriptions` for one subscriber (wallet as `Bytes`). */
 export const GET_USER_SUBSCRIPTIONS_PAGE_FILTERED = /* GraphQL */ `
   query UserSubscriptionsPageFiltered($first: Int!, $skip: Int!, $user: Bytes!) {

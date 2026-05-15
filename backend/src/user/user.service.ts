@@ -255,27 +255,30 @@ export class UserService {
     });
   }
 
-  private persistedRowToHistoryMessage(row: {
-    _id: Types.ObjectId;
-    role?: string;
-    agentKey?: string;
-    content?: string;
-    createdAt?: number;
-    attachments?: Array<{
-      id: string;
-      mimeType: string;
-      name: string;
-      hash: string;
-      size?: string;
-    }>;
-    rich?: unknown;
-    handlerCta?: { handler: string; params: Record<string, unknown> };
-    handlerResultData?: unknown;
-    model?: string;
-    verified?: boolean;
-    chatId?: string;
-    provider?: string;
-  }): ChatHistoryMessage {
+  private persistedRowToHistoryMessage(
+    row: {
+      _id: Types.ObjectId;
+      role?: string;
+      agentKey?: string;
+      content?: string;
+      createdAt?: number;
+      attachments?: Array<{
+        id: string;
+        mimeType: string;
+        name: string;
+        hash: string;
+        size?: string;
+      }>;
+      rich?: unknown;
+      handlerCta?: { handler: string; params: Record<string, unknown> };
+      handlerResultData?: unknown;
+      model?: string;
+      verified?: boolean;
+      chatId?: string;
+      provider?: string;
+    },
+    patch?: Partial<ChatHistoryMessage>,
+  ): ChatHistoryMessage {
     const id = String(row._id);
     const role: 'user' | 'agent' =
       row.role === 'user' || row.role === 'agent' ? row.role : 'agent';
@@ -339,6 +342,7 @@ export class UserService {
       ...(result ? { result } : {}),
       ...(followUp ? { followUp } : {}),
       ...computeMeta,
+      ...patch,
     };
   }
 
@@ -401,6 +405,42 @@ export class UserService {
       out.push(handlerCapabilitiesFromSubgraphAgent(agent));
     }
     return out;
+  }
+
+  /**
+   * Catalog / chain keys whose on-chain `handlerCapabilities` metadata should
+   * be unioned for this chat turn (active agent, hires, owned clones, workspace agent).
+   */
+  private async catalogKeysForHandlerMerge(
+    wallet: string,
+    activeAgentId: string | undefined,
+    chatAgentKey: string,
+    clientEvmChainId?: number,
+  ): Promise<string[]> {
+    const keys = new Set<string>();
+    const add = (raw?: string | null) => {
+      const k = raw?.trim();
+      if (k) keys.add(k);
+    };
+    add(chatAgentKey);
+    add(activeAgentId);
+    const subscribed =
+      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(
+        wallet,
+        clientEvmChainId,
+      );
+    for (const id of subscribed) {
+      add(resolveStardormAgentKey(id) ?? undefined);
+    }
+    const ownedClones =
+      await this.subgraph.getOwnedCloneChainAgentIdsForUser(
+        wallet,
+        clientEvmChainId,
+      );
+    for (const id of ownedClones) {
+      add(resolveStardormAgentKey(id) ?? undefined);
+    }
+    return [...keys];
   }
 
   private async mergeHandlersForChatKeys(
@@ -1519,11 +1559,15 @@ export class UserService {
       ),
     ];
 
+    const handlerCatalogKeys = await this.catalogKeysForHandlerMerge(
+      wallet,
+      user.activeAgentId,
+      agentKey,
+      clientEvmChainId,
+    );
+
     const allowedHandlers: HandlerActionId[] =
-      await this.mergeHandlersForChatKeys(
-        [agentKey, ...subscribedCatalogAgentKeys],
-        clientEvmChainId,
-      );
+      await this.mergeHandlersForChatKeys(handlerCatalogKeys, clientEvmChainId);
 
     const attachments: Array<{
       id: string;
@@ -1688,7 +1732,13 @@ export class UserService {
     await conv.save();
 
     this.pushThreadMessages(wallet, String(conv._id), [
-      this.persistedRowToHistoryMessage(agentBubble),
+      this.persistedRowToHistoryMessage(agentBubble, {
+        ...(structured.rich ? { rich: structured.rich } : {}),
+        ...(typeof raw.model === 'string' ? { model: raw.model } : {}),
+        ...(typeof raw.verified === 'boolean' ? { verified: raw.verified } : {}),
+        ...(typeof raw.chatId === 'string' ? { chatId: raw.chatId } : {}),
+        ...(typeof raw.provider === 'string' ? { provider: raw.provider } : {}),
+      }),
     ]);
 
     return {
@@ -1955,20 +2005,14 @@ export class UserService {
     }
     const issuingAgentKey = ctaMsg.agentKey ?? conv.agentKey ?? 'beam-default';
 
-    const activeSubscribedChainAgentIds =
-      await this.subgraph.getActiveSubscribedChainAgentIdsForUser(
-        wallet,
-        clientEvmChainId,
-      );
-    const subscribedCatalogAgentKeys = [
-      ...new Set(
-        activeSubscribedChainAgentIds
-          .map((id) => resolveStardormAgentKey(id))
-          .filter((k): k is string => k != null),
-      ),
-    ];
+    const handlerCatalogKeys = await this.catalogKeysForHandlerMerge(
+      wallet,
+      user.activeAgentId,
+      issuingAgentKey,
+      clientEvmChainId,
+    );
     const allowed = await this.mergeHandlersForChatKeys(
-      [issuingAgentKey, ...subscribedCatalogAgentKeys],
+      handlerCatalogKeys,
       clientEvmChainId,
     );
     if (!allowed.includes(body.handler)) {
@@ -2022,7 +2066,9 @@ export class UserService {
       const updated = await this.chatMessageModel.findById(ctaId).exec();
       if (updated) {
         this.pushThreadMessages(wallet, String(conv._id), [
-          this.persistedRowToHistoryMessage(updated),
+          this.persistedRowToHistoryMessage(updated, {
+            ...(richCard ? { rich: richCard } : {}),
+          }),
         ]);
       }
       return {
@@ -2092,7 +2138,10 @@ export class UserService {
     conv.lastMessageAt = new Date();
     await conv.save();
     this.pushThreadMessages(wallet, String(conv._id), [
-      this.persistedRowToHistoryMessage(handlerReply),
+      this.persistedRowToHistoryMessage(handlerReply, {
+        ...(rich ? { rich } : {}),
+        result: serverResult,
+      }),
     ]);
     return {
       message: result.message,
@@ -2156,7 +2205,10 @@ export class UserService {
     const updated = await this.chatMessageModel.findById(msg._id).exec();
     if (updated) {
       this.pushThreadMessages(wallet, String(updated.conversationId), [
-        this.persistedRowToHistoryMessage(updated),
+        this.persistedRowToHistoryMessage(updated, {
+          ...(mergedRich ? { rich: mergedRich } : {}),
+          result: parsed.data,
+        }),
       ]);
     }
 

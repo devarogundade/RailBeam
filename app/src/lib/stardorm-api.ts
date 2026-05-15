@@ -14,7 +14,7 @@ import {
   userUploadResultSchema,
   onRampsListResponseSchema,
   paymentRequestsListResponseSchema,
-  stardormChatSuccessSchema,
+  stardormChatClientResultSchema,
   userKycStatusDocumentSchema,
   type ChatHistoryAttachment,
   type ChatHistoryMessage,
@@ -36,6 +36,31 @@ import { settleCreditCardFundViaAccess } from "./x402-checkout";
 import { getStardormApiBase, stardormAxios } from "./stardorm-axios";
 import type { PublicClient, WalletClient } from "viem";
 import type { ChatMessage } from "./schemas";
+
+function normalizeStardormChatResponseBody(data: unknown): unknown {
+  if (data == null) return data;
+  if (typeof data === "string") {
+    try {
+      return JSON.parse(data) as unknown;
+    } catch {
+      return data;
+    }
+  }
+  if (typeof data !== "object") return data;
+  const o = { ...(data as Record<string, unknown>) };
+  for (const key of ["rich", "structured", "attachments"] as const) {
+    if (o[key] === null) delete o[key];
+  }
+  return o;
+}
+
+function formatZodIssues(issues: { path: (string | number)[]; message: string }[]): string {
+  if (issues.length === 0) return "";
+  return issues
+    .slice(0, 3)
+    .map((i) => `${i.path.length ? i.path.join(".") : "response"}: ${i.message}`)
+    .join("; ");
+}
 
 function axiosErrorMessage(e: unknown): string {
   if (!axios.isAxiosError(e)) {
@@ -81,9 +106,18 @@ export async function stardormChat(params: {
       });
       response = data;
     }
-    const parsed = stardormChatSuccessSchema.safeParse(response);
+    const normalized = normalizeStardormChatResponseBody(response);
+    const parsed = stardormChatClientResultSchema.safeParse(normalized);
     if (!parsed.success) {
-      return { error: "Unexpected response from Stardorm API" };
+      const detail = formatZodIssues(parsed.error.issues);
+      return {
+        error: detail
+          ? `Unexpected response from Stardorm API (${detail})`
+          : "Unexpected response from Stardorm API",
+      };
+    }
+    if ("error" in parsed.data) {
+      return parsed.data;
     }
     return parsed.data;
   } catch (e: unknown) {

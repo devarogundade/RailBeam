@@ -3,6 +3,7 @@ import { postGraphql } from './graphql';
 import { mapAgentRow, mapFeedbackRow, mapValidationRow } from './map-rows';
 import {
   GET_AGENT,
+  GET_AGENTS_CLONED_BY_OWNER_PAGE,
   GET_FEEDBACKS_BY_AGENT,
   GET_USER_SUBSCRIPTIONS_PAGE_FILTERED,
   GET_VALIDATION_BY_REQUEST_HASH,
@@ -177,4 +178,43 @@ export async function fetchActiveSubscribedChainAgentIdsForUser(
     skip += SUBSCRIPTION_PAGE_SIZE;
   }
   return [...active.keys()];
+}
+
+const CLONED_AGENTS_PAGE_SIZE = 100;
+
+/**
+ * ERC-8004 `agentId` values for registry clones owned by `walletAddress`
+ * (`isCloned: true`, `owner` matches). Used to merge handler tools for chat.
+ */
+export async function fetchOwnedCloneChainAgentIdsForUser(
+  walletLower: `0x${string}`,
+  subgraphUrl: string,
+): Promise<number[]> {
+  const url = resolveSubgraphUrl(subgraphUrl);
+  const ids = new Set<number>();
+  let skip = 0;
+  for (;;) {
+    const data = await postGraphql<{
+      agents: Array<{ agentId: string | null }>;
+    }>(url, GET_AGENTS_CLONED_BY_OWNER_PAGE, {
+      first: CLONED_AGENTS_PAGE_SIZE,
+      skip,
+      owner: walletLower,
+    });
+    const page = data.agents ?? [];
+    for (const row of page) {
+      if (row.agentId == null) continue;
+      try {
+        const aid = BigInt(String(row.agentId));
+        if (aid > MAX_SAFE_BIGINT || aid < 0n) continue;
+        ids.add(Number(aid));
+      } catch {
+        continue;
+      }
+    }
+    if (page.length < CLONED_AGENTS_PAGE_SIZE) break;
+    skip += CLONED_AGENTS_PAGE_SIZE;
+    if (skip > 5000) break;
+  }
+  return [...ids];
 }

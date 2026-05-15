@@ -49,7 +49,8 @@ export class X402NetworkOption {
 
 const X402NetworkOptionSchema = SchemaFactory.createForClass(X402NetworkOption);
 
-@Schema({ _id: false })
+/** Persists any `stardormChatRichBlockSchema` variant (including `marketplace_hire`). */
+@Schema({ _id: false, strict: false })
 export class ChatRichBlock {
   @Prop({
     required: true,
@@ -77,11 +78,47 @@ export class ChatRichBlock {
   @Prop()
   intro?: string;
 
+  @Prop()
+  resourceUrl?: string;
+
   @Prop({ type: [X402SupportedAssetRowSchema], default: undefined })
   supportedAssets?: X402SupportedAssetRow[];
 
   @Prop({ type: [X402NetworkOptionSchema], default: undefined })
   networks?: X402NetworkOption[];
+
+  @Prop()
+  defaultCurrency?: string;
+
+  @Prop()
+  defaultPoolFee?: number;
+
+  @Prop()
+  defaultTo?: string;
+
+  @Prop()
+  specialistName?: string;
+
+  @Prop()
+  specialistAgentKey?: string;
+
+  @Prop()
+  category?: string;
+
+  @Prop()
+  capability?: string;
+
+  @Prop()
+  userTask?: string;
+
+  @Prop()
+  marketplacePath?: string;
+
+  @Prop()
+  agentProfilePath?: string;
+
+  @Prop()
+  requiredHandler?: string;
 }
 
 const ChatRichBlockSchema = SchemaFactory.createForClass(ChatRichBlock);

@@ -67,6 +67,12 @@ import {
   BEAM_MARKETPLACE_SPECIALIST_DEFAULTS,
   marketplaceHireRichFromInput,
 } from '../beam/beam-marketplace-specialists';
+import {
+  attachHandlerCtaFromUserIntent,
+  marketplaceHireGuardPromptLine,
+  marketplaceHireWhenHandlerMissing,
+  rewriteMisroutedMarketplaceHire,
+} from './handler-workspace-routing';
 
 function formatBase10Integer(raw: string): string {
   const digits = raw.replace(/\s+/g, '');
@@ -712,6 +718,7 @@ export function buildAgentOutputContract(
         ].join('\n')
       : '',
     '- suggest_marketplace_hire params: `specialistAgentKey` (required), optional `specialistName`, `category`, `capability`, `userTask`, `intro`, `requiredHandler`. Use matching `rich` type `marketplace_hire`.',
+    marketplaceHireGuardPromptLine(allowed),
   ]
     .filter(Boolean)
     .join('\n');
@@ -1455,32 +1462,11 @@ export function buildAgentToolCallingSystemPrompt(
           'After proposing a swap, remind them to tap **Approve & swap** — approve ERC-20 allowance on token-in when needed, then `exactInputSingle` on the Beam router.',
         ].join(' ')
       : '',
-    !allowed.includes('complete_stripe_kyc')
-      ? [
-          'KYC / identity: if the user asks to start identity verification, KYC, Stripe Identity, or ID checks, call **suggest_marketplace_hire** with specialistAgentKey `passport` and userTask like "complete identity verification".',
-          'Never say you have no tool or that the product lacks verification—route to Passport on the marketplace.',
-        ].join(' ')
-      : '',
+    marketplaceHireGuardPromptLine(allowed),
     'When the user asks for any capability you do not have tools for (see your allowed handler list), call **suggest_marketplace_hire** with the right specialistAgentKey instead of asking them to guess contract addresses or listing steps only in prose.',
   ]
     .filter(Boolean)
     .join('\n');
-}
-
-/** User message hints they want Beam Stripe Identity / KYC, not generic “verify email”. */
-const KYC_USER_INTENT_RE =
-  /\b(?:kyc|stripe\s+identity|identity\s+verification|verify\s+(?:my\s+)?(?:identity|account)|document\s+verification|start(?:\s+the)?\s+(?:stripe\s+)?identity(?:\s+verification)?)\b/i;
-
-function looksLikeToolDenialAssistantText(text: string): boolean {
-  const t = text.toLowerCase();
-  return (
-    /\bno tool\b/.test(t) ||
-    /\bnot have (?:a )?tool\b/.test(t) ||
-    /\bdon't have (?:a )?tool\b/.test(t) ||
-    /\bdo not have (?:a )?tool\b/.test(t) ||
-    /\bno tools?\b.*\bavailab/.test(t) ||
-    /\bunable to initiate\b/.test(t)
-  );
 }
 
 /**
@@ -1492,39 +1478,7 @@ export function enrichAgentReplyWithMarketplaceRouting(args: {
   allowedHandlers: readonly HandlerActionId[];
   reply: AgentComputeReplyWithParams;
 }): AgentComputeReplyWithParams {
-  const { userContent, allowedHandlers, reply } = args;
-  if (reply.handler != null || reply.rich != null) return reply;
-  const u = userContent.trim();
-  if (!u) return reply;
-
-  if (
-    !allowedHandlers.includes('complete_stripe_kyc') &&
-    KYC_USER_INTENT_RE.test(u)
-  ) {
-    const canned =
-      'Stripe Identity for your wallet is started from the Passport specialist. Open the agent marketplace, hire Passport (Compliance), set Passport as this chat’s active agent, then ask again—you will get the one-tap Start identity verification action.';
-    const text =
-      looksLikeToolDenialAssistantText(reply.text) || !reply.text.trim()
-        ? canned
-        : reply.text;
-    const rich = marketplaceHireRichFromInput({
-      specialistAgentKey: 'passport',
-      userTask: 'complete identity verification',
-      capability: 'Stripe Identity (`complete_stripe_kyc`)',
-    });
-    return {
-      text,
-      handler: 'suggest_marketplace_hire',
-      params: {
-        specialistAgentKey: 'passport',
-        userTask: 'complete identity verification',
-        capability: 'Stripe Identity (`complete_stripe_kyc`)',
-      },
-      rich,
-    };
-  }
-
-  return reply;
+  return marketplaceHireWhenHandlerMissing(args);
 }
 
 /**
@@ -1536,27 +1490,13 @@ function enrichAgentReplyWithHandlerCta(args: {
   allowedHandlers: readonly HandlerActionId[];
   reply: AgentComputeReplyWithParams;
 }): AgentComputeReplyWithParams {
-  const reply = enrichAgentReplyWithMarketplaceRouting(args);
+  const routed = rewriteMisroutedMarketplaceHire(args);
+  const reply = enrichAgentReplyWithMarketplaceRouting({
+    ...args,
+    reply: routed,
+  });
   if (reply.handler != null) return reply;
-
-  const u = args.userContent.trim();
-  if (!u) return reply;
-
-  if (
-    args.allowedHandlers.includes('complete_stripe_kyc') &&
-    KYC_USER_INTENT_RE.test(u)
-  ) {
-    const ctaLine =
-      'Tap **Start Identity verification** below to open Stripe Identity and upload your documents.';
-    const text = reply.text.trim() ? `${reply.text.trim()}\n\n${ctaLine}` : ctaLine;
-    return {
-      text,
-      handler: 'complete_stripe_kyc',
-      params: {},
-    };
-  }
-
-  return reply;
+  return attachHandlerCtaFromUserIntent({ ...args, reply });
 }
 
 /** Post-process model output before persisting an agent chat bubble. */

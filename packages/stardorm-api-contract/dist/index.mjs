@@ -97,6 +97,19 @@ function buildStardormCatalogResponse() {
 }
 
 // src/catalog-build.ts
+var STARDORM_CATALOG_AGENT_KEYS_ORDERED = [
+  "beam-default",
+  "ledger",
+  "fiscus",
+  "scribe",
+  "yieldr",
+  "audita",
+  "settler",
+  "quanta",
+  "ramp",
+  "passport",
+  "capita"
+];
 function resolveStardormChainAgentId(agentKey) {
   const trimmed = agentKey.trim();
   if (/^\d+$/.test(trimmed)) {
@@ -109,12 +122,18 @@ function resolveStardormChainAgentId(agentKey) {
     const n = Number.parseInt(m[1], 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
+  const slug = trimmed.toLowerCase();
+  const idx = STARDORM_CATALOG_AGENT_KEYS_ORDERED.indexOf(slug);
+  if (idx >= 0) return idx + 1;
   return null;
 }
 function resolveStardormAgentKey(chainAgentId) {
   const n = typeof chainAgentId === "string" ? Number.parseInt(chainAgentId, 10) : Number(chainAgentId);
   if (!Number.isFinite(n) || n <= 0) return null;
-  if (n === 1) return "beam-default";
+  const idx = n - 1;
+  if (idx >= 0 && idx < STARDORM_CATALOG_AGENT_KEYS_ORDERED.length && STARDORM_CATALOG_AGENT_KEYS_ORDERED[idx]) {
+    return STARDORM_CATALOG_AGENT_KEYS_ORDERED[idx];
+  }
   return `chain-${n}`;
 }
 var authChallengeBodySchema = z.object({
@@ -304,14 +323,19 @@ var stardormChatAttachmentSchema = z.object({
   hash: z.string().min(1),
   size: z.string().optional()
 });
+function nullishOptional(schema) {
+  return z.preprocess((v) => v === null ? void 0 : v, schema);
+}
 var stardormChatSuccessSchema = z.object({
   agentKey: z.string().min(1),
   reply: z.string(),
-  structured: stardormChatStructuredSchema.optional(),
+  structured: nullishOptional(stardormChatStructuredSchema.optional()),
   /** Structured card rows for the client (model or server-generated). */
-  rich: stardormChatRichBlockSchema.optional(),
+  rich: nullishOptional(stardormChatRichBlockSchema.optional()),
   /** Files the server uploaded to 0G Storage from the user's chat turn (echoed for immediate render). */
-  attachments: z.array(stardormChatAttachmentSchema).optional(),
+  attachments: nullishOptional(
+    z.array(stardormChatAttachmentSchema).optional()
+  ),
   compute: stardormChatComputeSchema
 });
 var stardormChatClientErrorSchema = z.object({
