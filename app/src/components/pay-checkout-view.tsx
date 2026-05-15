@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { PublicPaymentRequest } from "@railbeam/stardorm-api-contract";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { CoinIcon } from "@/components/icons";
+import { BeamLogo, CoinIcon } from "@/components/icons";
 import { StorageFile } from "@/components/storage-file";
 import { StorageImage } from "@/components/storage-image";
 import { EmptyState } from "@/components/empty-state";
@@ -114,7 +114,7 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
         className="sticky top-0 z-20 justify-between border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 lg:hidden"
       >
         <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <CoinIcon className="h-5 w-5" />
+          <BeamLogo className="h-8 w-8" />
           Beam
         </Link>
         <WalletConnectChip address={address} onConnect={onConnect} />
@@ -127,7 +127,7 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
               to="/"
               className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90 transition-colors hover:text-foreground"
             >
-              <CoinIcon className="h-5 w-5" />
+              <BeamLogo className="h-8 w-8" />
               Beam
             </Link>
           </CheckoutBar>
@@ -351,11 +351,14 @@ function CheckoutSummaryPanel({
           <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight sm:text-[2.5rem]">
             {amountPresentation.primary}
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {tokenLabel}
-            {payment.decimals != null ? ` · ${payment.decimals} decimals` : ""}
-            {" · "}
-            {friendlyNetwork}
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <CoinIcon className="h-4 w-4 shrink-0" />
+            <span>
+              {tokenLabel}
+              {payment.decimals != null ? ` · ${payment.decimals} decimals` : ""}
+              {" · "}
+              {friendlyNetwork}
+            </span>
           </p>
           {amountPresentation.hint ? (
             <p className="mt-2 text-xs leading-snug text-muted-foreground/80">{amountPresentation.hint}</p>
@@ -366,7 +369,16 @@ function CheckoutSummaryPanel({
       <ul className="mt-8 space-y-3 border-t border-border pt-6 text-sm">
         <SummaryLine label="Pay to" value={shortenMiddle(payment.payTo, 8, 6)} title={payment.payTo} />
         {!isNativeAsset(payment.asset) && isEvmAddress(payment.asset) ? (
-          <SummaryLine label="Token" value={shortenMiddle(payment.asset, 10, 8)} title={payment.asset} />
+          <li className="flex items-start justify-between gap-4">
+            <span className="text-muted-foreground">Token</span>
+            <span
+              className="inline-flex items-center gap-2 font-mono text-xs text-foreground sm:text-sm"
+              title={payment.asset}
+            >
+              <CoinIcon className="h-4 w-4 shrink-0" />
+              {shortenMiddle(payment.asset, 10, 8)}
+            </span>
+          </li>
         ) : null}
         {payment.expiresAt ? (
           <SummaryLine label="Expires" value={formatExpires(payment.expiresAt)} />
@@ -547,11 +559,16 @@ function CheckoutPaymentPanel({
         <PaymentDetailRow
           label="Asset"
           value={
-            isNativeAsset(payment.asset)
-              ? "Native token"
-              : isEvmAddress(payment.asset)
-                ? shortenMiddle(payment.asset, 10, 8)
-                : payment.asset
+            <span className="inline-flex items-center gap-2">
+              <CoinIcon className="h-4 w-4 shrink-0" />
+              <span>
+                {isNativeAsset(payment.asset)
+                  ? "Native token"
+                  : isEvmAddress(payment.asset)
+                    ? shortenMiddle(payment.asset, 10, 8)
+                    : payment.asset}
+              </span>
+            </span>
           }
         />
         <PaymentDetailRow

@@ -1115,10 +1115,15 @@ export class UserService {
     return this.toPublic(doc);
   }
 
-  async listMyPaymentRequests(walletAddress: string, limit: number) {
+  async listMyPaymentRequests(
+    walletAddress: string,
+    params: { limit: number; page: number },
+  ) {
     const wallet = this.normalizeWallet(walletAddress);
-    const items = await this.paymentRequests.listForWallet(wallet, limit);
-    return { items };
+    const { items, total } = await this.paymentRequests.listForWallet(wallet, params.limit, {
+      page: params.page,
+    });
+    return { items, total };
   }
 
   async listMyOnRamps(walletAddress: string, limit: number) {

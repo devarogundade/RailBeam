@@ -7,6 +7,8 @@ import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
 import {
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   Zap,
   CreditCard,
   Users,
@@ -333,6 +335,87 @@ function KycStatusBadge({ status }: { status: UserKycStatus }) {
   );
 }
 
+const PAYMENT_REQUEST_STATUS_LABEL: Record<PublicPaymentRequest["status"], string> = {
+  pending: "Awaiting payment",
+  paid: "Paid",
+  expired: "Expired",
+  cancelled: "Cancelled",
+};
+
+const PAYMENT_REQUEST_STATUS_BADGE: Record<
+  PublicPaymentRequest["status"],
+  { className: string; dotClassName: string; pulse?: boolean }
+> = {
+  pending: {
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300",
+    dotClassName: "bg-amber-500",
+    pulse: true,
+  },
+  paid: {
+    className: "border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300",
+    dotClassName: "bg-emerald-500",
+  },
+  expired: {
+    className: "border-muted-foreground/35 bg-muted/50 text-muted-foreground",
+    dotClassName: "bg-muted-foreground/60",
+  },
+  cancelled: {
+    className: "border-destructive/30 bg-destructive/10 text-destructive",
+    dotClassName: "bg-destructive",
+  },
+};
+
+function PaymentRequestStatusBadge({ status }: { status: PublicPaymentRequest["status"] }) {
+  const style = PAYMENT_REQUEST_STATUS_BADGE[status];
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "h-6 gap-1.5 border px-2.5 py-0 text-xs font-medium normal-case tracking-normal shadow-none",
+        style.className,
+      )}
+    >
+      <span
+        className={cn("size-1.5 shrink-0 rounded-full", style.dotClassName, style.pulse && "animate-pulse")}
+        aria-hidden
+      />
+      {PAYMENT_REQUEST_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+const PAYMENT_REQUEST_TYPE_BADGE: Record<
+  PublicPaymentRequest["type"],
+  { label: string; className: string; dotClassName: string }
+> = {
+  "on-chain": {
+    label: "Direct checkout",
+    className: "border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-300",
+    dotClassName: "bg-sky-500",
+  },
+  x402: {
+    label: "x402",
+    className: "border-violet-500/30 bg-violet-500/10 text-violet-900 dark:text-violet-300",
+    dotClassName: "bg-violet-500",
+  },
+};
+
+function PaymentRequestTypeBadge({ type }: { type: PublicPaymentRequest["type"] }) {
+  const cfg = PAYMENT_REQUEST_TYPE_BADGE[type];
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "h-6 gap-1.5 border px-2 py-0 text-[11px] font-medium normal-case tracking-normal shadow-none",
+        cfg.className,
+      )}
+    >
+      <span className={cn("size-1.5 shrink-0 rounded-full", cfg.dotClassName)} aria-hidden />
+      {cfg.label}
+    </Badge>
+  );
+}
+
 function formatTokenWeiHuman(wei: string, decimals: number): string {
   try {
     const s = formatUnits(BigInt(wei), decimals);
@@ -347,15 +430,6 @@ function formatTokenWeiHuman(wei: string, decimals: number): string {
   }
 }
 
-function paymentBadgeVariant(
-  s: PublicPaymentRequest["status"],
-): "default" | "secondary" | "destructive" | "outline" {
-  if (s === "paid") return "default";
-  if (s === "pending") return "secondary";
-  if (s === "expired") return "outline";
-  return "destructive";
-}
-
 function onRampBadgeVariant(
   s: OnRampRecord["status"],
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -365,13 +439,56 @@ function onRampBadgeVariant(
   return "secondary";
 }
 
+const PAYMENT_REQUESTS_PAGE_SIZE = 10;
+
+/** Compact numbered pager with ellipsis gaps when there are many pages. */
+function paymentRequestsPagerEntries(current: number, totalPages: number): (number | "gap")[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const candidates = new Set<number>([1, totalPages, current, current - 1, current + 1]);
+  const sorted = [...candidates].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const p = sorted[i]!;
+    const prev = sorted[i - 1];
+    if (prev !== undefined && p - prev > 1) out.push("gap");
+    out.push(p);
+  }
+  return out;
+}
+
 function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+
   const { data, isPending, isError } = useQuery({
-    queryKey: queryKeys.beamHttp.paymentRequests(),
-    queryFn: () => fetchStardormPaymentRequests({ limit: 25 }),
+    queryKey: queryKeys.beamHttp.paymentRequests(PAYMENT_REQUESTS_PAGE_SIZE, page),
+    queryFn: () =>
+      fetchStardormPaymentRequests({ limit: PAYMENT_REQUESTS_PAGE_SIZE, page }),
     enabled,
   });
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / PAYMENT_REQUESTS_PAGE_SIZE)) : 1;
+
+  React.useEffect(() => {
+    if (!enabled) setPage(1);
+  }, [enabled]);
+
+  React.useEffect(() => {
+    if (!data) return;
+    if (page > totalPages) setPage(totalPages);
+  }, [data, page, totalPages]);
+
+  const pagerEntries = React.useMemo(
+    () => paymentRequestsPagerEntries(page, totalPages),
+    [page, totalPages],
+  );
+
+  const showPager = Boolean(data && data.total > 0 && totalPages > 1);
+  const rangeStart = data && data.total > 0 ? (page - 1) * PAYMENT_REQUESTS_PAGE_SIZE + 1 : 0;
+  const rangeEnd =
+    data && data.total > 0 ? Math.min(page * PAYMENT_REQUESTS_PAGE_SIZE, data.total) : 0;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
@@ -398,7 +515,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
         <p className="mt-3 text-sm text-destructive">Could not load payment requests.</p>
       ) : isPending ? (
         <DashboardListSkeleton rows={4} />
-      ) : !data?.items.length ? (
+      ) : !data || data.total === 0 ? (
         <div className="mt-3">
           <EmptyState
             icon={Receipt}
@@ -407,48 +524,101 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
           />
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-border text-sm">
-          {data.items.map((row) => (
-            <li
-              key={row.id}
-              className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
-            >
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{row.title}</span>
-                  <Badge variant={paymentBadgeVariant(row.status)} className="text-[10px] uppercase">
-                    {row.status}
-                  </Badge>
-                  <span className="text-[11px] text-muted-foreground">{row.type}</span>
+        <>
+          <ul className="mt-3 divide-y divide-border text-sm">
+            {data.items.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{row.title}</span>
+                    <PaymentRequestStatusBadge status={row.status} />
+                    <PaymentRequestTypeBadge type={row.type} />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {row.network} · {shortenHex(row.payTo)} · amount {row.amount} ({row.asset}
+                    {row.decimals != null ? `, ${row.decimals} decimals` : ""})
+                  </div>
+                  {row.txHash ? (
+                    <div className="text-[11px] text-muted-foreground">Tx {shortenHex(row.txHash)}</div>
+                  ) : null}
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {row.network} · {shortenHex(row.payTo)} · amount {row.amount} ({row.asset}
-                  {row.decimals != null ? `, ${row.decimals} decimals` : ""})
+                <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end sm:max-w-md">
+                  {row.status === "pending" ? (
+                    <Button type="button" size="sm" variant="outline" asChild>
+                      <Link to="/pay/$id" params={{ id: row.id }}>
+                        Open checkout
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {row.type === "x402" && row.status === "pending" ? (
+                    <X402PaymentLinkCopyButtons
+                      paymentRequestId={row.id}
+                      payPath={`/pay/${row.id}`}
+                      apiBase={getStardormApiBase() ?? undefined}
+                      className="sm:justify-end"
+                    />
+                  ) : null}
                 </div>
-                {row.txHash ? (
-                  <div className="text-[11px] text-muted-foreground">Tx {shortenHex(row.txHash)}</div>
-                ) : null}
+              </li>
+            ))}
+          </ul>
+          {showPager ? (
+            <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-center text-[11px] text-muted-foreground sm:text-left">
+                Showing {rangeStart}–{rangeEnd} of {data.total}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 px-2"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Prev
+                </Button>
+                {pagerEntries.map((entry, idx) =>
+                  entry === "gap" ? (
+                    <span
+                      key={`gap-${idx}`}
+                      className="flex h-8 w-8 items-center justify-center text-muted-foreground"
+                      aria-hidden
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={entry}
+                      type="button"
+                      variant={page === entry ? "secondary" : "outline"}
+                      size="sm"
+                      className="h-8 min-w-8 px-2"
+                      onClick={() => setPage(entry)}
+                    >
+                      {entry}
+                    </Button>
+                  ),
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 px-2"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end sm:max-w-md">
-                {row.status === "pending" ? (
-                  <Button type="button" size="sm" variant="outline" asChild>
-                    <Link to="/pay/$id" params={{ id: row.id }}>
-                      Open checkout
-                    </Link>
-                  </Button>
-                ) : null}
-                {row.type === "x402" && row.status === "pending" ? (
-                  <X402PaymentLinkCopyButtons
-                    paymentRequestId={row.id}
-                    payPath={`/pay/${row.id}`}
-                    apiBase={getStardormApiBase() ?? undefined}
-                    className="sm:justify-end"
-                  />
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
@@ -713,7 +883,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
         </div>
       ) : (
         <>
-          <ul className="mt-4 space-y-8">
+          <ul className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-2">
             {data.cards.map((c) => (
               <CreditCardRow
                 key={c.id}
@@ -769,7 +939,7 @@ function CreditCardRow({
   };
 
   return (
-    <li className="rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5">
+    <li className="min-w-0 rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5">
       <div className="mx-auto flex w-full max-w-[400px] flex-col gap-4">
         <VirtualCreditCard
           card={card}

@@ -25,7 +25,10 @@ export function invalidateAfterIdentityRegistryWrite(qc: QueryClient, beamChainI
 
 /** Dashboard / treasury panels backed by the Beam API. */
 export function invalidateBeamHttpDashboardLists(qc: QueryClient) {
-  void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.paymentRequests() });
+  void qc.invalidateQueries({
+    queryKey: queryKeys.beamHttp.paymentRequestsRoot,
+    exact: false,
+  });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.kycStatus() });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.onRamps() });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.creditCards() });

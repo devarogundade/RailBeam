@@ -170,7 +170,7 @@ function RootComponent() {
                 </div>
               </MobileSidebarProvider>
             )}
-            <Toaster richColors position="bottom-right" theme="dark" />
+            <Toaster richColors theme="dark" />
           </AppProvider>
         </BeamNetworkProvider>
       </QueryClientProvider>

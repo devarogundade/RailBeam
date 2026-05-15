@@ -156,7 +156,7 @@ export function createBeamUsersApi(http: BeamHttpClient): BeamUsersApi {
     listPaymentRequests: (query) => {
       const q = mePaymentRequestsQuerySchema.parse(query ?? {});
       return http.requestJson("GET", "/users/me/payment-requests", {
-        query: { limit: q.limit },
+        query: { limit: q.limit, page: q.page },
         parse: paymentRequestsListResponseSchema,
       });
     },

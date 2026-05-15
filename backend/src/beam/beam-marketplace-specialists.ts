@@ -1,6 +1,9 @@
 import type { SuggestMarketplaceHireInput } from '@beam/stardorm-api-contract';
 import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
-import { resolveStardormChainAgentId } from '@beam/stardorm-api-contract';
+import {
+  resolveStardormAgentKey,
+  resolveStardormChainAgentId,
+} from '@beam/stardorm-api-contract';
 import type { HandlerActionId } from '../handlers/handler.types';
 import { isHandlerActionId } from '../handlers/handler.types';
 
@@ -112,14 +115,24 @@ export function specialistAgentKeyForHandler(
 
 export function agentProfilePathForKey(agentKey: string): string | undefined {
   const trimmed = agentKey.trim();
+  if (!trimmed) return undefined;
+  const lower = trimmed.toLowerCase();
+  if (lower === 'beam-default') return undefined;
+
   const chainId = resolveStardormChainAgentId(trimmed);
   if (chainId != null && chainId > 1) {
+    const catalogSlug = resolveStardormAgentKey(chainId);
+    if (catalogSlug && !catalogSlug.startsWith('chain-')) {
+      /** `/agents/{agentKey}` matches EIP-8004 `agentKey` in the registration URI (stable across deployments). */
+      return `/agents/${catalogSlug}`;
+    }
     return `/agents/chain-${chainId}`;
   }
+
   if (/^chain-\d+$/i.test(trimmed)) {
-    return `/agents/${trimmed.toLowerCase()}`;
+    return `/agents/${lower}`;
   }
-  if (trimmed && trimmed !== 'beam-default') {
+  if (trimmed) {
     return `/agents/${trimmed}`;
   }
   return undefined;

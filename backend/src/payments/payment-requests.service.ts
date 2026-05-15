@@ -104,22 +104,30 @@ export class PaymentRequestsService {
   async listForWallet(
     wallet: string,
     limit: number,
-    range?: { from?: Date; to?: Date },
-  ): Promise<PublicPaymentRequest[]> {
+    options?: { page?: number; range?: { from?: Date; to?: Date } },
+  ): Promise<{ items: PublicPaymentRequest[]; total: number }> {
     const w = wallet.trim().toLowerCase();
     await this.refreshExpiredPending();
 
-    const r = this.updatedAtRangeFilter(range);
-    const docs = await this.model
-      .find({
-        $or: [{ createdByWallet: w }, { paidByWallet: w }],
-        ...(r ?? {}),
-      })
-      .sort({ updatedAt: -1 })
-      .limit(limit)
-      .exec();
+    const page = Math.max(1, options?.page ?? 1);
+    const r = this.updatedAtRangeFilter(options?.range);
+    const filter = {
+      $or: [{ createdByWallet: w }, { paidByWallet: w }],
+      ...(r ?? {}),
+    };
 
-    return docs.map((d) => this.toPublic(d));
+    const skip = (page - 1) * limit;
+    const [total, docs] = await Promise.all([
+      this.model.countDocuments(filter).exec(),
+      this.model
+        .find(filter)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+    ]);
+
+    return { items: docs.map((d) => this.toPublic(d)), total };
   }
 
   /** Payment requests this wallet created (e.g. invoices / checkout links). */

@@ -8,6 +8,62 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Menu, X } from "lucide-react";
 
+function DocsNavList({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <nav className="space-y-6 p-4 md:p-5" aria-label="Documentation">
+      {docsNavSections.map((section) => (
+        <div key={section.title}>
+          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {section.title}
+          </p>
+          <ul className="space-y-0.5">
+            {section.items.map((item) => {
+              const active =
+                item.to === "/docs"
+                  ? pathname === "/docs" || pathname === "/docs/"
+                  : pathname === item.to || pathname.startsWith(`${item.to}/`);
+              const Icon = item.icon;
+              return (
+                <li key={`${section.title}-${item.to}-${item.label}`}>
+                  <Link
+                    to={item.to as LinkProps["to"]}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      active
+                        ? "bg-pill text-pill-foreground"
+                        : "text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block font-medium leading-snug">{item.label}</span>
+                      <span
+                        className={cn(
+                          "mt-0.5 block text-[11px] leading-snug",
+                          active ? "text-pill-foreground/80" : "text-muted-foreground/90",
+                        )}
+                      >
+                        {item.description}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 export function DocsShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const scrollResetKey = useRouterState({
@@ -24,7 +80,7 @@ export function DocsShell() {
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-background text-foreground">
       <header className="z-40 shrink-0 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-[2000px] items-center gap-3 px-4 md:px-6">
+        <div className="mx-auto flex h-14 w-full items-center gap-3 px-4 md:px-6">
           <Button
             type="button"
             variant="ghost"
@@ -56,7 +112,7 @@ export function DocsShell() {
         </div>
       </header>
 
-      <div className="relative mx-auto flex w-full max-w-[2000px] flex-1 min-h-0 overflow-hidden">
+      <div className="relative mx-auto flex w-full flex-1 min-h-0 overflow-hidden">
         {/* Mobile drawer */}
         <div
           className={cn(
@@ -72,52 +128,11 @@ export function DocsShell() {
             mobileNav ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0",
           )}
         >
-          <ScrollArea className="h-[calc(100dvh-3.5rem)] md:h-full md:min-h-0">
-            <nav className="space-y-6 p-4 md:p-5" aria-label="Documentation">
-              {docsNavSections.map((section) => (
-                <div key={section.title}>
-                  <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {section.title}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {section.items.map((item) => {
-                      const active =
-                        item.to === "/docs"
-                          ? pathname === "/docs" || pathname === "/docs/"
-                          : pathname === item.to || pathname.startsWith(`${item.to}/`);
-                      const Icon = item.icon;
-                      return (
-                        <li key={`${section.title}-${item.to}-${item.label}`}>
-                          <Link
-                            to={item.to as LinkProps["to"]}
-                            onClick={() => setMobileNav(false)}
-                            className={cn(
-                              "flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
-                              active
-                                ? "bg-pill text-pill-foreground"
-                                : "text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground",
-                            )}
-                          >
-                            <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                            <span className="min-w-0">
-                              <span className="block font-medium leading-snug">{item.label}</span>
-                              <span
-                                className={cn(
-                                  "mt-0.5 block text-[11px] leading-snug",
-                                  active ? "text-pill-foreground/80" : "text-muted-foreground/90",
-                                )}
-                              >
-                                {item.description}
-                              </span>
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </nav>
+          <div className="h-[calc(100dvh-3.5rem)] overflow-y-auto overscroll-contain md:hidden">
+            <DocsNavList pathname={pathname} onNavigate={() => setMobileNav(false)} />
+          </div>
+          <ScrollArea className="hidden h-full min-h-0 md:block">
+            <DocsNavList pathname={pathname} onNavigate={() => setMobileNav(false)} />
           </ScrollArea>
         </aside>
 

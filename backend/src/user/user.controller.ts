@@ -223,7 +223,10 @@ export class UserController {
       parseQueryRecord(query),
     );
     return paymentRequestsListResponseSchema.parse(
-      await this.users.listMyPaymentRequests(wallet.walletAddress, q.limit),
+      await this.users.listMyPaymentRequests(wallet.walletAddress, {
+        limit: q.limit,
+        page: q.page,
+      }),
     );
   }
 

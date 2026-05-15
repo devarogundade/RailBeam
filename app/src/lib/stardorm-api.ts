@@ -288,12 +288,13 @@ export async function fetchStardormCreditCardSensitiveDetails(
 
 export async function fetchStardormPaymentRequests(params: {
   limit?: number;
+  page?: number;
 } = {}): Promise<PaymentRequestsListResponse | null> {
   if (!getStardormApiBase()) return null;
-  const { limit = 20 } = params;
+  const { limit = 20, page = 1 } = params;
   try {
     const { data } = await stardormAxios.get<unknown>("/users/me/payment-requests", {
-      params: { limit },
+      params: { limit, page },
     });
     return paymentRequestsListResponseSchema.parse(data);
   } catch {

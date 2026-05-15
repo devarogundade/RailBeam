@@ -679,10 +679,14 @@ var publicPaymentRequestSchema = zod.z.object({
   facilitatorSettlement: zod.z.boolean().optional()
 });
 var mePaymentRequestsQuerySchema = zod.z.object({
-  limit: zod.z.coerce.number().int().min(1).max(50).default(20)
+  limit: zod.z.coerce.number().int().min(1).max(50).default(20),
+  /** 1-based page index (sorted by `updatedAt` descending). */
+  page: zod.z.coerce.number().int().min(1).default(1)
 });
 var paymentRequestsListResponseSchema = zod.z.object({
-  items: zod.z.array(publicPaymentRequestSchema)
+  items: zod.z.array(publicPaymentRequestSchema),
+  /** Total rows matching the wallet filter (ignores pagination). */
+  total: zod.z.number().int().min(0)
 });
 var onRampFormNetworkOptionSchema = zod.z.object({
   id: zod.z.string().min(1).max(64),

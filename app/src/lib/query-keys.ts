@@ -5,7 +5,10 @@ export const queryKeys = {
    */
   beamHttp: {
     publicPayment: (id: string) => ["public-payment", id] as const,
-    paymentRequests: () => ["paymentRequests", "me"] as const,
+    /** Prefix for `invalidateQueries(..., { exact: false })` after payment list mutations. */
+    paymentRequestsRoot: ["paymentRequests", "me"] as const,
+    paymentRequests: (limit: number, page: number) =>
+      [...queryKeys.beamHttp.paymentRequestsRoot, limit, page] as const,
     kycStatus: () => ["kycStatus", "me"] as const,
     onRamps: () => ["onRamps", "me"] as const,
     creditCards: () => ["creditCards", "me"] as const,

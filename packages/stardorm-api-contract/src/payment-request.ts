@@ -76,12 +76,16 @@ export type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;
 /** Query for GET `/users/me/payment-requests`. */
 export const mePaymentRequestsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
+  /** 1-based page index (sorted by `updatedAt` descending). */
+  page: z.coerce.number().int().min(1).default(1),
 });
 
 export type MePaymentRequestsQuery = z.infer<typeof mePaymentRequestsQuerySchema>;
 
 export const paymentRequestsListResponseSchema = z.object({
   items: z.array(publicPaymentRequestSchema),
+  /** Total rows matching the wallet filter (ignores pagination). */
+  total: z.number().int().min(0),
 });
 
 export type PaymentRequestsListResponse = z.infer<

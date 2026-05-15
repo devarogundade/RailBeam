@@ -9572,10 +9572,14 @@ type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;
 /** Query for GET `/users/me/payment-requests`. */
 declare const mePaymentRequestsQuerySchema: z.ZodObject<{
     limit: z.ZodDefault<z.ZodNumber>;
+    /** 1-based page index (sorted by `updatedAt` descending). */
+    page: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
+    page: number;
 }, {
     limit?: number | undefined;
+    page?: number | undefined;
 }>;
 type MePaymentRequestsQuery = z.infer<typeof mePaymentRequestsQuerySchema>;
 declare const paymentRequestsListResponseSchema: z.ZodObject<{
@@ -9669,6 +9673,8 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         paidByWallet?: string | undefined;
         facilitatorSettlement?: boolean | undefined;
     }>, "many">;
+    /** Total rows matching the wallet filter (ignores pagination). */
+    total: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     items: {
         type: "on-chain" | "x402";
@@ -9696,6 +9702,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         paidByWallet?: string | undefined;
         facilitatorSettlement?: boolean | undefined;
     }[];
+    total: number;
 }, {
     items: {
         type: "on-chain" | "x402";
@@ -9723,6 +9730,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         paidByWallet?: string | undefined;
         facilitatorSettlement?: boolean | undefined;
     }[];
+    total: number;
 }>;
 type PaymentRequestsListResponse = z.infer<typeof paymentRequestsListResponseSchema>;
 

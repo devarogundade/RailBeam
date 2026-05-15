@@ -154,7 +154,7 @@ function createBeamUsersApi(http2) {
     listPaymentRequests: (query) => {
       const q = stardormApiContract.mePaymentRequestsQuerySchema.parse(query ?? {});
       return http2.requestJson("GET", "/users/me/payment-requests", {
-        query: { limit: q.limit },
+        query: { limit: q.limit, page: q.page },
         parse: stardormApiContract.paymentRequestsListResponseSchema
       });
     },

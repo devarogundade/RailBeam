@@ -466,11 +466,11 @@ export function PayCheckoutCardSkeleton() {
 
 export function VirtualCardsPanelSkeleton() {
   return (
-    <ul className="mt-4 space-y-8" aria-hidden>
+    <ul className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-2" aria-hidden>
       {Array.from({ length: 2 }).map((_, i) => (
         <li
           key={i}
-          className="rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5"
+          className="min-w-0 rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5"
         >
           <div className="mx-auto flex w-full max-w-[400px] flex-col gap-4">
             <Skeleton className="aspect-[1.586/1] w-full rounded-2xl" />

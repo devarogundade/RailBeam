@@ -182,11 +182,13 @@
   background-attachment: fixed;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--foreground) 10%, transparent); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--foreground) 18%, transparent); }
+/* Scrollbar (tablet/desktop — keep native overlays on narrow mobile viewports) */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--foreground) 10%, transparent); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--foreground) 18%, transparent); }
+}
 
 /* Typing dots */
 @keyframes typing-bounce {

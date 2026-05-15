@@ -677,10 +677,14 @@ var publicPaymentRequestSchema = z.object({
   facilitatorSettlement: z.boolean().optional()
 });
 var mePaymentRequestsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(20)
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  /** 1-based page index (sorted by `updatedAt` descending). */
+  page: z.coerce.number().int().min(1).default(1)
 });
 var paymentRequestsListResponseSchema = z.object({
-  items: z.array(publicPaymentRequestSchema)
+  items: z.array(publicPaymentRequestSchema),
+  /** Total rows matching the wallet filter (ignores pagination). */
+  total: z.number().int().min(0)
 });
 var onRampFormNetworkOptionSchema = z.object({
   id: z.string().min(1).max(64),
