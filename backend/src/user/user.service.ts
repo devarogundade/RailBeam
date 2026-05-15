@@ -371,17 +371,6 @@ export class UserService {
     return undefined;
   }
 
-  /** Native unfund payouts are testnet-only until mainnet treasury policy is defined. */
-  private assertVirtualCardWithdrawNotBlockedOnMainnet(
-    clientEvmChainId?: number,
-  ): void {
-    if (beamEvmTierFromChainId(clientEvmChainId) === 'mainnet') {
-      throw new ForbiddenException(
-        'Virtual card withdrawals to your wallet are disabled on 0G mainnet. Switch to testnet to withdraw; funding uses USDC.e on mainnet.',
-      );
-    }
-  }
-
   private async handlerCapabilitiesForCatalogKeys(
     keys: readonly string[],
     clientEvmChainId?: number,
@@ -1024,7 +1013,6 @@ export class UserService {
     amountCents: number,
     clientEvmChainId?: number,
   ): Promise<CreditCardPublic> {
-    this.assertVirtualCardWithdrawNotBlockedOnMainnet(clientEvmChainId);
     const wallet = this.normalizeWallet(walletAddress);
 
     if (this.cardFunding.isOnchainUnfundPayoutConfigured()) {

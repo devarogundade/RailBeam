@@ -109,17 +109,20 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
 
   return (
     <CheckoutShell>
-      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
+      <CheckoutBar
+        as="header"
+        className="sticky top-0 z-20 justify-between border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 lg:hidden"
+      >
         <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <CoinIcon className="h-5 w-5" />
           Beam
         </Link>
         <WalletConnectChip address={address} onConnect={onConnect} />
-      </header>
+      </CheckoutBar>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside className="relative flex flex-col bg-surface-elevated text-foreground lg:w-[min(100%,480px)] lg:shrink-0 xl:w-[42%]">
-          <div className="hidden border-b border-border px-6 py-4 lg:block">
+          <CheckoutBar className="hidden border-b px-6 lg:flex lg:px-10">
             <Link
               to="/"
               className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90 transition-colors hover:text-foreground"
@@ -127,7 +130,7 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
               <CoinIcon className="h-5 w-5" />
               Beam
             </Link>
-          </div>
+          </CheckoutBar>
 
           <div className="flex flex-1 flex-col px-6 py-8 lg:px-10 lg:py-12">
             <Link
@@ -187,10 +190,10 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
         </aside>
 
         <section className="flex flex-1 flex-col bg-background">
-          <div className="hidden items-center justify-between border-b border-border px-10 py-4 lg:flex">
+          <CheckoutBar className="hidden justify-between border-b px-6 lg:flex lg:px-10">
             <p className="text-sm font-medium text-foreground">Complete your payment</p>
             <WalletConnectChip address={address} onConnect={onConnect} />
-          </div>
+          </CheckoutBar>
 
           <div className="flex flex-1 flex-col px-6 py-8 sm:px-10 sm:py-10 lg:max-w-xl lg:py-12">
             {!apiConfigured || loading || loadError || payment == null ? (
@@ -217,12 +220,15 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
             )}
           </div>
 
-          <footer className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground sm:px-10">
+          <CheckoutBar
+            as="footer"
+            className="justify-center border-t px-6 text-center text-xs text-muted-foreground sm:px-10"
+          >
             <span className="inline-flex items-center gap-1.5">
               <Lock className="h-3 w-3" />
               Payments settle on-chain. Beam records your transaction after confirmation.
             </span>
-          </footer>
+          </CheckoutBar>
         </section>
       </div>
     </CheckoutShell>
@@ -235,11 +241,35 @@ function CheckoutShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+const checkoutBarHeightClass = "h-14 min-h-14 shrink-0";
+
+function CheckoutBar({
+  as: Tag = "div",
+  className,
+  children,
+}: {
+  as?: "div" | "header" | "footer";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tag
+      className={cn(
+        "flex items-center border-border",
+        checkoutBarHeightClass,
+        className,
+      )}
+    >
+      {children}
+    </Tag>
+  );
+}
+
 function AsideFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-auto hidden border-t border-border px-10 py-5 text-xs text-muted-foreground lg:block">
+    <CheckoutBar className="mt-auto hidden border-t px-6 text-xs text-muted-foreground lg:flex lg:px-10">
       {children}
-    </div>
+    </CheckoutBar>
   );
 }
 
@@ -489,10 +519,6 @@ function CheckoutPaymentPanel({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="mb-6 lg:hidden">
-        <WalletConnectChip address={address} onConnect={onConnect} />
-      </div>
-
       <h2 className="text-lg font-semibold text-foreground">Pay with crypto wallet</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         {payUsesX402

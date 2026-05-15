@@ -9,8 +9,6 @@ import {
   ArrowUpRight,
   Zap,
   CreditCard,
-  Eye,
-  EyeOff,
   Users,
   Receipt,
   Landmark,
@@ -21,7 +19,7 @@ import {
   useStardormRecentSubscriptions,
 } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { BEAM_CHAIN_IDS, beamNetworkFromChainId } from "@/lib/beam-chain-config";
+import { BEAM_CHAIN_IDS } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "@/lib/stardorm-subgraph-config";
 import {
   formatCompactFromBaseUnits,
@@ -63,6 +61,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
 import { VirtualCardFundsDialog } from "@/components/virtual-card-funds-dialog";
+import { VirtualCreditCard } from "@/components/virtual-credit-card";
 import { X402PaymentLinkCopyButtons } from "@/components/x402-payment-link-actions";
 
 export const Route = createFileRoute("/dashboard")({
@@ -593,14 +592,6 @@ function dollarsToCents(raw: string): number | null {
   return cents > 0 ? cents : null;
 }
 
-function formatPanGroups(pan: string): string {
-  return pan.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
 function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
   const qc = useQueryClient();
   const api = Boolean(getStardormApiBase());
@@ -609,9 +600,6 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { switchChainAsync } = useSwitchChain();
-  const { effectiveChainId } = useBeamNetwork();
-  const onMainnet = beamNetworkFromChainId(effectiveChainId) === "mainnet";
-  const mainnetVirtualCardWithdrawDisabled = onMainnet;
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.creditCards(),
     queryFn: () => fetchStardormCreditCards(),
@@ -723,18 +711,11 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
         </div>
       ) : (
         <>
-          {mainnetVirtualCardWithdrawDisabled ? (
-            <p className="mt-3 text-[11px] text-muted-foreground rounded-md border border-border bg-surface-elevated px-3 py-2">
-              Withdrawing card balance to your wallet is disabled on 0G mainnet. Switch to testnet to
-              withdraw; funding uses USDC.e on mainnet.
-            </p>
-          ) : null}
-          <ul className="mt-4 divide-y divide-border">
+          <ul className="mt-4 space-y-8">
             {data.cards.map((c) => (
               <CreditCardRow
                 key={c.id}
                 card={c}
-                mainnetWithdrawDisabled={mainnetVirtualCardWithdrawDisabled}
                 funding={fundMut.isPending && fundMut.variables?.id === c.id}
                 withdrawing={withdrawMut.isPending && withdrawMut.variables?.id === c.id}
                 onFund={(dollars) => fundMut.mutateAsync({ id: c.id, dollars })}
@@ -754,14 +735,12 @@ function CreditCardRow({
   onWithdraw,
   funding,
   withdrawing,
-  mainnetWithdrawDisabled,
 }: {
   card: CreditCardPublic;
   onFund: (dollars: string) => Promise<unknown>;
   onWithdraw: (dollars: string) => Promise<unknown>;
   funding: boolean;
   withdrawing: boolean;
-  mainnetWithdrawDisabled: boolean;
 }) {
   const [fundOpen, setFundOpen] = React.useState(false);
   const [withdrawOpen, setWithdrawOpen] = React.useState(false);
@@ -777,102 +756,60 @@ function CreditCardRow({
     enabled: cardDetailsRevealed,
     staleTime: 60_000,
   });
-  const bal = `${card.currency} ${(card.balanceCents / 100).toFixed(2)}`;
   const addr = [card.line1, card.line2, [card.city, card.region, card.postalCode].filter(Boolean).join(", "), card.countryCode]
     .filter(Boolean)
     .join(" · ");
+  const handleToggleReveal = () => {
+    if (cardDetailsRevealed) {
+      setCardDetailsRevealed(false);
+      void qc.removeQueries({ queryKey: queryKeys.beamHttp.creditCardSensitive(card.id) });
+    } else {
+      setCardDetailsRevealed(true);
+    }
+  };
+
   return (
-    <li className="flex flex-col gap-3 py-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="font-medium">
-            {card.cardLabel ?? "Virtual card"} · {card.networkBrand} ·•••• {card.last4}
-          </div>
-          <div className="text-[11px] text-muted-foreground">
-            {card.firstName} {card.lastName}
-          </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">{addr}</div>
+    <li className="rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+        <div className="mx-auto w-full shrink-0 lg:mx-0">
+          <VirtualCreditCard
+            card={card}
+            revealed={cardDetailsRevealed && Boolean(sensitiveQ.data)}
+            revealLoading={cardDetailsRevealed && sensitiveQ.isPending}
+            sensitive={sensitiveQ.data ?? null}
+            onToggleReveal={handleToggleReveal}
+          />
+          {cardDetailsRevealed && sensitiveQ.isError ? (
+            <p className="mt-2 text-center text-[11px] text-destructive">
+              {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
+            </p>
+          ) : !cardDetailsRevealed ? (
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Tap the eye icon on the card to reveal the full number, expiry, and CVV for checkout.
+            </p>
+          ) : null}
         </div>
-        <div className="shrink-0 text-right text-sm font-semibold tabular-nums">{bal}</div>
-      </div>
-      <div className="rounded-lg border border-border bg-surface-elevated p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs font-medium text-foreground">Card credentials</div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 shrink-0 gap-1.5"
-            onClick={() => {
-              if (cardDetailsRevealed) {
-                setCardDetailsRevealed(false);
-                void qc.removeQueries({ queryKey: queryKeys.beamHttp.creditCardSensitive(card.id) });
-              } else {
-                setCardDetailsRevealed(true);
-              }
-            }}
-          >
-            {cardDetailsRevealed ? (
-              <>
-                <EyeOff className="h-3.5 w-3.5" />
-                Hide details
-              </>
-            ) : (
-              <>
-                <Eye className="h-3.5 w-3.5" />
-                Reveal details
-              </>
-            )}
-          </Button>
-        </div>
-        {!cardDetailsRevealed ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Full card number, expiry, and CVV stay hidden until you choose to reveal them for checkout.
-          </p>
-        ) : sensitiveQ.isPending ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <Skeleton className="h-14 rounded-md" />
-            <Skeleton className="h-14 rounded-md" />
-            <Skeleton className="h-14 rounded-md" />
+
+        <div className="min-w-0 flex-1 space-y-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Billing address</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{addr}</p>
           </div>
-        ) : sensitiveQ.isError ? (
-          <p className="mt-2 text-[11px] text-destructive">
-            {sensitiveQ.error instanceof Error ? sensitiveQ.error.message : "Could not load card details."}
-          </p>
-        ) : sensitiveQ.data ? (
-          <dl className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
-            <div>
-              <dt className="text-muted-foreground">Number</dt>
-              <dd className="mt-0.5 font-mono text-xs font-medium tracking-wide text-foreground">
-                {formatPanGroups(sensitiveQ.data.pan)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Expires</dt>
-              <dd className="mt-0.5 font-mono text-xs font-medium text-foreground">
-                {pad2(sensitiveQ.data.expiryMonth)}/{String(sensitiveQ.data.expiryYear).slice(-2)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">CVV</dt>
-              <dd className="mt-0.5 font-mono text-xs font-medium text-foreground">{sensitiveQ.data.cvv}</dd>
-            </div>
-          </dl>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" disabled={funding} onClick={() => setFundOpen(true)}>
-          Add funds
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={withdrawing || mainnetWithdrawDisabled}
-          onClick={() => setWithdrawOpen(true)}
-        >
-          Remove funds
-        </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={funding} onClick={() => setFundOpen(true)}>
+              Add funds
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={withdrawing}
+              onClick={() => setWithdrawOpen(true)}
+            >
+              Remove funds
+            </Button>
+          </div>
+        </div>
       </div>
 
       <VirtualCardFundsDialog
@@ -892,7 +829,6 @@ function CreditCardRow({
         mode="withdraw"
         card={card}
         loading={withdrawing}
-        withdrawDisabled={mainnetWithdrawDisabled}
         onSubmit={async (dollars) => {
           await onWithdraw(dollars);
           setWithdrawOpen(false);

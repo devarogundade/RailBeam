@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VirtualCreditCard } from "@/components/virtual-credit-card";
 
 export type VirtualCardFundsMode = "fund" | "withdraw";
 
@@ -38,7 +39,6 @@ export function VirtualCardFundsDialog({
   mode,
   card,
   loading,
-  withdrawDisabled,
   onSubmit,
 }: {
   open: boolean;
@@ -46,7 +46,6 @@ export function VirtualCardFundsDialog({
   mode: VirtualCardFundsMode;
   card: CreditCardPublic;
   loading: boolean;
-  withdrawDisabled?: boolean;
   onSubmit: (dollars: string) => void | Promise<void>;
 }) {
   const [amount, setAmount] = React.useState("");
@@ -82,17 +81,15 @@ export function VirtualCardFundsDialog({
               <span className="font-medium text-foreground">{formatBalance(card)}</span>.
               {isFund ? (
                 <> Pay with USDC.e on 0G mainnet (1:1 USD).</>
-              ) : withdrawDisabled ? (
-                <>
-                  {" "}
-                  Withdrawing card balance is disabled on 0G mainnet. Switch to testnet to
-                  withdraw.
-                </>
               ) : (
                 <> Funds return to your connected wallet when configured.</>
               )}
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex justify-center py-2">
+            <VirtualCreditCard card={card} compact className="pointer-events-none" />
+          </div>
 
           <div className="grid gap-2 py-4">
             <Label htmlFor={`card-${mode}-amount`}>Amount (USD)</Label>
@@ -104,7 +101,7 @@ export function VirtualCardFundsDialog({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               autoFocus
-              disabled={loading || (!isFund && withdrawDisabled)}
+              disabled={loading}
             />
             {invalidAmount ? (
               <p className="text-[11px] text-destructive">Enter a positive dollar amount.</p>
@@ -124,11 +121,7 @@ export function VirtualCardFundsDialog({
               type="submit"
               variant={isFund ? "default" : "outline"}
               loading={loading}
-              disabled={
-                loading ||
-                dollarsToCents(amount) == null ||
-                (!isFund && withdrawDisabled)
-              }
+              disabled={loading || dollarsToCents(amount) == null}
             >
               {isFund ? "Add funds" : "Remove funds"}
             </Button>

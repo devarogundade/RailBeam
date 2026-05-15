@@ -466,37 +466,23 @@ export function PayCheckoutCardSkeleton() {
 
 export function VirtualCardsPanelSkeleton() {
   return (
-    <ul className="mt-4 divide-y divide-border" aria-hidden>
+    <ul className="mt-4 space-y-8" aria-hidden>
       {Array.from({ length: 2 }).map((_, i) => (
-        <li key={i} className="flex flex-col gap-3 py-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-5 w-[min(100%,18rem)]" />
-              <Skeleton className="h-3 w-40" />
-              <Skeleton className="h-3 w-full max-w-lg" />
-            </div>
-            <Skeleton className="h-6 w-24 shrink-0 sm:pt-0.5" />
-          </div>
-          <div className="rounded-lg border border-border bg-surface-elevated p-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-8 w-32 shrink-0 rounded-md" />
-            </div>
-            <Skeleton className="mt-2 h-3 w-full max-w-md" />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border bg-surface-elevated p-3">
-              <Skeleton className="h-3 w-28" />
-              <div className="mt-2 flex gap-2">
-                <Skeleton className="h-9 min-w-0 flex-1 rounded-md" />
-                <Skeleton className="h-9 w-16 shrink-0 rounded-md" />
+        <li
+          key={i}
+          className="rounded-xl border border-border bg-surface-elevated/40 p-4 sm:p-5"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
+            <Skeleton className="mx-auto aspect-[1.586/1] w-full max-w-[400px] rounded-2xl lg:mx-0" />
+            <div className="min-w-0 flex-1 space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-full max-w-md" />
+                <Skeleton className="h-3 w-4/5 max-w-sm" />
               </div>
-            </div>
-            <div className="rounded-lg border border-border bg-surface-elevated p-3">
-              <Skeleton className="h-3 w-32" />
-              <div className="mt-2 flex gap-2">
-                <Skeleton className="h-9 min-w-0 flex-1 rounded-md" />
-                <Skeleton className="h-9 w-20 shrink-0 rounded-md" />
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-24 rounded-md" />
+                <Skeleton className="h-9 w-28 rounded-md" />
               </div>
             </div>
           </div>
