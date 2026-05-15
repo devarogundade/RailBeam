@@ -121,6 +121,14 @@ function normalizeParamsField(v: unknown): unknown {
   return v;
 }
 
+/** Parsed model reply after `agentComputeReplySchema` transform (explicit for stable TS output). */
+export type AgentComputeReply = {
+  text: string;
+  handler?: HandlerActionId;
+  params?: unknown;
+  rich?: AgentRichCard;
+};
+
 /**
  * Model-facing JSON: exactly one object. `handler` / `params` may be omitted,
  * or set to `null`, when no server CTA is needed. When `handler` is a real id,
@@ -286,14 +294,16 @@ export const agentComputeReplySchema = z
       }
     }
   })
-  .transform((val) => ({
-    text: val.text,
-    handler: normalizeHandlerField(val.handler),
-    params: normalizeParamsField(val.params),
-    rich: val.rich,
-  }));
-
-export type AgentComputeReply = z.infer<typeof agentComputeReplySchema>;
+  .transform((val): AgentComputeReply => {
+    const text =
+      typeof val.text === 'string' ? val.text : z.string().min(1).parse(val.text);
+    return {
+      text,
+      handler: normalizeHandlerField(val.handler),
+      params: normalizeParamsField(val.params),
+      rich: val.rich,
+    };
+  });
 
 type X402HandlerParams = z.infer<typeof X402InputSchema> | X402CheckoutFormCtaParams;
 type OnRampHandlerParams =

@@ -277,6 +277,9 @@ export function Chat() {
     return [...serverMessages, ...pendingOnly];
   }, [serverMessages, pendingMessages]);
   const [input, setInput] = React.useState("");
+  const [inputFocused, setInputFocused] = React.useState(false);
+  const isMobile = useIsMobile();
+  const composerCompact = isMobile && (inputFocused || input.trim().length > 0);
   const [attachments, setAttachments] = React.useState<DraftAttachment[]>([]);
   const [typing, setTyping] = React.useState(false);
   const [executingHandlerForId, setExecutingHandlerForId] = React.useState<string | null>(null);
@@ -909,20 +912,25 @@ export function Chat() {
       </div>
 
       {/* composer */}
-      <div className="border-t border-border bg-background px-4 py-4 md:px-10">
+      <div className="border-t border-border bg-background px-3 py-2 md:px-10 md:py-4">
         <div className="mx-auto max-w-3xl">
           {apiOn &&
             !showHistorySkeleton &&
             displayMessages.length === 0 &&
             suggestions.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div
+                className={cn(
+                  "mb-2 flex flex-wrap gap-2 md:mb-3",
+                  composerCompact && "max-md:hidden",
+                )}
+              >
                 {suggestions.map((s) => (
                   <button
                     key={s}
                     type="button"
                     disabled={typing}
                     onClick={() => void send(s)}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs md:text-sm text-muted-foreground hover:bg-(--bg-hover) hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {s}
                   </button>
@@ -931,7 +939,12 @@ export function Chat() {
             )}
 
           {Array.isArray(activeAgent.skillHandles) && activeAgent.skillHandles.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <div
+              className={cn(
+                "mb-2 flex flex-wrap items-center gap-1.5 md:mb-3",
+                composerCompact && "max-md:hidden",
+              )}
+            >
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 Skills
               </span>
@@ -990,65 +1003,67 @@ export function Chat() {
             </div>
           )}
 
-          <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-2 focus-within:border-(--border-medium) md:flex-row md:items-end">
-            <div className="flex shrink-0 items-center gap-2 md:contents">
+          <div className="flex flex-row items-center gap-1 rounded-2xl border border-border bg-surface p-1.5 focus-within:border-(--border-medium) md:items-end md:gap-2 md:p-2">
+            {!composerCompact && (
               <AgentDropdown
                 agents={workspaceAgents}
                 activeId={activeAgentId}
                 onSelect={setActiveAgentId}
                 fallbackAgent={activeAgent}
               />
-              <input
-                ref={fileRef}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => {
-                  onFiles(e.target.files);
-                  e.currentTarget.value = "";
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={!apiOn}
-                onClick={() => fileRef.current?.click()}
-                aria-label="Attach"
-                className="size-10 shrink-0 touch-manipulation md:size-9"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex min-w-0 flex-1 items-end gap-2 md:contents">
-              <textarea
-                value={input}
-                disabled={!apiOn || typing}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void send();
-                  }
-                }}
-                rows={1}
-                placeholder={
-                  apiOn
-                    ? `Message ${activeAgent.name}…`
-                    : "Connect wallet and sign to send messages…"
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                onFiles(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!apiOn}
+              onClick={() => fileRef.current?.click()}
+              aria-label="Attach"
+              className="size-9 shrink-0 touch-manipulation"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <textarea
+              value={input}
+              disabled={!apiOn || typing}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
                 }
-                className="max-h-40 min-h-[40px] min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
-              />
-              <Button
-                onClick={() => void send()}
-                size="sm"
-                className="shrink-0 touch-manipulation font-semibold max-md:min-h-10 max-md:px-3"
-                disabled={!apiOn || typing}
-                aria-label="Send message"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">Send</span>
-              </Button>
-            </div>
+              }}
+              rows={1}
+              placeholder={
+                apiOn
+                  ? composerCompact
+                    ? "Message…"
+                    : `Message ${activeAgent.name}…`
+                  : "Connect wallet and send messages…"
+              }
+              className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-sm leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[36px] md:py-1.5 md:text-sm"
+            />
+            <Button
+              onClick={() => void send()}
+              size="sm"
+              className="size-9 shrink-0 touch-manipulation px-0 font-semibold md:size-auto md:min-h-0 md:px-3"
+              disabled={!apiOn || typing}
+              aria-label="Send message"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Send</span>
+            </Button>
           </div>
           <div className="mt-2 hidden flex-col gap-1 text-[11px] text-muted-foreground md:flex sm:flex-row sm:items-center sm:justify-between">
             <span>Shift + Enter for newline</span>
@@ -1091,7 +1106,7 @@ function AgentDropdown({
       aria-label={isMobile ? `Agent: ${active.name}. Tap to change.` : undefined}
       className={cn(
         "flex touch-manipulation items-center gap-2 rounded-lg border border-border bg-surface-elevated text-sm hover:border-(--border-medium)",
-        "min-h-10 shrink-0 px-2 py-2 md:min-h-0 md:py-1.5",
+        "min-h-9 shrink-0 px-1.5 py-1 md:min-h-0 md:px-2 md:py-1.5",
       )}
     >
       <img

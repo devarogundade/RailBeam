@@ -22,6 +22,151 @@ export const Route = createFileRoute("/agents/")({
   pendingComponent: () => <PageRoutePending variant="default" />,
 });
 
+function AgentTableHeader() {
+  return (
+    <div className="hidden border-b border-border bg-surface-elevated px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-2">
+      <div className="md:col-span-5">Agent</div>
+      <div className="md:col-span-2">Category</div>
+      <div className="md:col-span-2">Reputation</div>
+      <div className="md:col-span-2">Cost</div>
+      <div className="md:col-span-1 text-right">Actions</div>
+    </div>
+  );
+}
+
+function AgentReputation({ reputation }: { reputation: number | null | undefined }) {
+  if (reputation == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-pill sm:w-20">
+        <div className="h-full bg-primary" style={{ width: `${reputation}%` }} />
+      </div>
+      <span>{reputation}</span>
+    </div>
+  );
+}
+
+function AgentMonthlyCost({ pricePerMonth }: { pricePerMonth: number | null | undefined }) {
+  if (pricePerMonth == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <CoinIcon className="h-3.5 w-3.5 shrink-0" />
+      {pricePerMonth}
+      <span className="text-muted-foreground">/mo</span>
+    </span>
+  );
+}
+
+function AgentRowActions({
+  agent,
+  allowFire,
+  onFire,
+}: {
+  agent: Agent;
+  allowFire: boolean;
+  onFire: (a: Agent) => void;
+}) {
+  return (
+    <>
+      <Button asChild size="icon" variant="ghost" aria-label="Chat">
+        <Link to="/">
+          <MessageSquare className="h-4 w-4" />
+        </Link>
+      </Button>
+      {allowFire && !isRegistryTokenIdOneAgent(agent) && (
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => onFire(agent)}
+          aria-label={agentPortfolioRemoveCta(agent)}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      )}
+    </>
+  );
+}
+
+function AgentRow({
+  agent,
+  allowFire,
+  onFire,
+}: {
+  agent: Agent;
+  allowFire: boolean;
+  onFire: (a: Agent) => void;
+}) {
+  return (
+    <div className="border-b border-border px-4 py-3 text-sm last:border-0 md:grid md:grid-cols-12 md:items-center md:gap-2">
+      <div className="flex items-center justify-between gap-2 md:col-span-5 md:justify-start">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="relative shrink-0">
+            <img
+              src={agent.avatar}
+              alt=""
+              className={cn(
+                "h-9 w-9 rounded-full bg-pill",
+                isRegistryTokenIdOneAgent(agent) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
+                agent.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
+              )}
+            />
+            {agent.online === true && (
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-surface" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <Link
+              to="/agents/$agentId"
+              params={{ agentId: agent.id }}
+              className="truncate font-medium hover:underline"
+            >
+              {agent.name}
+            </Link>
+            <div className="truncate text-muted-foreground">@{agent.handle}</div>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-1 md:hidden">
+          <AgentRowActions agent={agent} allowFire={allowFire} onFire={onFire} />
+        </div>
+      </div>
+
+      <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-xs md:hidden">
+        <div>
+          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</dt>
+          <dd className="mt-0.5 text-foreground">{agent.category}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Reputation</dt>
+          <dd className="mt-0.5">
+            <AgentReputation reputation={agent.reputation} />
+          </dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</dt>
+          <dd className="mt-0.5">
+            <AgentMonthlyCost pricePerMonth={agent.pricePerMonth} />
+          </dd>
+        </div>
+      </dl>
+
+      <div className="hidden text-muted-foreground md:col-span-2 md:block">{agent.category}</div>
+      <div className="hidden md:col-span-2 md:block">
+        <AgentReputation reputation={agent.reputation} />
+      </div>
+      <div className="hidden md:col-span-2 md:block">
+        <AgentMonthlyCost pricePerMonth={agent.pricePerMonth} />
+      </div>
+      <div className="hidden justify-end gap-1 md:col-span-1 md:flex">
+        <AgentRowActions agent={agent} allowFire={allowFire} onFire={onFire} />
+      </div>
+    </div>
+  );
+}
+
 function AgentTableRows({
   rows,
   allowFire,
@@ -55,77 +200,7 @@ function AgentTableRows({
   return (
     <>
       {rows.map((a) => (
-        <div
-          key={a.id}
-          className="grid grid-cols-12 items-center gap-2 border-b border-border px-4 py-3 text-sm last:border-0"
-        >
-          <div className="col-span-5 flex items-center gap-3">
-            <div className="relative">
-              <img
-                src={a.avatar}
-                alt=""
-                className={cn(
-                  "h-9 w-9 rounded-full bg-pill",
-                  isRegistryTokenIdOneAgent(a) && REGISTRY_TOKEN_ONE_AVATAR_RING_CLASS,
-                  a.isCloned && CLONED_AGENT_AVATAR_RING_CLASS,
-                )}
-              />
-              {a.online === true && (
-                <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-surface" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <Link
-                to="/agents/$agentId"
-                params={{ agentId: a.id }}
-                className="truncate font-medium hover:underline"
-              >
-                {a.name}
-              </Link>
-              <div className="truncate text-sm text-muted-foreground">@{a.handle}</div>
-            </div>
-          </div>
-          <div className="col-span-2 text-sm text-muted-foreground">{a.category}</div>
-          <div className="col-span-2 text-sm">
-            {a.reputation != null ? (
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-pill">
-                  <div className="h-full bg-primary" style={{ width: `${a.reputation}%` }} />
-                </div>
-                {a.reputation}
-              </div>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </div>
-          <div className="col-span-2 flex items-center gap-1 text-sm">
-            {a.pricePerMonth != null ? (
-              <>
-                <CoinIcon className="h-3.5 w-3.5" /> {a.pricePerMonth}
-                <span className="text-sm text-muted-foreground">/mo</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </div>
-          <div className="col-span-1 flex justify-end gap-1">
-            <Button asChild size="icon" variant="ghost" aria-label="Chat">
-              <Link to="/">
-                <MessageSquare className="h-4 w-4" />
-              </Link>
-            </Button>
-            {allowFire && !isRegistryTokenIdOneAgent(a) && (
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => onFire(a)}
-                aria-label={agentPortfolioRemoveCta(a)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
-          </div>
-        </div>
+        <AgentRow key={a.id} agent={a} allowFire={allowFire} onFire={onFire} />
       ))}
     </>
   );
@@ -145,8 +220,8 @@ function MyAgents() {
   return (
     <div className="px-4 py-6 md:px-10 md:py-8">
       <div className="mx-auto max-w-5xl">
-        <div className="flex items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <div className="text-sm uppercase tracking-wider text-muted-foreground">
               Portfolio
             </div>
@@ -167,7 +242,7 @@ function MyAgents() {
               </span>
             </p>
           </div>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full shrink-0 sm:w-auto">
             <Link to="/marketplace">Browse marketplace</Link>
           </Button>
         </div>
@@ -180,26 +255,14 @@ function MyAgents() {
 
           <TabsContent value="hired" className="mt-3">
             <div className="overflow-hidden rounded-xl border border-border bg-surface">
-              <div className="grid grid-cols-12 gap-2 border-b border-border bg-surface-elevated px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <div className="col-span-5">Agent</div>
-                <div className="col-span-2">Category</div>
-                <div className="col-span-2">Reputation</div>
-                <div className="col-span-2">Cost</div>
-                <div className="col-span-1 text-right">Actions</div>
-              </div>
+              <AgentTableHeader />
               <AgentTableRows rows={hired} allowFire onFire={setFireTarget} />
             </div>
           </TabsContent>
 
           <TabsContent value="clones" className="mt-3">
             <div className="overflow-hidden rounded-xl border border-border bg-surface">
-              <div className="grid grid-cols-12 gap-2 border-b border-border bg-surface-elevated px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <div className="col-span-5">Agent</div>
-                <div className="col-span-2">Category</div>
-                <div className="col-span-2">Reputation</div>
-                <div className="col-span-2">Cost</div>
-                <div className="col-span-1 text-right">Actions</div>
-              </div>
+              <AgentTableHeader />
               {!address ? (
                 <div className="p-6 md:p-8">
                   <EmptyState
