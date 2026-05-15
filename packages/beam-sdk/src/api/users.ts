@@ -46,7 +46,13 @@ import {
   type UserKycStatusDocument,
   type UserUploadResult,
 } from "@railbeam/stardorm-api-contract";
+import type { ZodType } from "zod";
 import type { BeamHttpClient } from "../http.js";
+
+const parseChatHistoryResponse =
+  chatHistoryResponseSchema as ZodType<ChatHistoryResponse>;
+const parseExecuteHandlerResponse =
+  executeHandlerResponseSchema as ZodType<ExecuteHandlerResponse>;
 
 const USER_UPLOAD_FIELD = "file";
 
@@ -127,7 +133,7 @@ export function createBeamUsersApi(http: BeamHttpClient): BeamUsersApi {
           ...(q.conversationId ? { conversationId: q.conversationId } : {}),
           ...(q.cursor ? { cursor: q.cursor } : {}),
         },
-        parse: chatHistoryResponseSchema,
+        parse: parseChatHistoryResponse,
       });
     },
     listCreditCards: () =>
@@ -177,7 +183,7 @@ export function createBeamUsersApi(http: BeamHttpClient): BeamUsersApi {
     executeHandler: (body) =>
       http.requestJson("POST", "/users/me/chat/execute-handler", {
         body: executeHandlerBodySchema.parse(body),
-        parse: executeHandlerResponseSchema,
+        parse: parseExecuteHandlerResponse,
       }),
     chat: async (params) => {
       const hasFiles = (params.files?.length ?? 0) > 0;

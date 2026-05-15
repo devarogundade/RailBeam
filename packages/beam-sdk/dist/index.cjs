@@ -89,6 +89,8 @@ function createBeamStorageApi(http2) {
     })
   };
 }
+var parseChatHistoryResponse = stardormApiContract.chatHistoryResponseSchema;
+var parseExecuteHandlerResponse = stardormApiContract.executeHandlerResponseSchema;
 var USER_UPLOAD_FIELD = "file";
 function createBeamUsersApi(http2) {
   return {
@@ -131,7 +133,7 @@ function createBeamUsersApi(http2) {
           ...q.conversationId ? { conversationId: q.conversationId } : {},
           ...q.cursor ? { cursor: q.cursor } : {}
         },
-        parse: stardormApiContract.chatHistoryResponseSchema
+        parse: parseChatHistoryResponse
       });
     },
     listCreditCards: () => http2.requestJson("GET", "/users/me/credit-cards", {
@@ -176,7 +178,7 @@ function createBeamUsersApi(http2) {
     ),
     executeHandler: (body) => http2.requestJson("POST", "/users/me/chat/execute-handler", {
       body: stardormApiContract.executeHandlerBodySchema.parse(body),
-      parse: stardormApiContract.executeHandlerResponseSchema
+      parse: parseExecuteHandlerResponse
     }),
     chat: async (params) => {
       const hasFiles = (params.files?.length ?? 0) > 0;

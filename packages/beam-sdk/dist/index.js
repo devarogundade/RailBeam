@@ -87,6 +87,8 @@ function createBeamStorageApi(http2) {
     })
   };
 }
+var parseChatHistoryResponse = chatHistoryResponseSchema;
+var parseExecuteHandlerResponse = executeHandlerResponseSchema;
 var USER_UPLOAD_FIELD = "file";
 function createBeamUsersApi(http2) {
   return {
@@ -129,7 +131,7 @@ function createBeamUsersApi(http2) {
           ...q.conversationId ? { conversationId: q.conversationId } : {},
           ...q.cursor ? { cursor: q.cursor } : {}
         },
-        parse: chatHistoryResponseSchema
+        parse: parseChatHistoryResponse
       });
     },
     listCreditCards: () => http2.requestJson("GET", "/users/me/credit-cards", {
@@ -174,7 +176,7 @@ function createBeamUsersApi(http2) {
     ),
     executeHandler: (body) => http2.requestJson("POST", "/users/me/chat/execute-handler", {
       body: executeHandlerBodySchema.parse(body),
-      parse: executeHandlerResponseSchema
+      parse: parseExecuteHandlerResponse
     }),
     chat: async (params) => {
       const hasFiles = (params.files?.length ?? 0) > 0;
