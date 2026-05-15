@@ -5,6 +5,7 @@ import { zeroGTestnet, zeroGMainnet } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // src/api/agents.ts
+var parseChatSuccess = stardormChatSuccessSchema;
 function createBeamAgentsApi(http2) {
   return {
     chat: async (params) => {
@@ -19,14 +20,14 @@ function createBeamAgentsApi(http2) {
         for (const f of params.files ?? []) {
           fd.append("files", f, f.name);
         }
-        return http2.requestFormData("POST", path, fd, stardormChatSuccessSchema);
+        return http2.requestFormData("POST", path, fd, parseChatSuccess);
       }
       return http2.requestJson("POST", path, {
         body: {
           message: params.message,
           ...params.conversationId ? { conversationId: params.conversationId } : {}
         },
-        parse: stardormChatSuccessSchema
+        parse: parseChatSuccess
       });
     }
   };

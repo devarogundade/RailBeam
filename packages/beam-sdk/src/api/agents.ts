@@ -2,7 +2,10 @@ import {
   stardormChatSuccessSchema,
   type StardormChatSuccess,
 } from "@railbeam/stardorm-api-contract";
+import type { ZodType } from "zod";
 import type { BeamHttpClient } from "../http.js";
+
+const parseChatSuccess = stardormChatSuccessSchema as ZodType<StardormChatSuccess>;
 
 export type BeamAgentsChatParams = {
   agentKey: string;
@@ -30,14 +33,14 @@ export function createBeamAgentsApi(http: BeamHttpClient): BeamAgentsApi {
         for (const f of params.files ?? []) {
           fd.append("files", f, f.name);
         }
-        return http.requestFormData("POST", path, fd, stardormChatSuccessSchema);
+        return http.requestFormData("POST", path, fd, parseChatSuccess);
       }
       return http.requestJson("POST", path, {
         body: {
           message: params.message,
           ...(params.conversationId ? { conversationId: params.conversationId } : {}),
         },
-        parse: stardormChatSuccessSchema,
+        parse: parseChatSuccess,
       });
     },
   };

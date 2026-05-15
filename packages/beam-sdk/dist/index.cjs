@@ -7,6 +7,7 @@ var chains = require('viem/chains');
 var accounts = require('viem/accounts');
 
 // src/api/agents.ts
+var parseChatSuccess = stardormApiContract.stardormChatSuccessSchema;
 function createBeamAgentsApi(http2) {
   return {
     chat: async (params) => {
@@ -21,14 +22,14 @@ function createBeamAgentsApi(http2) {
         for (const f of params.files ?? []) {
           fd.append("files", f, f.name);
         }
-        return http2.requestFormData("POST", path, fd, stardormApiContract.stardormChatSuccessSchema);
+        return http2.requestFormData("POST", path, fd, parseChatSuccess);
       }
       return http2.requestJson("POST", path, {
         body: {
           message: params.message,
           ...params.conversationId ? { conversationId: params.conversationId } : {}
         },
-        parse: stardormApiContract.stardormChatSuccessSchema
+        parse: parseChatSuccess
       });
     }
   };
