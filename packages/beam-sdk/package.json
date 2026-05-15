@@ -1,6 +1,6 @@
 {
   "name": "@railbeam/beam-sdk",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publishConfig": {
     "access": "public"
   },
@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@railbeam/stardorm-api-contract": "workspace:*",
+    "@railbeam/stardorm-api-contract": "^0.0.2",
     "viem": "^2.48.11",
     "zod": "^3.24.2"
   },

@@ -29,6 +29,10 @@ export function invalidateBeamHttpDashboardLists(qc: QueryClient) {
     queryKey: queryKeys.beamHttp.paymentRequestsRoot,
     exact: false,
   });
+  void qc.invalidateQueries({
+    queryKey: queryKeys.beamHttp.financialSnapshotsRoot,
+    exact: false,
+  });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.kycStatus() });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.onRamps() });
   void qc.invalidateQueries({ queryKey: queryKeys.beamHttp.creditCards() });

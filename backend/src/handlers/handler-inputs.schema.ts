@@ -3,7 +3,9 @@ import { isBeamUsdcEAsset } from '../beam/beam-usdc-e.config';
 import { beamX402CheckoutSupportedAssets } from '../beam/beam-x402-checkout.config';
 import {
   x402SupportedAssetSchema,
-  onRampTokensInputSchema,
+  onRampTokensInputCoreSchema,
+  validateOnRampUsdDerive,
+  finalizeOnRampTokensPayload,
   onRampFormCtaParamsSchema,
   isOnRampFormCtaParams,
   createCreditCardInputSchema,
@@ -288,9 +290,22 @@ export const onRampPaymentToolCardSchema = z.object({
 
 export type OnRampPaymentToolCard = z.infer<typeof onRampPaymentToolCardSchema>;
 
-export const createOnRampTokensToolArgsSchema = onRampTokensInputSchema.extend({
-  paymentCard: onRampPaymentToolCardSchema.optional(),
-});
+export const createOnRampTokensToolArgsSchema = onRampTokensInputCoreSchema
+  .extend({
+    paymentCard: onRampPaymentToolCardSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    const { paymentCard: _pc, ...core } = data;
+    void _pc;
+    validateOnRampUsdDerive(core, ctx);
+  })
+  .transform((data) => {
+    const { paymentCard, ...core } = data;
+    return {
+      ...finalizeOnRampTokensPayload(core),
+      ...(paymentCard !== undefined ? { paymentCard } : {}),
+    };
+  });
 
 export type CreateOnRampTokensToolArgs = z.infer<
   typeof createOnRampTokensToolArgsSchema

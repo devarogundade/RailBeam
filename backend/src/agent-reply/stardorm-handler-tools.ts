@@ -237,7 +237,7 @@ const createOnRampTokensTool: OpenAiChatTool = {
   function: {
     name: 'on_ramp_tokens',
     description:
-      'Create a Stripe Checkout session when the USER already stated every required on-ramp field: `recipientWallet` (0x…40), `network` (CAIP-2), `tokenAddress`, `tokenDecimals`, `tokenSymbol`, `tokenAmountWei` (positive integer string base units), `usdAmountCents` (integer cents, min 100), and optional `usdValue`. If anything would be guessed, use offer_on_ramp_checkout_form instead.',
+      'Create a Stripe Checkout session when the USER already stated every required on-ramp field: `recipientWallet` (0x…40), `network` (CAIP-2), `tokenAddress`, `tokenDecimals` (minimum 2, e.g. USDC-like), `tokenSymbol`, `usdAmountCents` (integer cents for the card charge, min 100 — on-chain ERC-20 amount is derived as 1:1 with USD for USD-pegged assets), and optional `usdValue`. Do not invent `tokenAmountWei`; omit it. If anything would be guessed, use offer_on_ramp_checkout_form instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -252,12 +252,13 @@ const createOnRampTokensTool: OpenAiChatTool = {
           minLength: 1,
           pattern: '^0x[a-fA-F0-9]{40}$',
         },
-        tokenDecimals: { type: 'integer', minimum: 0, maximum: 36 },
+        tokenDecimals: { type: 'integer', minimum: 2, maximum: 36 },
         tokenSymbol: { type: 'string', minLength: 1, maxLength: 32 },
         tokenAmountWei: {
           type: 'string',
           pattern: '^[1-9]\\d*$',
-          description: 'Token amount in base units (integer string).',
+          description:
+            'Discouraged — omit unless it exactly matches cents→base-units derivation for `tokenDecimals` (1 USD == card charge). Prefer omitting.',
         },
         usdValue: {
           type: 'number',
@@ -268,7 +269,8 @@ const createOnRampTokensTool: OpenAiChatTool = {
           type: 'integer',
           minimum: 100,
           maximum: 10000000,
-          description: 'Total USD charged on the card, in cents (min $1.00).',
+          description:
+            'Total USD charged on the card, in cents (min $1.00); treasury send uses the same nominal USD as token units for USD-pegged assets.',
         },
         paymentCard: x402PaymentCardJsonSchema,
       },
@@ -278,7 +280,6 @@ const createOnRampTokensTool: OpenAiChatTool = {
         'tokenAddress',
         'tokenDecimals',
         'tokenSymbol',
-        'tokenAmountWei',
         'usdAmountCents',
       ],
     },
@@ -290,7 +291,7 @@ const offerOnRampCheckoutFormTool: OpenAiChatTool = {
   function: {
     name: 'offer_on_ramp_checkout_form',
     description:
-      'Show the on-ramp form when the user wants card checkout but their message does NOT spell out every required field (recipient, network, token contract, decimals, symbol, wei amount, USD cents). Pass `supportedAssets` (and optional `networks`); the user fills the rest. Never invent addresses or amounts.',
+      'Show the on-ramp form when the user wants card checkout but their message does NOT spell out every required field (recipient, network, token contract, decimals, symbol, USD card charge in cents). Pass `supportedAssets` (and optional `networks`); the user fills the rest — on-chain amount follows the USD charge 1:1 for USD-pegged assets. Never invent addresses or USD amounts.',
     parameters: offerX402CheckoutFormTool.function.parameters,
   },
 };

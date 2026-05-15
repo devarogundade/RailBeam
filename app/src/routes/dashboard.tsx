@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Zap,
   CreditCard,
   Users,
@@ -21,7 +22,7 @@ import {
   useStardormRecentSubscriptions,
 } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { BEAM_CHAIN_IDS } from "@/lib/beam-chain-config";
+import { BEAM_CHAIN_IDS, BEAM_TOKENS, beamNetworkFromChainId, beamNetworkLabelFromChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "@/lib/stardorm-subgraph-config";
 import {
   formatCompactFromBaseUnits,
@@ -37,6 +38,7 @@ import {
   fetchStardormCreditCardSensitiveDetails,
   fetchCreditCardFundQuote,
   fundStardormCreditCardViaX402,
+  fetchStardormFinancialSnapshots,
   fetchStardormKycStatus,
   fetchStardormOnRamps,
   fetchStardormPaymentRequests,
@@ -45,14 +47,10 @@ import {
 } from "@/lib/stardorm-api";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { Badge } from "@/components/ui/badge";
-import type {
-  CreditCardPublic,
-  OnRampRecord,
-  PublicPaymentRequest,
-  UserKycStatus,
-} from "@railbeam/stardorm-api-contract";
+import type { CreditCardPublic, FinancialSnapshotDailyRow, OnRampRecord, PublicPaymentRequest, UserKycStatus } from "@railbeam/stardorm-api-contract";
 import { toast } from "sonner";
 import { parseAgentUriFromString } from "@/lib/agent-uri-metadata";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { EmptyState } from "@/components/empty-state";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -63,6 +61,7 @@ import {
   VirtualCardsPanelSkeleton,
 } from "@/components/page-shimmer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
 import { VirtualCardFundsDialog } from "@/components/virtual-card-funds-dialog";
 import { VirtualCardBillingDialog } from "@/components/virtual-card-billing-dialog";
@@ -153,10 +152,10 @@ function Dashboard() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground lg:col-span-2">
                 <div className="font-medium text-foreground">Revenue</div>
-                <p className="mt-2">
-                  No revenue feed is connected yet. When treasury or invoicing totals are available, they
-                  can be charted here.
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Completed payment links and checkouts where your wallet is the payee (daily UTC rollup).
                 </p>
+                <PaymentLinkRevenueChart enabled={Boolean(stardormSession && dashTab === "payments")} />
               </div>
 
               <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted-foreground">
@@ -432,6 +431,155 @@ function formatTokenWeiHuman(wei: string, decimals: number): string {
   }
 }
 
+function chainIdFromPaymentNetwork(network: string): number | undefined {
+  const m = /^eip155:(\d+)$/i.exec(network.trim());
+  if (!m) return undefined;
+  const id = Number.parseInt(m[1]!, 10);
+  return Number.isFinite(id) ? id : undefined;
+}
+
+function tokenSymbolFromKnownAssets(assetTrimmed: string): string | undefined {
+  const lower = assetTrimmed.toLowerCase();
+  for (const t of BEAM_TOKENS.mainnet) {
+    if (t.address.toLowerCase() === lower) return t.symbol;
+  }
+  for (const t of BEAM_TOKENS.testnet) {
+    if (t.address.toLowerCase() === lower) return t.symbol;
+  }
+  return undefined;
+}
+
+function beamTxExplorerUrl(chainId: number, txHash: string): string | undefined {
+  if (!/^0x[a-fA-F0-9]{64}$/i.test(txHash.trim())) return undefined;
+  const tier = beamNetworkFromChainId(chainId);
+  const h = txHash.trim();
+  if (tier === "mainnet") return `https://chainscan.0g.ai/tx/${h}`;
+  if (tier === "testnet") return `https://chainscan-testnet.0g.ai/tx/${h}`;
+  return undefined;
+}
+
+function formatPaymentAmountDisplay(row: PublicPaymentRequest): string {
+  const asset = row.asset.trim();
+  const sym = tokenSymbolFromKnownAssets(asset);
+  if (row.decimals != null && row.decimals >= 0) {
+    try {
+      const human = formatTokenWeiHuman(row.amount, row.decimals);
+      if (sym) return `${human} ${sym}`;
+      if (/^0x[a-fA-F0-9]{40}$/i.test(asset)) {
+        return `${human} (${shortenHex(asset)})`;
+      }
+      return `${human} (${asset})`;
+    } catch {
+      /* fall through */
+    }
+  }
+  if (sym) return `${row.amount} ${sym} (raw units)`;
+  if (/^0x[a-fA-F0-9]{40}$/i.test(asset)) return `${row.amount} — token ${shortenHex(asset)}`;
+  return `${row.amount} — ${asset}`;
+}
+
+function PaymentRequestMetaBlock({ row }: { row: PublicPaymentRequest }) {
+  const chainId = chainIdFromPaymentNetwork(row.network);
+  const networkName = chainId != null ? beamNetworkLabelFromChainId(chainId) : row.network;
+  const caip2 = row.network.trim().startsWith("eip155:") ? row.network.trim() : null;
+  const explorerUrl =
+    chainId != null && row.txHash ? beamTxExplorerUrl(chainId, row.txHash) : undefined;
+  const payToLabel = /^0x[a-fA-F0-9]{40}$/i.test(row.payTo.trim())
+    ? shortenHex(row.payTo.trim())
+    : row.payTo;
+
+  return (
+    <div className="mt-2 space-y-2 text-[11px] leading-snug">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="min-w-0 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Amount
+          </div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">{formatPaymentAmountDisplay(row)}</div>
+        </div>
+        <div className="min-w-0 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Network
+          </div>
+          <div className="mt-0.5 font-medium text-foreground">{networkName}</div>
+          {caip2 ? (
+            <div className="mt-0.5 font-mono text-[10px] text-muted-foreground/90" title={caip2}>
+              {caip2}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Pay to
+        </div>
+        <div className="mt-0.5 break-all font-mono text-foreground/95" title={row.payTo}>
+          {payToLabel}
+        </div>
+      </div>
+      {row.paidByWallet?.trim() ? (
+        <div className="rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Payer wallet
+          </div>
+          <div
+            className="mt-0.5 break-all font-mono text-foreground/95"
+            title={row.paidByWallet.trim()}
+          >
+            {/^0x[a-fA-F0-9]{40}$/i.test(row.paidByWallet.trim())
+              ? shortenHex(row.paidByWallet.trim())
+              : row.paidByWallet.trim()}
+          </div>
+        </div>
+      ) : null}
+      {row.txHash?.trim() ? (
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Settlement
+          </span>
+          {explorerUrl ? (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 font-mono text-sm text-primary underline-offset-2 hover:underline"
+              title={row.txHash.trim()}
+            >
+              {shortenHex(row.txHash.trim())}
+              <ExternalLink className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+            </a>
+          ) : (
+            <span className="font-mono text-sm text-foreground/90" title={row.txHash.trim()}>
+              {shortenHex(row.txHash.trim())}
+            </span>
+          )}
+          {explorerUrl ? (
+            <span className="text-[10px] text-muted-foreground">View on 0G Chainscan</span>
+          ) : null}
+        </div>
+      ) : null}
+      {row.resourceUrl?.trim() ? (
+        <div className="truncate rounded-md border border-border/60 bg-surface-elevated/50 px-2.5 py-2 text-muted-foreground">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Linked resource
+          </span>
+          <div className="mt-1 min-w-0">
+            <a
+              href={row.resourceUrl.trim()}
+              className="text-primary underline-offset-2 hover:underline"
+              target="_blank"
+              rel="noreferrer noopener"
+              title={row.resourceUrl.trim()}
+            >
+              {row.resourceUrl.trim()}
+            </a>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function onRampBadgeVariant(
   s: OnRampRecord["status"],
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -439,6 +587,135 @@ function onRampBadgeVariant(
   if (s === "failed") return "destructive";
   if (s === "canceled") return "outline";
   return "secondary";
+}
+
+const REVENUE_CHART_DAYS = 30;
+
+function utcCalendarDayKey(daysBackFromToday: number): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - daysBackFromToday);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildPaymentLinkRevenueChartData(rows: FinancialSnapshotDailyRow[], dayCount: number) {
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const key = r.bucketStart.slice(0, 10);
+    const v = r.spendByCategory.payment_link_revenue;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      byDay.set(key, (byDay.get(key) ?? 0) + v);
+    }
+  }
+  const out: { label: string; day: string; revenue: number }[] = [];
+  for (let ago = dayCount - 1; ago >= 0; ago--) {
+    const k = utcCalendarDayKey(ago);
+    const revenue = byDay.get(k) ?? 0;
+    const m = Number(k.slice(5, 7));
+    const day = Number(k.slice(8, 10));
+    out.push({
+      day: k,
+      label: `${m}/${day}`,
+      revenue,
+    });
+  }
+  return out;
+}
+
+function PaymentLinkRevenueChart({ enabled }: { enabled: boolean }) {
+  const { data, isPending, isError } = useQuery({
+    queryKey: queryKeys.beamHttp.financialSnapshots(REVENUE_CHART_DAYS),
+    queryFn: () => fetchStardormFinancialSnapshots({ days: REVENUE_CHART_DAYS }),
+    enabled,
+  });
+
+  const chartData = React.useMemo(
+    () => buildPaymentLinkRevenueChartData(data?.items ?? [], REVENUE_CHART_DAYS),
+    [data?.items],
+  );
+
+  const total = React.useMemo(() => chartData.reduce((s, x) => s + x.revenue, 0), [chartData]);
+
+  const chartConfig = React.useMemo(
+    () =>
+      ({
+        revenue: {
+          label: "Payment links (USDC.e)",
+          color: "hsl(var(--primary))",
+        },
+      }) satisfies ChartConfig,
+    [],
+  );
+
+  if (!enabled) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        Sign in with your wallet (Beam API session) to view payment-link revenue.
+      </p>
+    );
+  }
+
+  if (isError) {
+    return <p className="mt-3 text-sm text-destructive">Could not load revenue chart.</p>;
+  }
+
+  if (isPending) {
+    return (
+      <div className="mt-4">
+        <Skeleton className="h-[220px] w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+        <span>
+          Bars show token amounts credited to your payee address (shown as ~USD while settlement is USDC.e).
+          New activity appears after checkout is marked paid.
+        </span>
+        <span className="font-mono text-foreground">
+          Σ {total.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+        </span>
+      </div>
+      <ChartContainer config={chartConfig} className="aspect-auto h-[220px] w-full">
+        <BarChart data={chartData} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={16}
+          />
+          <YAxis
+            width={52}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) =>
+              typeof v === "number" ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(v)
+            }
+          />
+          <ChartTooltip
+            cursor={{ fill: "hsl(var(--muted) / 0.15)" }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const row = payload[0]?.payload as { day?: string; revenue?: number };
+              return (
+                <div className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs shadow-md">
+                  <div className="font-medium text-muted-foreground">{row.day}</div>
+                  <div className="font-mono tabular-nums text-foreground">
+                    {(row.revenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC.e
+                  </div>
+                </div>
+              );
+            }}
+          />
+          <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ChartContainer>
+    </div>
+  );
 }
 
 const PAYMENT_REQUESTS_PAGE_SIZE = 10;
@@ -498,7 +775,8 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
         <div>
           <div className="text-sm font-semibold">Checkout and x402</div>
           <p className="text-[11px] text-muted-foreground">
-            Payment requests you created or settled, stored by the Beam API.
+            Checkouts and payment links for your wallet. Human-readable amounts and network below; open the
+            checkout or copy the link while a request is still pending.
           </p>
         </div>
         {enabled ? (
@@ -539,13 +817,7 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
                     <PaymentRequestStatusBadge status={row.status} />
                     <PaymentRequestTypeBadge type={row.type} />
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {row.network} · {shortenHex(row.payTo)} · amount {row.amount} ({row.asset}
-                    {row.decimals != null ? `, ${row.decimals} decimals` : ""})
-                  </div>
-                  {row.txHash ? (
-                    <div className="text-[11px] text-muted-foreground">Tx {shortenHex(row.txHash)}</div>
-                  ) : null}
+                  <PaymentRequestMetaBlock row={row} />
                 </div>
                 <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end sm:max-w-md">
                   {row.status === "pending" ? (

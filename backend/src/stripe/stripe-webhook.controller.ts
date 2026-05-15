@@ -40,6 +40,16 @@ function paymentIntentIdFromSession(
   return undefined;
 }
 
+function beamOnRampIdFromPaymentIntent(pi: {
+  metadata?: Record<string, string> | null;
+}): string | undefined {
+  if (pi.metadata?.beam_on_ramp !== '1') return undefined;
+  const raw = pi.metadata.onRampId;
+  if (typeof raw !== 'string') return undefined;
+  const id = raw.trim();
+  return id.length > 0 ? id : undefined;
+}
+
 @Controller('webhooks')
 export class StripeWebhookController {
   private readonly log = new Logger(StripeWebhookController.name);
@@ -118,6 +128,19 @@ export class StripeWebhookController {
         const session = event.data.object as CheckoutSessionWebhookPayload;
         const onRampId = beamOnRampId(session);
         if (onRampId) await this.onRamp.markCanceled(onRampId);
+        break;
+      }
+      /** Backup / ordering: Stripe Checkout sets `payment_intent_data.metadata` on the PI. */
+      case 'payment_intent.succeeded': {
+        const pi = event.data.object as {
+          id: string;
+          metadata?: Record<string, string> | null;
+        };
+        const onRampId = beamOnRampIdFromPaymentIntent(pi);
+        if (onRampId) {
+          await this.onRamp.linkStripePaymentIntent(onRampId, pi.id);
+          await this.onRamp.fulfillPaidOnRamp(onRampId);
+        }
         break;
       }
       case 'identity.verification_session.processing':

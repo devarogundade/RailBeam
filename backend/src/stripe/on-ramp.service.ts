@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Contract, formatUnits, JsonRpcProvider, Wallet } from 'ethers';
+import { Contract, formatUnits, JsonRpcProvider, parseUnits, Wallet } from 'ethers';
 import { Model, Types } from 'mongoose';
 import {
   onRampRecordSchema,
@@ -256,8 +256,32 @@ export class OnRampService {
     const provider = new JsonRpcProvider(rpcUrl);
     const wallet = new Wallet(pk, provider);
     const c = new Contract(row.tokenAddress, ERC20_ABI, wallet);
+
+    /** Testing only: set env `ONRAMP_TEST_TRANSFER_AMOUNT_HUMAN` (e.g. `0.0001`) to transfer that amount in token units instead of the order total. Stripe still charges the real USD from the Checkout line item. */
+    const testHumanOverride = this.config
+      .get<string>('ONRAMP_TEST_TRANSFER_AMOUNT_HUMAN')
+      ?.trim();
+
+    let transferAmountWei = row.tokenAmountWei;
+    if (testHumanOverride?.length) {
+      try {
+        transferAmountWei = parseUnits(testHumanOverride, row.tokenDecimals).toString();
+        this.log.warn(
+          `ONRAMP_TEST_TRANSFER_AMOUNT_HUMAN="${testHumanOverride}": fulfilling ${onRampId} with ${transferAmountWei} wei (${row.tokenSymbol} decimals=${row.tokenDecimals}), not order amount ${row.tokenAmountWei}`,
+        );
+      } catch (e) {
+        const hint = e instanceof Error ? e.message : String(e);
+        this.log.error(
+          `Invalid ONRAMP_TEST_TRANSFER_AMOUNT_HUMAN "${testHumanOverride}", using row tokenAmountWei: ${hint}`,
+        );
+      }
+    }
+
     try {
-      const tx = await c.transfer(row.recipientWallet, row.tokenAmountWei);
+      this.log.log(
+        `On-ramp fulfill: treasury → recipient ${row.recipientWallet.slice(0, 10)}… token=${row.tokenSymbol} wei=${transferAmountWei}`,
+      );
+      const tx = await c.transfer(row.recipientWallet, transferAmountWei);
       const receipt = await tx.wait();
       await this.onRampModel
         .updateOne(
@@ -276,7 +300,7 @@ export class OnRampService {
       let tokenHuman: number | undefined;
       try {
         const n = parseFloat(
-          formatUnits(BigInt(row.tokenAmountWei), row.tokenDecimals),
+          formatUnits(BigInt(transferAmountWei), row.tokenDecimals),
         );
         if (Number.isFinite(n)) tokenHuman = n;
       } catch {
@@ -290,7 +314,7 @@ export class OnRampService {
       this.emailNotifications.notifyOnRampFulfilled({
         walletAddress: row.walletAddress,
         tokenSymbol: row.tokenSymbol,
-        tokenAmountWei: row.tokenAmountWei,
+        tokenAmountWei: transferAmountWei,
         tokenDecimals: row.tokenDecimals,
         usdAmountCents: row.usdAmountCents,
         fulfillmentTxHash: receipt?.hash ?? tx.hash,

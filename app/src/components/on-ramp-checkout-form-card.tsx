@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { parseUnits } from "viem";
+import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
 import { useBeamEffectiveCaip2Network } from "@/lib/beam-network-context";
 import { toast } from "sonner";
@@ -24,13 +24,23 @@ export function OnRampCheckoutFormCard({
   onCreateCheckout: (params: Record<string, unknown>) => void | Promise<void>;
 }) {
   const { networkId } = useBeamEffectiveCaip2Network();
+  const { address: connectedWallet } = useAccount();
 
   const [assetAddr, setAssetAddr] = React.useState(
     () => rich.supportedAssets[0]?.address ?? "",
   );
   const [recipient, setRecipient] = React.useState("");
-  const [amountHuman, setAmountHuman] = React.useState("");
   const [usdHuman, setUsdHuman] = React.useState("");
+
+  React.useEffect(() => {
+    if (
+      connectedWallet &&
+      ADDR_RE.test(connectedWallet.trim()) &&
+      recipient.trim() === ""
+    ) {
+      setRecipient(connectedWallet.trim().toLowerCase());
+    }
+  }, [connectedWallet, recipient]);
 
   React.useEffect(() => {
     if (!rich.supportedAssets.some((a) => a.address === assetAddr)) {
@@ -51,18 +61,6 @@ export function OnRampCheckoutFormCard({
       toast.error("Recipient must be a 0x…40 address");
       return;
     }
-    const human = amountHuman.trim();
-    if (!human) {
-      toast.error("Enter a token amount");
-      return;
-    }
-    let tokenAmountWei: string;
-    try {
-      tokenAmountWei = parseUnits(human, selected.decimals).toString();
-    } catch {
-      toast.error("Invalid amount for this token’s decimals");
-      return;
-    }
     const usdRaw = usdHuman.trim();
     const usdNum = Number.parseFloat(usdRaw);
     if (!Number.isFinite(usdNum) || usdNum < 1) {
@@ -80,7 +78,6 @@ export function OnRampCheckoutFormCard({
       tokenAddress: selected.address.trim().toLowerCase(),
       tokenDecimals: selected.decimals,
       tokenSymbol: selected.symbol.trim(),
-      tokenAmountWei,
       usdAmountCents,
     };
     if (selected.usdValue != null) {
@@ -100,7 +97,7 @@ export function OnRampCheckoutFormCard({
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{rich.intro}</p>
         ) : (
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Choose a supported token and how much you want credited on-chain, then enter the USD amount to charge on your card (Stripe). After payment settles, tokens are sent from the Beam on-ramp treasury.
+            Pick a USD-pegged asset and the USD amount to charge on your card (Stripe). The same dollar value is credited on-chain (1:1). After payment settles, tokens are sent from the Beam on-ramp treasury.
           </p>
         )}
         <BeamCurrentNetworkNote className="mt-2" />
@@ -134,21 +131,6 @@ export function OnRampCheckoutFormCard({
             </label>
           ))}
         </RadioGroup>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="onramp-amt" className="text-xs">
-          Token amount ({selected?.symbol ?? "token"} units, not wei)
-        </Label>
-        <Input
-          id="onramp-amt"
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="e.g. 10"
-          value={amountHuman}
-          onChange={(e) => setAmountHuman(e.target.value)}
-          disabled={disabled}
-        />
       </div>
 
       <div className="space-y-2">

@@ -12,6 +12,8 @@ import {
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
   userUploadResultSchema,
+  financialSnapshotsListResponseSchema,
+  meFinancialSnapshotsQuerySchema,
   onRampsListResponseSchema,
   paymentRequestsListResponseSchema,
   stripJsonNulls,
@@ -25,6 +27,7 @@ import {
   type CreditCardSensitiveDetails,
   type CreditCardsListResponse,
   type ExecuteHandlerBody,
+  type FinancialSnapshotsListResponse,
   type OnRampsListResponse,
   type PaymentRequestsListResponse,
   type StardormChatClientResult,
@@ -297,6 +300,23 @@ export async function fetchStardormPaymentRequests(params: {
       params: { limit, page },
     });
     return paymentRequestsListResponseSchema.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStardormFinancialSnapshots(params: {
+  days?: number;
+} = {}): Promise<FinancialSnapshotsListResponse | null> {
+  if (!getStardormApiBase()) return null;
+  const q = meFinancialSnapshotsQuerySchema.parse({
+    ...(typeof params.days === "number" ? { days: params.days } : {}),
+  });
+  try {
+    const { data } = await stardormAxios.get<unknown>("/users/me/financial-snapshots", {
+      params: { days: q.days },
+    });
+    return financialSnapshotsListResponseSchema.parse(data);
   } catch {
     return null;
   }

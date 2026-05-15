@@ -80,6 +80,7 @@ import { txRichFromTokenSwapDraft } from 'src/handlers/swap-draft-rich';
 import { CreditCardsService } from 'src/credit-cards/credit-cards.service';
 import { CreditCardFundingService } from 'src/credit-cards/credit-card-funding.service';
 import { FinancialSnapshotsService } from 'src/mongo/financial-snapshots.service';
+import type { FinancialSnapshotChatRow } from 'src/mongo/financial-snapshots.service';
 import { PaymentRequestsService } from 'src/payments/payment-requests.service';
 import { OnRampService } from 'src/stripe/on-ramp.service';
 import {
@@ -1124,6 +1125,25 @@ export class UserService {
       page: params.page,
     });
     return { items, total };
+  }
+
+  async listMyFinancialSnapshots(
+    walletAddress: string,
+    days: number,
+  ): Promise<{ items: FinancialSnapshotChatRow[] }> {
+    const wallet = this.normalizeWallet(walletAddress);
+    const doc = await this.userModel
+      .findOne({ walletAddress: wallet })
+      .select('_id')
+      .exec();
+    if (!doc) {
+      return { items: [] };
+    }
+    const items = await this.financialSnapshots.listRecentDailyForChat(
+      doc._id as Types.ObjectId,
+      days,
+    );
+    return { items };
   }
 
   async listMyOnRamps(walletAddress: string, limit: number) {

@@ -686,6 +686,20 @@ var paymentRequestsListResponseSchema = z.object({
   /** Total rows matching the wallet filter (ignores pagination). */
   total: z.number().int().min(0)
 });
+var financialSnapshotDailyRowSchema = z.object({
+  bucketStart: z.string(),
+  bucket: z.string(),
+  revenueUsd: z.number().optional(),
+  walletBalance0g: z.number().optional(),
+  monthlySpend0g: z.number().optional(),
+  spendByCategory: z.record(z.number()).default({})
+});
+var meFinancialSnapshotsQuerySchema = z.object({
+  days: z.coerce.number().int().min(7).max(90).default(30)
+});
+var financialSnapshotsListResponseSchema = z.object({
+  items: z.array(financialSnapshotDailyRowSchema)
+});
 var onRampFormNetworkOptionSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().min(1).max(120)
@@ -706,22 +720,77 @@ var weiString = z.union([
   ),
   z.number().int().positive().transform((n) => String(n))
 ]);
+function deriveTokenAmountWeiFromUsdCents(usdAmountCents, tokenDecimals) {
+  if (!Number.isFinite(usdAmountCents) || usdAmountCents < 100) {
+    throw new Error("usdAmountCents must be a finite integer >= 100");
+  }
+  if (!Number.isInteger(usdAmountCents)) {
+    throw new Error("usdAmountCents must be an integer (cents)");
+  }
+  if (!Number.isInteger(tokenDecimals) || tokenDecimals < 2 || tokenDecimals > 36) {
+    throw new Error("tokenDecimals must be an integer from 2 to 36 for 1:1 USD mapping");
+  }
+  const cents = BigInt(usdAmountCents);
+  const scale = 10n ** BigInt(tokenDecimals - 2);
+  return (cents * scale).toString();
+}
 var evmAddr = z.string().min(1).refine(
   (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
   "must be a 0x-prefixed 20-byte address"
 ).transform((s) => s.trim().toLowerCase());
-var onRampTokensInputSchema = z.object({
+var onRampTokensInputCoreSchema = z.object({
   recipientWallet: evmAddr,
   network: z.string().min(1).max(64),
   tokenAddress: evmAddr,
-  tokenDecimals: z.number().int().min(0).max(36),
+  tokenDecimals: z.number().int().min(2).max(36),
   tokenSymbol: z.string().min(1).max(32),
-  tokenAmountWei: weiString,
+  /** Prefer omitting — server derives from USD card charge using 1:1 USD-stable mapping. */
+  tokenAmountWei: weiString.optional(),
   /** Optional spot reference for analytics / UI (per supported token). */
   usdValue: z.number().finite().nonnegative().optional(),
   /** Total USD charged via Stripe (cents). Minimum $1.00. */
   usdAmountCents: z.number().int().min(100).max(1e7)
 });
+function validateOnRampUsdDerive(data, ctx) {
+  try {
+    const derived = deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    );
+    if (data.tokenAmountWei !== void 0) {
+      const provided = typeof data.tokenAmountWei === "number" ? String(data.tokenAmountWei) : data.tokenAmountWei.trim();
+      if (provided !== derived) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "tokenAmountWei must match the card charge under 1:1 USD-stable mapping \u2014 omit tokenAmountWei and rely on usdAmountCents.",
+          path: ["tokenAmountWei"]
+        });
+      }
+    }
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Could not derive token amount from USD; check usdAmountCents and tokenDecimals.",
+      path: ["usdAmountCents"]
+    });
+  }
+}
+function finalizeOnRampTokensPayload(data) {
+  return {
+    recipientWallet: data.recipientWallet,
+    network: data.network,
+    tokenAddress: data.tokenAddress,
+    tokenDecimals: data.tokenDecimals,
+    tokenSymbol: data.tokenSymbol,
+    tokenAmountWei: deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    ),
+    ...data.usdValue !== void 0 ? { usdValue: data.usdValue } : {},
+    usdAmountCents: data.usdAmountCents
+  };
+}
+var onRampTokensInputSchema = onRampTokensInputCoreSchema.superRefine(validateOnRampUsdDerive).transform(finalizeOnRampTokensPayload);
 var onRampRecordStatusSchema = z.enum([
   "pending_checkout",
   "pending_payment",
@@ -1112,6 +1181,6 @@ var suggestMarketplaceHireInputSchema = z.object({
   requiredHandler: handlerActionIdSchema.optional()
 });
 
-export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteNativeSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripJsonNulls, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { HANDLER_ACTION_IDS, ISO_3166_1_ALPHA2_CODES, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHandlerResultSchema, chatHandlerServerResultSchema, chatHandlerWalletTxResultSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteNativeSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, deriveTokenAmountWeiFromUsdCents, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, finalizeOnRampTokensPayload, financialSnapshotDailyRowSchema, financialSnapshotsListResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isTransferFormCtaParams, isoCountryDisplayName, marketplaceSpecialistAgentKeySchema, meFinancialSnapshotsQuerySchema, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputCoreSchema, onRampTokensInputSchema, onRampsListResponseSchema, patchChatMessageResultBodySchema, patchChatMessageResultResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripJsonNulls, stripeKycInputSchema, suggestMarketplaceHireInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, transferFormCtaParamsSchema, transferFormNetworkOptionSchema, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, validateOnRampUsdDerive, x402SupportedAssetSchema };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

@@ -688,6 +688,20 @@ var paymentRequestsListResponseSchema = zod.z.object({
   /** Total rows matching the wallet filter (ignores pagination). */
   total: zod.z.number().int().min(0)
 });
+var financialSnapshotDailyRowSchema = zod.z.object({
+  bucketStart: zod.z.string(),
+  bucket: zod.z.string(),
+  revenueUsd: zod.z.number().optional(),
+  walletBalance0g: zod.z.number().optional(),
+  monthlySpend0g: zod.z.number().optional(),
+  spendByCategory: zod.z.record(zod.z.number()).default({})
+});
+var meFinancialSnapshotsQuerySchema = zod.z.object({
+  days: zod.z.coerce.number().int().min(7).max(90).default(30)
+});
+var financialSnapshotsListResponseSchema = zod.z.object({
+  items: zod.z.array(financialSnapshotDailyRowSchema)
+});
 var onRampFormNetworkOptionSchema = zod.z.object({
   id: zod.z.string().min(1).max(64),
   label: zod.z.string().min(1).max(120)
@@ -708,22 +722,77 @@ var weiString = zod.z.union([
   ),
   zod.z.number().int().positive().transform((n) => String(n))
 ]);
+function deriveTokenAmountWeiFromUsdCents(usdAmountCents, tokenDecimals) {
+  if (!Number.isFinite(usdAmountCents) || usdAmountCents < 100) {
+    throw new Error("usdAmountCents must be a finite integer >= 100");
+  }
+  if (!Number.isInteger(usdAmountCents)) {
+    throw new Error("usdAmountCents must be an integer (cents)");
+  }
+  if (!Number.isInteger(tokenDecimals) || tokenDecimals < 2 || tokenDecimals > 36) {
+    throw new Error("tokenDecimals must be an integer from 2 to 36 for 1:1 USD mapping");
+  }
+  const cents = BigInt(usdAmountCents);
+  const scale = 10n ** BigInt(tokenDecimals - 2);
+  return (cents * scale).toString();
+}
 var evmAddr = zod.z.string().min(1).refine(
   (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
   "must be a 0x-prefixed 20-byte address"
 ).transform((s) => s.trim().toLowerCase());
-var onRampTokensInputSchema = zod.z.object({
+var onRampTokensInputCoreSchema = zod.z.object({
   recipientWallet: evmAddr,
   network: zod.z.string().min(1).max(64),
   tokenAddress: evmAddr,
-  tokenDecimals: zod.z.number().int().min(0).max(36),
+  tokenDecimals: zod.z.number().int().min(2).max(36),
   tokenSymbol: zod.z.string().min(1).max(32),
-  tokenAmountWei: weiString,
+  /** Prefer omitting — server derives from USD card charge using 1:1 USD-stable mapping. */
+  tokenAmountWei: weiString.optional(),
   /** Optional spot reference for analytics / UI (per supported token). */
   usdValue: zod.z.number().finite().nonnegative().optional(),
   /** Total USD charged via Stripe (cents). Minimum $1.00. */
   usdAmountCents: zod.z.number().int().min(100).max(1e7)
 });
+function validateOnRampUsdDerive(data, ctx) {
+  try {
+    const derived = deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    );
+    if (data.tokenAmountWei !== void 0) {
+      const provided = typeof data.tokenAmountWei === "number" ? String(data.tokenAmountWei) : data.tokenAmountWei.trim();
+      if (provided !== derived) {
+        ctx.addIssue({
+          code: zod.z.ZodIssueCode.custom,
+          message: "tokenAmountWei must match the card charge under 1:1 USD-stable mapping \u2014 omit tokenAmountWei and rely on usdAmountCents.",
+          path: ["tokenAmountWei"]
+        });
+      }
+    }
+  } catch {
+    ctx.addIssue({
+      code: zod.z.ZodIssueCode.custom,
+      message: "Could not derive token amount from USD; check usdAmountCents and tokenDecimals.",
+      path: ["usdAmountCents"]
+    });
+  }
+}
+function finalizeOnRampTokensPayload(data) {
+  return {
+    recipientWallet: data.recipientWallet,
+    network: data.network,
+    tokenAddress: data.tokenAddress,
+    tokenDecimals: data.tokenDecimals,
+    tokenSymbol: data.tokenSymbol,
+    tokenAmountWei: deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    ),
+    ...data.usdValue !== void 0 ? { usdValue: data.usdValue } : {},
+    usdAmountCents: data.usdAmountCents
+  };
+}
+var onRampTokensInputSchema = onRampTokensInputCoreSchema.superRefine(validateOnRampUsdDerive).transform(finalizeOnRampTokensPayload);
 var onRampRecordStatusSchema = zod.z.enum([
   "pending_checkout",
   "pending_payment",
@@ -1165,12 +1234,16 @@ exports.creditCardSensitiveDetailsSchema = creditCardSensitiveDetailsSchema;
 exports.creditCardWithdrawBodySchema = creditCardWithdrawBodySchema;
 exports.creditCardsListResponseSchema = creditCardsListResponseSchema;
 exports.deleteConversationResponseSchema = deleteConversationResponseSchema;
+exports.deriveTokenAmountWeiFromUsdCents = deriveTokenAmountWeiFromUsdCents;
 exports.draftErc20TransferInputSchema = draftErc20TransferInputSchema;
 exports.draftNativeTransferInputSchema = draftNativeTransferInputSchema;
 exports.draftNftTransferInputSchema = draftNftTransferInputSchema;
 exports.draftTokenSwapInputSchema = draftTokenSwapInputSchema;
 exports.executeHandlerBodySchema = executeHandlerBodySchema;
 exports.executeHandlerResponseSchema = executeHandlerResponseSchema;
+exports.finalizeOnRampTokensPayload = finalizeOnRampTokensPayload;
+exports.financialSnapshotDailyRowSchema = financialSnapshotDailyRowSchema;
+exports.financialSnapshotsListResponseSchema = financialSnapshotsListResponseSchema;
 exports.generateFinancialActivityReportInputSchema = generateFinancialActivityReportInputSchema;
 exports.generatePaymentInvoiceInputSchema = generatePaymentInvoiceInputSchema;
 exports.handlerActionIdSchema = handlerActionIdSchema;
@@ -1183,12 +1256,14 @@ exports.isSwapFormCtaParams = isSwapFormCtaParams;
 exports.isTransferFormCtaParams = isTransferFormCtaParams;
 exports.isoCountryDisplayName = isoCountryDisplayName;
 exports.marketplaceSpecialistAgentKeySchema = marketplaceSpecialistAgentKeySchema;
+exports.meFinancialSnapshotsQuerySchema = meFinancialSnapshotsQuerySchema;
 exports.meOnRampsQuerySchema = meOnRampsQuerySchema;
 exports.mePaymentRequestsQuerySchema = mePaymentRequestsQuerySchema;
 exports.onRampFormCtaParamsSchema = onRampFormCtaParamsSchema;
 exports.onRampFormNetworkOptionSchema = onRampFormNetworkOptionSchema;
 exports.onRampRecordSchema = onRampRecordSchema;
 exports.onRampRecordStatusSchema = onRampRecordStatusSchema;
+exports.onRampTokensInputCoreSchema = onRampTokensInputCoreSchema;
 exports.onRampTokensInputSchema = onRampTokensInputSchema;
 exports.onRampsListResponseSchema = onRampsListResponseSchema;
 exports.patchChatMessageResultBodySchema = patchChatMessageResultBodySchema;
@@ -1227,6 +1302,7 @@ exports.userKycStatusDocumentSchema = userKycStatusDocumentSchema;
 exports.userKycStatusSchema = userKycStatusSchema;
 exports.userPreferencesSchema = userPreferencesSchema;
 exports.userUploadResultSchema = userUploadResultSchema;
+exports.validateOnRampUsdDerive = validateOnRampUsdDerive;
 exports.x402SupportedAssetSchema = x402SupportedAssetSchema;
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

@@ -47,6 +47,8 @@ import {
   creditCardWithdrawBodySchema,
   executeHandlerBodySchema,
   executeHandlerResponseSchema,
+  financialSnapshotsListResponseSchema,
+  meFinancialSnapshotsQuerySchema,
   patchChatMessageResultBodySchema,
   patchChatMessageResultResponseSchema,
   meOnRampsQuerySchema,
@@ -209,6 +211,21 @@ export class UserController {
         wallet.walletAddress,
         cardId.trim(),
       ),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/financial-snapshots')
+  async listMyFinancialSnapshots(
+    @CurrentWallet() wallet: AuthedWallet,
+    @Query() query: Record<string, string | string[] | undefined>,
+  ) {
+    const q = parseQuery(
+      meFinancialSnapshotsQuerySchema,
+      parseQueryRecord(query),
+    );
+    return financialSnapshotsListResponseSchema.parse(
+      await this.users.listMyFinancialSnapshots(wallet.walletAddress, q.days),
     );
   }
 

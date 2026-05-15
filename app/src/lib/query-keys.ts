@@ -9,6 +9,9 @@ export const queryKeys = {
     paymentRequestsRoot: ["paymentRequests", "me"] as const,
     paymentRequests: (limit: number, page: number) =>
       [...queryKeys.beamHttp.paymentRequestsRoot, limit, page] as const,
+    financialSnapshotsRoot: ["financialSnapshots", "me"] as const,
+    financialSnapshots: (days: number) =>
+      [...queryKeys.beamHttp.financialSnapshotsRoot, days] as const,
     kycStatus: () => ["kycStatus", "me"] as const,
     onRamps: () => ["onRamps", "me"] as const,
     creditCards: () => ["creditCards", "me"] as const,

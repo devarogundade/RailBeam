@@ -66,33 +66,58 @@ export class FinancialSnapshotsService {
     );
   }
 
+  private humanTokenAmount(doc: PaymentRequestDocument): number | null {
+    const decimals = doc.decimals ?? 18;
+    try {
+      const n = parseFloat(formatUnits(BigInt(doc.amount), decimals));
+      return Number.isFinite(n) && n !== 0 ? n : null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Called when a checkout row moves to `paid` (payer spend / volume).
+   * Also rolls up inbound payment-link volume for the payee wallet when it differs from the payer.
    */
   async recordPaymentSettled(
     doc: PaymentRequestDocument,
     at = new Date(),
   ): Promise<void> {
-    const wallet = doc.paidByWallet ?? doc.createdByWallet;
-    const userId = await this.userIdForWallet(wallet);
-    if (!userId) return;
-
-    const inc: Record<string, number> = { checkout_payments: 1 };
-    const decimals = doc.decimals ?? 18;
-    try {
-      const n = parseFloat(formatUnits(BigInt(doc.amount), decimals));
-      if (Number.isFinite(n) && n !== 0) {
-        inc.checkout_token_outflow = n;
+    const payerWallet = doc.paidByWallet ?? doc.createdByWallet;
+    const payerId = await this.userIdForWallet(payerWallet);
+    if (payerId) {
+      const inc: Record<string, number> = { checkout_payments: 1 };
+      const amt = this.humanTokenAmount(doc);
+      if (amt != null) {
+        inc.checkout_token_outflow = amt;
       }
-    } catch {
-      // ignore malformed amount
+
+      const flat: Record<string, number> = {};
+      for (const [k, v] of Object.entries(inc)) {
+        if (v) flat[`spendByCategory.${k}`] = v;
+      }
+      await this.bumpDayBucket(payerId, at, flat);
     }
 
-    const flat: Record<string, number> = {};
-    for (const [k, v] of Object.entries(inc)) {
-      if (v) flat[`spendByCategory.${k}`] = v;
+    const payeeWallet = doc.payTo?.trim().toLowerCase();
+    const payerPaid = doc.paidByWallet?.trim().toLowerCase();
+    if (!payeeWallet || (payerPaid && payeeWallet === payerPaid)) {
+      return;
     }
-    await this.bumpDayBucket(userId, at, flat);
+
+    const payeeId = await this.userIdForWallet(payeeWallet);
+    if (!payeeId) return;
+
+    const payeeInc: Record<string, number> = {
+      'spendByCategory.payment_link_orders': 1,
+    };
+    const received = this.humanTokenAmount(doc);
+    if (received != null) {
+      payeeInc['spendByCategory.payment_link_revenue'] = received;
+      payeeInc.revenueUsd = received;
+    }
+    await this.bumpDayBucket(payeeId, at, payeeInc);
   }
 
   /**

@@ -35,7 +35,7 @@ const HANDLER_CTA_LINES: Partial<Record<HandlerActionId, string>> = {
   create_x402_payment:
     'Enter the USDC.e amount and payee in the form below, then tap **Create payment link**.',
   on_ramp_tokens:
-    'Pick a supported token and network, enter amounts, then tap **Create Stripe checkout**.',
+    'Pick a supported asset, recipient, and USD card charge, then tap **Create Stripe checkout**.',
   generate_tax_report:
     'Confirm the tax period below, then tap **Generate tax PDF** to build your report.',
   generate_payment_invoice:

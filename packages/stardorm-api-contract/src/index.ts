@@ -130,8 +130,20 @@ export {
   type PaymentRequestsListResponse,
 } from "./payment-request.js";
 export {
+  financialSnapshotDailyRowSchema,
+  meFinancialSnapshotsQuerySchema,
+  financialSnapshotsListResponseSchema,
+  type FinancialSnapshotDailyRow,
+  type MeFinancialSnapshotsQuery,
+  type FinancialSnapshotsListResponse,
+} from "./financial-snapshot.js";
+export {
   onRampFormCtaParamsSchema,
   onRampFormNetworkOptionSchema,
+  deriveTokenAmountWeiFromUsdCents,
+  onRampTokensInputCoreSchema,
+  validateOnRampUsdDerive,
+  finalizeOnRampTokensPayload,
   onRampTokensInputSchema,
   onRampRecordSchema,
   onRampRecordStatusSchema,
@@ -140,6 +152,7 @@ export {
   isOnRampFormCtaParams,
   type OnRampFormCtaParams,
   type OnRampTokensInput,
+  type OnRampTokensInputCore,
   type OnRampRecord,
   type OnRampRecordStatus,
   type MeOnRampsQuery,

@@ -679,7 +679,7 @@ export function buildAgentOutputContract(
       : '',
     allowed.includes('on_ramp_tokens')
       ? [
-          '- on_ramp_tokens (JSON-only): use only when the user message already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals`, `tokenSymbol`, `tokenAmountWei` (base units string), `usdAmountCents` (integer cents), and optional `usdValue`. Never invent wallet addresses, token contracts, or amounts.',
+          '- on_ramp_tokens (JSON-only): use only when the user message already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals` (≥2), `tokenSymbol`, `usdAmountCents` (integer cents for the card charge), and optional `usdValue`. On-chain ERC-20 amount is derived from the USD cents (1:1 for USD-stable assets); omit `tokenAmountWei`. Never invent wallet addresses, token contracts, or amounts.',
           '- On-ramp checkout form: params `{"_onRampForm":true,"supportedAssets":[...], ...}` and matching `rich` type `on_ramp_checkout_form` when any required field is missing or ambiguous.',
         ].join('\n')
       : '',
@@ -752,7 +752,7 @@ function defaultHandlerOfferText(handler: HandlerActionId): string {
     return 'Enter the USDC.e amount and payee in the form below, then tap **Create payment link**.';
   }
   if (handler === 'on_ramp_tokens') {
-    return 'Pick a supported token and network, enter amounts, then tap **Create Stripe checkout**.';
+    return 'Pick a supported asset, recipient, and USD card charge, then tap **Create Stripe checkout**.';
   }
   if (handler === 'complete_stripe_kyc') {
     return "I'll start the Stripe Identity verification process for you. Tap **Start Identity verification** to begin the secure KYC flow.";
@@ -1213,7 +1213,7 @@ export function agentReplyFromChatCompletion(
       } as AgentRichCard;
       const text =
         content.trim() ||
-        'Pick a supported token and network, enter the amount to receive and the USD card charge, then tap **Create Stripe checkout** to pay with Stripe and receive tokens after settlement.';
+        'Pick a supported asset and network, recipient, USD card charge (minimum $1), then tap **Create Stripe checkout** to pay with Stripe and receive tokens after settlement.';
       return { text, handler: 'on_ramp_tokens', params, rich };
     }
 
@@ -1420,8 +1420,8 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     allowed.includes('on_ramp_tokens')
       ? [
-          'For on-ramp: if the user already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals`, `tokenSymbol`, `tokenAmountWei` (base units string), `usdAmountCents`, and optional `usdValue`, call **on_ramp_tokens** with those exact arguments (optional `paymentCard`).',
-          'If any required value is missing or ambiguous, call **offer_on_ramp_checkout_form** with `supportedAssets` (and optional `networks`); never invent addresses, wei amounts, or card charge amounts.',
+          'For on-ramp: if the user already states `recipientWallet`, `network` (CAIP-2), `tokenAddress`, `tokenDecimals` (≥2), `tokenSymbol`, `usdAmountCents` (card charge in cents), and optional `usdValue`, call **on_ramp_tokens** with those arguments — treasury credit matches USD 1:1 for USD-pegged assets (optional `paymentCard`). Omit `tokenAmountWei`.',
+          'If any required value is missing or ambiguous, call **offer_on_ramp_checkout_form** with `supportedAssets` (and optional `networks`); never invent addresses or card charge amounts.',
           'After proposing on_ramp_tokens, remind the user to tap **Create Stripe checkout** to pay with Stripe.',
         ].join(' ')
       : '',
