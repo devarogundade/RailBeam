@@ -225,7 +225,9 @@ pnpm run preview
 
 ### Netlify
 
-Deploy from the **repository root** (leave **Base directory** empty in the Netlify UI). Root [`netlify.toml`](netlify.toml) runs `pnpm run build:app`, which builds `@railbeam/stardorm-api-contract`, `@railbeam/beam-sdk`, then the app, and publishes `app/dist/client`. Requires **Node 22+** (TanStack Start Netlify plugin).
+Deploy from the **repository root** (leave **Base directory** empty in the Netlify UI). Root [`netlify.toml`](netlify.toml) runs `pnpm run build:app`, which builds workspace packages, the app, copies `app/.netlify` to the repo root (so Netlify deploys the TanStack Start SSR function), and publishes `app/dist/client`. Requires **Node 22+** (TanStack Start Netlify plugin).
+
+If every path returns Netlify’s generic 404, the SSR function was not picked up — confirm the build log includes the `prepare-netlify-deploy` step and that `.netlify/v1/functions/server.mjs` exists at the repo root after build.
 
 ### Lint / format
 

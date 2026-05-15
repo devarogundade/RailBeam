@@ -3,6 +3,6 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
-    "build:app": "pnpm --filter tanstack_start_ts... build"
+    "build:app": "pnpm --filter tanstack_start_ts... build && node scripts/prepare-netlify-deploy.mjs"
   }
 }
