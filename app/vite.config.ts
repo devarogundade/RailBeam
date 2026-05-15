@@ -1,12 +1,8 @@
 import netlify from "@netlify/vite-plugin-tanstack-start";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-/** Netlify sets `NETLIFY=true` during hosted builds. For local checks: `NETLIFY=true npm run build`. */
-const isNetlify = process.env.NETLIFY === "true";
-
 export default defineConfig({
-  cloudflare: isNetlify ? false : undefined,
-  plugins: isNetlify ? [netlify()] : [],
+  plugins: [netlify()],
   tanstackStart: {
     server: { entry: "server" },
   },
