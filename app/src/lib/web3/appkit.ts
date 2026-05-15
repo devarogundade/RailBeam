@@ -19,7 +19,7 @@ const metadata = {
 export const wagmiAdapter = new WagmiAdapter({
   networks: [...appNetworks],
   projectId: walletConnectProjectId,
-  ssr: true,
+  ssr: false,
 });
 
 createAppKit({

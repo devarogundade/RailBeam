@@ -4,3 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+# TanStack Start SPA shell (see vite.config.ts spa mode)
+[[redirects]]
+  from = "/*"
+  to = "/_shell.html"
+  status = 200

@@ -86,7 +86,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   beforeLoad: ({ location }) => {
     const pathname = location.pathname;
     if (isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname)) return;
-    /** SSR runs this without `window`; the client run redirects before the shell paints. */
     if (typeof window === "undefined") return;
     if (!isOnboardingComplete()) throw redirect({ to: "/onboarding", replace: true });
   },
