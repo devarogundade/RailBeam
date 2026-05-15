@@ -8,12 +8,7 @@ export function getStardormApiBase(): string | undefined {
   return u || undefined;
 }
 
-/** Axios client for Stardorm backend: `VITE_STARDORM_API_URL` + Bearer JWT when present. */
-export const stardormAxios = axios.create({
-  headers: { "Content-Type": "application/json" },
-});
-
-stardormAxios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+function applyStardormRequestDefaults(config: InternalAxiosRequestConfig) {
   const base = getStardormApiBase()?.replace(/\/$/, "");
   if (base) {
     config.baseURL = base;
@@ -33,4 +28,16 @@ stardormAxios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers.delete("Content-Type");
   }
   return config;
-});
+}
+
+/** New axios instance with Stardorm base URL, JWT, and `X-Beam-Chain-Id` (safe to wrap with @x402/axios). */
+export function createStardormAxios() {
+  const instance = axios.create({
+    headers: { "Content-Type": "application/json" },
+  });
+  instance.interceptors.request.use(applyStardormRequestDefaults);
+  return instance;
+}
+
+/** Shared Stardorm client for normal API calls (not x402-wrapped). */
+export const stardormAxios = createStardormAxios();

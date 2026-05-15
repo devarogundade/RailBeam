@@ -55,6 +55,8 @@ type PayCheckoutViewProps = {
   confirmPayPending: boolean;
   postSubmitSettling: boolean;
   onPay: () => void;
+  /** When true, settlement uses x402 wallet authorization (not a manual transfer). */
+  payUsesX402?: boolean;
 };
 
 export function PayCheckoutView(props: PayCheckoutViewProps) {
@@ -83,12 +85,15 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
     confirmPayPending,
     postSubmitSettling,
     onPay,
+    payUsesX402 = false,
   } = props;
 
   const payButtonLabel = confirmPayPending
     ? "Recording payment…"
     : postSubmitSettling
-      ? "Confirming on-chain…"
+      ? payUsesX402
+        ? "Authorizing x402 payment…"
+        : "Confirming on-chain…"
       : switching || sendingNative || sendingErc20
         ? "Confirm in wallet…"
         : "Pay now";
@@ -201,6 +206,7 @@ export function PayCheckoutView(props: PayCheckoutViewProps) {
                 payDisabled={payDisabled}
                 walletPayBusy={walletPayBusy}
                 payButtonLabel={payButtonLabel}
+                payUsesX402={payUsesX402}
                 onPay={onPay}
               />
             )}
@@ -453,6 +459,7 @@ function CheckoutPaymentPanel({
   payDisabled,
   walletPayBusy,
   payButtonLabel,
+  payUsesX402,
   onPay,
 }: {
   payment: PublicPaymentRequest;
@@ -467,6 +474,7 @@ function CheckoutPaymentPanel({
   payDisabled: boolean;
   walletPayBusy: boolean;
   payButtonLabel: string;
+  payUsesX402: boolean;
   onPay: () => void;
 }) {
   const isPending = payment.status === "pending";
@@ -480,8 +488,9 @@ function CheckoutPaymentPanel({
 
       <h2 className="text-lg font-semibold text-slate-900">Pay with crypto wallet</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-        Connect a wallet on {friendlyNetwork}, then approve the transfer. We&apos;ll confirm once the
-        transaction is on-chain.
+        {payUsesX402
+          ? `Connect a wallet on ${friendlyNetwork}, then sign the x402 payment authorization in your wallet. Settlement is recorded automatically.`
+          : `Connect a wallet on ${friendlyNetwork}, then approve the transfer. We'll confirm once the transaction is on-chain.`}
       </p>
 
       <div className="mt-8 space-y-0 rounded-lg border border-slate-200 bg-slate-50/80 p-5">

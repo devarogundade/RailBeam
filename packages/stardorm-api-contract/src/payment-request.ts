@@ -67,6 +67,8 @@ export const publicPaymentRequestSchema = z.object({
   /** Set when status is `paid` (on-chain settlement recorded). */
   txHash: z.string().optional(),
   paidByWallet: z.string().optional(),
+  /** When true, checkout can settle via x402 facilitator + wallet-signed payload. */
+  facilitatorSettlement: z.boolean().optional(),
 });
 
 export type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;

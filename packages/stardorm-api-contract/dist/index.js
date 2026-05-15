@@ -558,7 +558,9 @@ var publicPaymentRequestSchema = zod.z.object({
   attachment: stardormChatAttachmentSchema.optional(),
   /** Set when status is `paid` (on-chain settlement recorded). */
   txHash: zod.z.string().optional(),
-  paidByWallet: zod.z.string().optional()
+  paidByWallet: zod.z.string().optional(),
+  /** When true, checkout can settle via x402 facilitator + wallet-signed payload. */
+  facilitatorSettlement: zod.z.boolean().optional()
 });
 var mePaymentRequestsQuerySchema = zod.z.object({
   limit: zod.z.coerce.number().int().min(1).max(50).default(20)
@@ -709,36 +711,18 @@ var creditCardSensitiveDetailsSchema = zod.z.object({
 var creditCardsListResponseSchema = zod.z.object({
   cards: zod.z.array(creditCardPublicSchema)
 });
-var creditCardFundBodySchema = zod.z.object({
-  amountCents: zod.z.coerce.number().int().min(1).max(1e8),
-  fundingTxHash: zod.z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
-  fundingChainId: zod.z.coerce.number().int().positive().optional()
-}).refine(
-  (d) => d.fundingTxHash == null && d.fundingChainId == null || d.fundingTxHash != null && d.fundingChainId != null,
-  {
-    message: "fundingTxHash and fundingChainId must both be provided or both omitted",
-    path: ["fundingTxHash"]
-  }
-);
 var creditCardFundQuoteQuerySchema = zod.z.object({
   amountCents: zod.z.coerce.number().int().min(1).max(1e8)
 });
-var creditCardFundQuoteOffChainSchema = zod.z.object({
-  onchainFundingRequired: zod.z.literal(false)
-});
-var creditCardFundQuoteOnChainSchema = zod.z.object({
-  onchainFundingRequired: zod.z.literal(true),
+var creditCardFundQuoteSchema = zod.z.object({
   chainId: zod.z.number().int(),
   recipient: zod.z.string().min(1),
-  minNativeWei: zod.z.string().regex(/^\d+$/),
-  usdValue: zod.z.number().finite().positive(),
-  nativeSymbol: zod.z.string().min(1),
-  nativeDecimals: zod.z.number().int().min(0).max(18)
+  usdcAsset: zod.z.string().min(1),
+  usdcAmountBaseUnits: zod.z.string().regex(/^\d+$/),
+  usdcDecimals: zod.z.number().int().min(0).max(18)
 });
-var creditCardFundQuoteResponseSchema = zod.z.discriminatedUnion(
-  "onchainFundingRequired",
-  [creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema]
-);
+var creditCardFundQuoteX402Schema = creditCardFundQuoteSchema;
+var creditCardFundQuoteResponseSchema = creditCardFundQuoteSchema;
 var creditCardWithdrawBodySchema = zod.z.object({
   amountCents: zod.z.coerce.number().int().min(1).max(1e8)
 });
@@ -1007,11 +991,10 @@ exports.conversationsQuerySchema = conversationsQuerySchema;
 exports.createConversationBodySchema = createConversationBodySchema;
 exports.createCreditCardInputSchema = createCreditCardInputSchema;
 exports.creditCardFormCtaParamsSchema = creditCardFormCtaParamsSchema;
-exports.creditCardFundBodySchema = creditCardFundBodySchema;
-exports.creditCardFundQuoteOffChainSchema = creditCardFundQuoteOffChainSchema;
-exports.creditCardFundQuoteOnChainSchema = creditCardFundQuoteOnChainSchema;
 exports.creditCardFundQuoteQuerySchema = creditCardFundQuoteQuerySchema;
 exports.creditCardFundQuoteResponseSchema = creditCardFundQuoteResponseSchema;
+exports.creditCardFundQuoteSchema = creditCardFundQuoteSchema;
+exports.creditCardFundQuoteX402Schema = creditCardFundQuoteX402Schema;
 exports.creditCardPublicSchema = creditCardPublicSchema;
 exports.creditCardSensitiveDetailsSchema = creditCardSensitiveDetailsSchema;
 exports.creditCardWithdrawBodySchema = creditCardWithdrawBodySchema;

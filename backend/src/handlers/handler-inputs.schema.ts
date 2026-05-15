@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isBeamUsdcEAsset } from '../beam/beam-usdc-e.config';
 import {
   x402SupportedAssetSchema,
   onRampTokensInputSchema,
@@ -7,6 +8,7 @@ import {
   createCreditCardInputSchema,
   isIso3166Alpha2,
   stardormChatAttachmentSchema,
+  type StardormChatAttachment,
 } from '@beam/stardorm-api-contract';
 
 export { onRampFormCtaParamsSchema, isOnRampFormCtaParams };
@@ -88,46 +90,73 @@ const x402AmountSchema = z.union([
   z.number().int().positive().transform((n) => String(n)),
 ]);
 
-export const X402InputSchema = z
-  .object({
-    checkoutType: z.enum(['x402', 'on-chain']).optional().default('x402'),
-    id: z.string().min(1).max(256).optional(),
-    amount: x402AmountSchema,
-    currency: z
-      .string()
-      .min(1)
-      .max(66)
-      .transform((s) => {
-        const t = s.trim();
-        return /^0x[a-fA-F0-9]{40}$/i.test(t) ? t.toLowerCase() : t;
-      }),
-    network: z.string().min(1).max(64),
-    payTo: z
-      .string()
-      .min(1)
-      .refine(
-        (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
-        'payTo must be a 0x-prefixed 20-byte address',
-      )
-      .transform((s) => s.trim().toLowerCase()),
-    title: z.string().min(1).max(200).optional(),
-    description: z.string().min(1).max(2000).optional(),
-    resourceUrl: z.string().url().max(2048).optional(),
-    expiresAt: z.coerce.date().optional(),
-    decimals: z.number().int().min(0).max(36).optional(),
-    attachment: stardormChatAttachmentSchema.optional(),
-  })
-  .superRefine((val, ctx) => {
-    if (val.checkoutType !== 'on-chain' && !val.id?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'id is required for x402 checkouts',
-        path: ['id'],
-      });
-    }
-  });
+const x402InputObjectSchema = z.object({
+  checkoutType: z.enum(['x402', 'on-chain']).optional().default('x402'),
+  id: z.string().min(1).max(256).optional(),
+  amount: x402AmountSchema,
+  currency: z
+    .string()
+    .min(1)
+    .max(66)
+    .transform((s) => {
+      const t = s.trim();
+      return /^0x[a-fA-F0-9]{40}$/i.test(t) ? t.toLowerCase() : t;
+    }),
+  network: z.string().min(1).max(64),
+  payTo: z
+    .string()
+    .min(1)
+    .refine(
+      (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
+      'payTo must be a 0x-prefixed 20-byte address',
+    )
+    .transform((s) => s.trim().toLowerCase()),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(2000).optional(),
+  resourceUrl: z.string().url().max(2048).optional(),
+  expiresAt: z.coerce.date().optional(),
+  decimals: z.number().int().min(0).max(36).optional(),
+  attachment: stardormChatAttachmentSchema.optional(),
+});
 
-export type X402Input = z.infer<typeof X402InputSchema>;
+/** Explicit type: `z.infer` on extended schemas breaks under some TS/Zod builds (Linux Docker). */
+export type X402Input = {
+  checkoutType: 'x402' | 'on-chain';
+  id?: string;
+  amount: string;
+  currency: string;
+  network: string;
+  payTo: string;
+  title?: string;
+  description?: string;
+  resourceUrl?: string;
+  expiresAt?: Date;
+  decimals?: number;
+  attachment?: StardormChatAttachment;
+};
+
+function refineX402CheckoutId(val: X402Input, ctx: z.RefinementCtx): void {
+  if (val.checkoutType !== 'on-chain' && !val.id?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'id is required for x402 checkouts',
+      path: ['id'],
+    });
+  }
+  if (val.checkoutType === 'x402' && !isBeamUsdcEAsset(val.currency)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'x402 checkouts only support USDC.e on 0G mainnet (0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E).',
+      path: ['currency'],
+    });
+  }
+}
+
+/** `superRefine` breaks `z.infer` under some TS/Zod builds (e.g. Linux Docker). */
+export const X402InputSchema = x402InputObjectSchema.superRefine(
+  refineX402CheckoutId,
+) as z.ZodType<X402Input>;
 
 /** Optional UI hints for `generate_tax_report` tool calls only (not handler execution input). */
 export const taxReportToolCardSchema = z.object({
@@ -172,13 +201,18 @@ export const x402PaymentToolCardSchema = z.object({
 
 export type X402PaymentToolCard = z.infer<typeof x402PaymentToolCardSchema>;
 
-export const createX402PaymentToolArgsSchema = X402InputSchema.extend({
+const createX402PaymentToolArgsObjectSchema = x402InputObjectSchema.extend({
   paymentCard: x402PaymentToolCardSchema.optional(),
 });
 
-export type CreateX402PaymentToolArgs = z.infer<
-  typeof createX402PaymentToolArgsSchema
->;
+export type CreateX402PaymentToolArgs = X402Input & {
+  paymentCard?: X402PaymentToolCard;
+};
+
+export const createX402PaymentToolArgsSchema =
+  createX402PaymentToolArgsObjectSchema.superRefine(
+    refineX402CheckoutId,
+  ) as z.ZodType<CreateX402PaymentToolArgs>;
 
 const x402CheckoutFormNetworksSchema = z
   .array(

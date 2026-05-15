@@ -1,8 +1,7 @@
 import axios from "axios";
 import {
   chatHistoryResponseSchema,
-  creditCardFundBodySchema,
-  creditCardFundQuoteResponseSchema,
+  creditCardFundQuoteSchema,
   creditCardPublicSchema,
   creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
@@ -17,8 +16,7 @@ import {
   type ChatHistoryAttachment,
   type ChatHistoryMessage,
   type ChatHistoryResponse,
-  type CreditCardFundBody,
-  type CreditCardFundQuoteResponse,
+  type CreditCardFundQuote,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
   type CreditCardsListResponse,
@@ -30,7 +28,10 @@ import {
   type UserUploadResult,
 } from "@railbeam/stardorm-api-contract";
 import { getStardormAccessToken } from "./stardorm-auth";
+import { BEAM_CHAIN_IDS } from "./beam-chain-config";
+import { settleCreditCardFundViaAccess } from "./x402-checkout";
 import { getStardormApiBase, stardormAxios } from "./stardorm-axios";
+import type { PublicClient, WalletClient } from "viem";
 import type { ChatMessage } from "./schemas";
 
 function axiosErrorMessage(e: unknown): string {
@@ -270,33 +271,41 @@ export async function fetchStardormKycStatus(): Promise<UserKycStatusDocument | 
 
 export async function fetchCreditCardFundQuote(
   amountCents: number,
-): Promise<CreditCardFundQuoteResponse | { error: string }> {
+): Promise<CreditCardFundQuote | { error: string }> {
   if (!getStardormApiBase()) return { error: "API not configured" };
   try {
     const { data } = await stardormAxios.get<unknown>("/users/me/credit-cards/fund-quote", {
       params: { amountCents },
     });
-    return creditCardFundQuoteResponseSchema.parse(data);
+    return creditCardFundQuoteSchema.parse(data);
   } catch (e: unknown) {
     return { error: axiosErrorMessage(e) };
   }
 }
 
-export async function fundStardormCreditCard(
-  cardId: string,
-  body: CreditCardFundBody,
-): Promise<CreditCardPublic | { error: string }> {
+/**
+ * Fund a virtual card via x402 (`@x402/axios` + wagmi wallet on GET …/fund/access).
+ * Quote first with {@link fetchCreditCardFundQuote}; this performs the USDC.e payment.
+ */
+export async function fundStardormCreditCardViaX402(params: {
+  cardId: string;
+  amountCents: number;
+  walletClient: WalletClient;
+  publicClient?: PublicClient | null;
+  chainId?: number;
+}): Promise<CreditCardPublic | { error: string }> {
   if (!getStardormApiBase()) return { error: "API not configured" };
-  const parsed = creditCardFundBodySchema.safeParse(body);
-  if (!parsed.success) return { error: "Invalid amount" };
   try {
-    const { data } = await stardormAxios.post<unknown>(
-      `/users/me/credit-cards/${encodeURIComponent(cardId)}/fund`,
-      parsed.data,
-    );
-    return creditCardPublicSchema.parse(data);
+    const card = await settleCreditCardFundViaAccess({
+      cardId: params.cardId,
+      amountCents: params.amountCents,
+      walletClient: params.walletClient,
+      publicClient: params.publicClient ?? null,
+      chainId: params.chainId ?? BEAM_CHAIN_IDS.mainnet,
+    });
+    return card;
   } catch (e: unknown) {
-    return { error: axiosErrorMessage(e) };
+    return { error: e instanceof Error ? e.message : String(e) };
   }
 }
 

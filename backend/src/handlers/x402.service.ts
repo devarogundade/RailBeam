@@ -4,8 +4,15 @@ import type {
   HandlerMessage,
   HandlerService,
 } from './handler.types';
-import { X402InputSchema } from './handler-inputs.schema';
+import { X402InputSchema, type X402Input } from './handler-inputs.schema';
 import { PaymentRequestsService } from '../payments/payment-requests.service';
+import {
+  assertBeamUsdcEAsset,
+  BEAM_USDC_E_ADDRESS,
+  BEAM_USDC_E_DECIMALS,
+  normalizeBeamUsdcEAsset,
+} from '../beam/beam-usdc-e.config';
+import { normalizeX402Network } from '../payments/payment-required.util';
 
 /**
  * Builds x402-style payment instructions for a paywalled HTTP resource
@@ -36,7 +43,7 @@ export class X402Service implements HandlerService {
       expiresAt,
       decimals,
       attachment,
-    } = parsed.data;
+    }: X402Input = parsed.data;
 
     const payer = ctx.walletAddress.trim().toLowerCase();
     const displayTitle = title ?? (checkoutType === 'on-chain' ? 'Payment' : `Resource ${id?.trim() ?? ''}`);
@@ -72,33 +79,40 @@ export class X402Service implements HandlerService {
     if (!resourceId) {
       throw new BadRequestException('id is required for x402 checkouts');
     }
+    assertBeamUsdcEAsset(currency);
+    const usdcAsset = normalizeBeamUsdcEAsset(currency);
+    const tokenDecimals = decimals ?? BEAM_USDC_E_DECIMALS;
     const resourceKey = `${network}:${resourceId}`;
+    const caipNetwork = normalizeX402Network(network);
+    const acceptDescription =
+      description ?? title ?? `Payment for ${resourceId}`;
 
     const handlerData: Record<string, unknown> = {
-      x402Version: 1,
+      x402Version: 2,
       resource: {
-        id: resourceId,
-        key: resourceKey,
-        title: displayTitle,
-        resourceUrl,
+        url: resourceUrl?.trim() || resourceKey,
+        description: acceptDescription,
+        mimeType: 'application/json',
+        serviceName: 'Beam',
       },
       payerWallet: payer,
       payment: {
         scheme: 'exact',
-        network,
-        asset: currency,
+        network: caipNetwork,
+        asset: usdcAsset,
         amount,
         payTo,
       },
       accepts: [
         {
           scheme: 'exact',
-          network,
-          maxAmountRequired: amount,
-          asset: currency,
+          network: caipNetwork,
+          amount,
+          asset: usdcAsset,
           payTo,
-          resource: resourceKey,
-          description: description ?? title ?? `Payment for ${resourceId}`,
+          maxTimeoutSeconds: 600,
+          extra: {},
+          description: acceptDescription,
         },
       ],
     };
@@ -107,7 +121,7 @@ export class X402Service implements HandlerService {
       title: displayTitle,
       description,
       attachment,
-      asset: currency,
+      asset: usdcAsset,
       amount,
       payTo,
       network,
@@ -115,7 +129,7 @@ export class X402Service implements HandlerService {
       resourceId,
       resourceUrl,
       createdByWallet: payer,
-      decimals,
+      decimals: tokenDecimals,
       x402Payload: handlerData,
     });
 

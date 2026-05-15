@@ -5,9 +5,8 @@ import {
   conversationsPageResponseSchema,
   conversationsQuerySchema,
   createConversationBodySchema,
-  creditCardFundBodySchema,
   creditCardFundQuoteQuerySchema,
-  creditCardFundQuoteResponseSchema,
+  creditCardFundQuoteSchema,
   creditCardPublicSchema,
   creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
@@ -29,9 +28,8 @@ import {
   type ConversationsPageResponse,
   type ConversationsQuery,
   type CreateConversationBody,
-  type CreditCardFundBody,
+  type CreditCardFundQuote,
   type CreditCardFundQuoteQuery,
-  type CreditCardFundQuoteResponse,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
   type CreditCardsListResponse,
@@ -70,12 +68,11 @@ export type BeamUsersApi = {
   listCreditCards: () => Promise<CreditCardsListResponse>;
   creditCardFundQuote: (
     query: CreditCardFundQuoteQuery,
-  ) => Promise<CreditCardFundQuoteResponse>;
+  ) => Promise<CreditCardFundQuote>;
   creditCardSensitiveDetails: (cardId: string) => Promise<CreditCardSensitiveDetails>;
   listPaymentRequests: (query?: MePaymentRequestsQuery) => Promise<PaymentRequestsListResponse>;
   listOnRamps: (query?: MeOnRampsQuery) => Promise<OnRampsListResponse>;
   getKycStatus: () => Promise<UserKycStatusDocument>;
-  fundCreditCard: (cardId: string, body: CreditCardFundBody) => Promise<CreditCardPublic>;
   withdrawCreditCard: (
     cardId: string,
     body: CreditCardWithdrawBody,
@@ -141,7 +138,7 @@ export function createBeamUsersApi(http: BeamHttpClient): BeamUsersApi {
       const q = creditCardFundQuoteQuerySchema.parse(query);
       return http.requestJson("GET", "/users/me/credit-cards/fund-quote", {
         query: { amountCents: q.amountCents },
-        parse: creditCardFundQuoteResponseSchema,
+        parse: creditCardFundQuoteSchema,
       });
     },
     creditCardSensitiveDetails: (cardId) =>
@@ -168,15 +165,6 @@ export function createBeamUsersApi(http: BeamHttpClient): BeamUsersApi {
       http.requestJson("GET", "/users/me/kyc-status", {
         parse: userKycStatusDocumentSchema,
       }),
-    fundCreditCard: (cardId, body) =>
-      http.requestJson(
-        "POST",
-        `/users/me/credit-cards/${encodeURIComponent(cardId)}/fund`,
-        {
-          body: creditCardFundBodySchema.parse(body),
-          parse: creditCardPublicSchema,
-        },
-      ),
     withdrawCreditCard: (cardId, body) =>
       http.requestJson(
         "POST",

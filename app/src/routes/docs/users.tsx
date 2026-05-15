@@ -51,10 +51,8 @@ const history = await sdk.users.chatMessages({
           {`const cards = await sdk.users.listCreditCards();
 
 const quote = await sdk.users.creditCardFundQuote({ amountCents: 5000 });
-
-await sdk.users.fundCreditCard(cards.items[0].id, {
-  amountCents: 5000,
-});`}
+// Fund via x402: GET /users/me/credit-cards/:cardId/fund/access?amountCents=…
+// with @x402/axios and the payer wallet (see app settleCreditCardFundViaAccess).`}
         </DocCode>
       </DocSection>
     </DocProse>

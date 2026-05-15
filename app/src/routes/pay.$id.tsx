@@ -7,6 +7,7 @@ import {
   usePublicClient,
   useSendTransaction,
   useSwitchChain,
+  useWalletClient,
   useWriteContract,
 } from "wagmi";
 import { formatUnits } from "viem";
@@ -16,6 +17,10 @@ import type { PublicPaymentRequest } from "@railbeam/stardorm-api-contract";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { resolvePaymentChainId } from "@/lib/payment-chain";
+import {
+  isBeamUsdcEAddress,
+  settleX402CheckoutViaAccess,
+} from "@/lib/x402-checkout";
 import { useApp } from "@/lib/app-state";
 import {
   AlertDialog,
@@ -206,11 +211,13 @@ function PayCheckoutPage() {
   const chainId = useChainId();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const { sendTransactionAsync, isPending: sendingNative } = useSendTransaction();
   const { writeContractAsync, isPending: sendingErc20 } = useWriteContract();
 
   const [payOutcome, setPayOutcome] = useState<PayOutcome | null>(null);
   const [postSubmitSettling, setPostSubmitSettling] = useState(false);
+  const [x402Paying, setX402Paying] = useState(false);
 
   const q = useQuery({
     queryKey: queryKeys.beamHttp.publicPayment(id),
@@ -229,6 +236,10 @@ function PayCheckoutPage() {
 
   const payment = q.data ?? undefined;
   const targetChainId = payment ? resolvePaymentChainId(payment.network) : null;
+  const useX402Facilitator =
+    payment?.type === "x402" &&
+    payment.facilitatorSettlement === true &&
+    isBeamUsdcEAddress(payment.asset);
 
   const payDisabled =
     !payment ||
@@ -237,10 +248,16 @@ function PayCheckoutPage() {
     targetChainId == null ||
     q.isPending ||
     confirmPay.isPending ||
-    postSubmitSettling;
+    postSubmitSettling ||
+    x402Paying ||
+    (useX402Facilitator && !walletClient);
 
   const walletPayBusy =
-    switching || sendingNative || sendingErc20 || postSubmitSettling;
+    switching ||
+    sendingNative ||
+    sendingErc20 ||
+    postSubmitSettling ||
+    x402Paying;
 
   const amountPresentation =
     payment != null ? formatCheckoutAmountLine(payment.amount, payment.decimals) : null;
@@ -253,7 +270,49 @@ function PayCheckoutPage() {
     if (opened) toast.message("Wallet", { description: "Choose a wallet to connect." });
   };
 
-  const onPay = async () => {
+  const invalidateAfterPay = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.beamHttp.publicPayment(id) });
+    invalidateBeamHttpDashboardLists(queryClient);
+  };
+
+  const onPayX402 = async () => {
+    if (!payment || !address || targetChainId == null || !walletClient) return;
+    const apiBase = getStardormApiBase();
+    if (!apiBase) {
+      toast.error("API not configured", {
+        description: "Set VITE_STARDORM_API_URL for x402 checkout.",
+      });
+      return;
+    }
+    try {
+      if (chainId !== targetChainId && switchChainAsync) {
+        await switchChainAsync({ chainId: targetChainId });
+      }
+      setX402Paying(true);
+      const settled = await settleX402CheckoutViaAccess({
+        paymentId: id,
+        walletClient,
+        publicClient: publicClient ?? null,
+        chainId: targetChainId,
+        apiBase,
+      });
+      invalidateAfterPay();
+      const resourceUrl =
+        settled.resourceUrl?.trim() || payment.resourceUrl?.trim() || undefined;
+      setPayOutcome({
+        kind: "success",
+        txHash: settled.txHash,
+        ...(resourceUrl ? { resourceUrl } : {}),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Payment failed";
+      setPayOutcome({ kind: "error", message: msg });
+    } finally {
+      setX402Paying(false);
+    }
+  };
+
+  const onPayDirect = async () => {
     if (!payment || !address || targetChainId == null) return;
     try {
       if (chainId !== targetChainId && switchChainAsync) {
@@ -310,6 +369,20 @@ function PayCheckoutPage() {
     }
   };
 
+  const onPay = () => {
+    if (payment?.type === "x402" && !isBeamUsdcEAddress(payment.asset)) {
+      toast.error("Unsupported asset", {
+        description: "x402 checkout only supports USDC.e on 0G mainnet.",
+      });
+      return;
+    }
+    if (useX402Facilitator) {
+      void onPayX402();
+    } else {
+      void onPayDirect();
+    }
+  };
+
   return (
     <>
       <PayCheckoutView
@@ -335,8 +408,9 @@ function PayCheckoutPage() {
         sendingNative={sendingNative}
         sendingErc20={sendingErc20}
         confirmPayPending={confirmPay.isPending}
-        postSubmitSettling={postSubmitSettling}
+        postSubmitSettling={postSubmitSettling || x402Paying}
         onPay={onPay}
+        payUsesX402={useX402Facilitator}
       />
 
       <AlertDialog

@@ -106,6 +106,17 @@ export class CreditCardsService {
       .exec();
   }
 
+  async assertOwnedCard(walletAddress: string, cardId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(cardId)) {
+      throw new BadRequestException('Invalid card id');
+    }
+    const wallet = normalizeWallet(walletAddress);
+    const doc = await this.model
+      .findOne({ _id: new Types.ObjectId(cardId), walletAddress: wallet })
+      .exec();
+    if (!doc) throw new NotFoundException('Credit card not found');
+  }
+
   private async ensureSensitiveFields(doc: CreditCardDocument): Promise<void> {
     if (
       doc.pan &&

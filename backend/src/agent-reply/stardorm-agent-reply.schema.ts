@@ -25,6 +25,7 @@ import {
   creditCardFormCtaParamsSchema,
   swapFormCtaParamsSchema,
   type GenerateTaxReportToolArgs,
+  type X402Input,
   type CreateX402PaymentToolArgs,
   type CreateOnRampTokensToolArgs,
   type CreateCreditCardToolArgs,
@@ -305,7 +306,7 @@ export const agentComputeReplySchema = z
     };
   });
 
-type X402HandlerParams = z.infer<typeof X402InputSchema> | X402CheckoutFormCtaParams;
+type X402HandlerParams = X402Input | X402CheckoutFormCtaParams;
 type OnRampHandlerParams =
   | z.infer<typeof onRampTokensInputSchema>
   | z.infer<typeof onRampFormCtaParamsSchema>;
@@ -806,10 +807,15 @@ function agentRichFromX402PaymentToolArgs(
   });
   rows.push({ label: 'Pay to', value: payToShort });
   const extras = data.paymentCard.lineItems ?? [];
+  const idLabel = data.id
+    ? data.id.length > 12
+      ? `${data.id.slice(0, 12)}…`
+      : data.id
+    : data.checkoutType === 'on-chain'
+      ? 'on-chain'
+      : 'checkout';
   const title =
-    data.paymentCard.invoiceTitle ??
-    data.title ??
-    `Payment · ${data.id.length > 12 ? `${data.id.slice(0, 12)}…` : data.id}`;
+    data.paymentCard.invoiceTitle ?? data.title ?? `Payment · ${idLabel}`;
   return {
     type: 'invoice',
     title,
@@ -943,8 +949,9 @@ export function agentReplyFromChatCompletion(
       if (name === 'create_x402_payment') {
         const full = createX402PaymentToolArgsSchema.safeParse(rec);
         if (!full.success) continue;
-        const params = X402InputSchema.parse(full.data);
-        const rich = agentRichFromX402PaymentToolArgs(full.data);
+        const toolArgs: CreateX402PaymentToolArgs = full.data;
+        const params = X402InputSchema.parse(toolArgs);
+        const rich = agentRichFromX402PaymentToolArgs(toolArgs);
         return { text, handler: 'create_x402_payment', params, rich };
       }
       if (name === 'on_ramp_tokens') {

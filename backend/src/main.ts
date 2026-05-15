@@ -38,6 +38,12 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    exposedHeaders: [
+      'PAYMENT-REQUIRED',
+      'PAYMENT-SIGNATURE',
+      'PAYMENT-RESPONSE',
+      'X-PAYMENT-RESPONSE',
+    ],
     // Omit allowedHeaders so the cors middleware mirrors Access-Control-Request-Headers
     // (required for client headers like X-Beam-Chain-Id from stardormAxios).
   });

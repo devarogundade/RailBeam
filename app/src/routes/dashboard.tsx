@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
 import { useApp } from "@/lib/app-state";
@@ -21,7 +21,7 @@ import {
   useStardormRecentSubscriptions,
 } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { beamNetworkFromChainId } from "@/lib/beam-chain-config";
+import { BEAM_CHAIN_IDS, beamNetworkFromChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "@/lib/stardorm-subgraph-config";
 import {
   formatCompactFromBaseUnits,
@@ -38,18 +38,16 @@ import {
   fetchStardormCreditCards,
   fetchStardormCreditCardSensitiveDetails,
   fetchCreditCardFundQuote,
+  fundStardormCreditCardViaX402,
   fetchStardormKycStatus,
   fetchStardormOnRamps,
   fetchStardormPaymentRequests,
-  fundStardormCreditCard,
   isStardormInferenceEnabled,
   withdrawStardormCreditCard,
 } from "@/lib/stardorm-api";
-import { waitForWriteContractReceipt } from "@/lib/wait-write-contract-receipt";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { Badge } from "@/components/ui/badge";
 import type {
-  CreditCardFundBody,
   CreditCardPublic,
   OnRampRecord,
   PublicPaymentRequest,
@@ -610,11 +608,11 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
   const { address } = useAccount();
   const walletChainId = useChainId();
   const publicClient = usePublicClient();
-  const { sendTransactionAsync } = useSendTransaction();
+  const { data: walletClient } = useWalletClient();
   const { switchChainAsync } = useSwitchChain();
   const { effectiveChainId } = useBeamNetwork();
-  const mainnetVirtualCardFundsDisabled =
-    beamNetworkFromChainId(effectiveChainId) === "mainnet";
+  const onMainnet = beamNetworkFromChainId(effectiveChainId) === "mainnet";
+  const mainnetVirtualCardWithdrawDisabled = onMainnet;
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.beamHttp.creditCards(),
     queryFn: () => fetchStardormCreditCards(),
@@ -627,36 +625,26 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
       if (cents == null) throw new Error("Enter a positive dollar amount.");
       const quote = await fetchCreditCardFundQuote(cents);
       if ("error" in quote) throw new Error(quote.error);
-
-      let fundBody: CreditCardFundBody = { amountCents: cents };
-
-      if (quote.onchainFundingRequired) {
-        if (!address) throw new Error("Connect your wallet to pay in native 0G.");
-        if (walletChainId !== quote.chainId) {
-          if (!switchChainAsync) {
-            throw new Error("Switch your wallet to the correct 0G network, then try again.");
-          }
-          await switchChainAsync({ chainId: quote.chainId });
-        }
-        if (!publicClient) {
-          throw new Error("Wallet client unavailable. Refresh and try again.");
-        }
-        const hash = await sendTransactionAsync({
-          chainId: quote.chainId,
-          to: quote.recipient as `0x${string}`,
-          value: BigInt(quote.minNativeWei),
-        });
-        await waitForWriteContractReceipt(publicClient, hash);
-        fundBody = {
-          ...fundBody,
-          fundingTxHash: hash,
-          fundingChainId: quote.chainId,
-        };
+      if (!address) throw new Error("Connect your wallet to fund with USDC.e.");
+      if (!walletClient) {
+        throw new Error("Wallet client unavailable. Refresh and try again.");
       }
-
-      const r = await fundStardormCreditCard(id, fundBody);
-      if ("error" in r) throw new Error(r.error);
-      return r;
+      const chainId = BEAM_CHAIN_IDS.mainnet;
+      if (walletChainId !== chainId) {
+        if (!switchChainAsync) {
+          throw new Error("Switch your wallet to 0G mainnet, then try again.");
+        }
+        await switchChainAsync({ chainId });
+      }
+      const funded = await fundStardormCreditCardViaX402({
+        cardId: id,
+        amountCents: cents,
+        walletClient,
+        publicClient: publicClient ?? null,
+        chainId,
+      });
+      if ("error" in funded) throw new Error(funded.error);
+      return funded;
     },
     onSuccess: (_data, vars) => {
       toast.success("Funds added to card");
@@ -701,7 +689,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
             Virtual payment cards
           </div>
           <p className="text-[11px] text-muted-foreground">
-            USD spend balance on cards from the Capita agent. Add or remove funds with native 0G.
+            USD spend balance on cards from the Capita agent. Add funds with USDC.e on 0G mainnet (1:1 USD).
           </p>
         </div>
       </div>
@@ -731,10 +719,10 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
         </div>
       ) : (
         <>
-          {mainnetVirtualCardFundsDisabled ? (
+          {mainnetVirtualCardWithdrawDisabled ? (
             <p className="mt-3 text-[11px] text-muted-foreground rounded-md border border-border bg-surface-elevated px-3 py-2">
-              Adding or removing virtual card balance is disabled on 0G mainnet. Switch to testnet in the
-              network menu to fund or withdraw.
+              Withdrawing card balance to your wallet is disabled on 0G mainnet. Switch to testnet to
+              withdraw; funding uses USDC.e on mainnet.
             </p>
           ) : null}
           <ul className="mt-4 divide-y divide-border">
@@ -742,7 +730,7 @@ function CreditCardsPanel({ stardormSession }: { stardormSession: boolean; }) {
               <CreditCardRow
                 key={c.id}
                 card={c}
-                mainnetFundsDisabled={mainnetVirtualCardFundsDisabled}
+                mainnetWithdrawDisabled={mainnetVirtualCardWithdrawDisabled}
                 funding={fundMut.isPending && fundMut.variables?.id === c.id}
                 withdrawing={withdrawMut.isPending && withdrawMut.variables?.id === c.id}
                 onFund={(dollars) => fundMut.mutate({ id: c.id, dollars })}
@@ -762,14 +750,14 @@ function CreditCardRow({
   onWithdraw,
   funding,
   withdrawing,
-  mainnetFundsDisabled,
+  mainnetWithdrawDisabled,
 }: {
   card: CreditCardPublic;
   onFund: (dollars: string) => void;
   onWithdraw: (dollars: string) => void;
   funding: boolean;
   withdrawing: boolean;
-  mainnetFundsDisabled: boolean;
+  mainnetWithdrawDisabled: boolean;
 }) {
   const [fundAmt, setFundAmt] = React.useState("");
   const [wdAmt, setWdAmt] = React.useState("");
@@ -877,13 +865,12 @@ function CreditCardRow({
               value={fundAmt}
               onChange={(e) => setFundAmt(e.target.value)}
               className="h-9"
-              disabled={mainnetFundsDisabled}
             />
             <Button
               type="button"
               size="sm"
               loading={funding}
-              disabled={funding || mainnetFundsDisabled}
+              disabled={funding}
               onClick={() => {
                 onFund(fundAmt);
                 setFundAmt("");
@@ -901,14 +888,14 @@ function CreditCardRow({
               value={wdAmt}
               onChange={(e) => setWdAmt(e.target.value)}
               className="h-9"
-              disabled={mainnetFundsDisabled}
+              disabled={mainnetWithdrawDisabled}
             />
             <Button
               type="button"
               size="sm"
               variant="outline"
               loading={withdrawing}
-              disabled={withdrawing || mainnetFundsDisabled}
+              disabled={withdrawing || mainnetWithdrawDisabled}
               onClick={() => {
                 onWithdraw(wdAmt);
                 setWdAmt("");

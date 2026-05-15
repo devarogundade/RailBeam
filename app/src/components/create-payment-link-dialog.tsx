@@ -90,7 +90,7 @@ export function CreatePaymentLinkDialog({
   const [checkoutType, setCheckoutType] = React.useState<PaymentCheckoutType>("x402");
   const [resourceId, setResourceId] = React.useState<string>(() => crypto.randomUUID());
   const [assetAddr, setAssetAddr] = React.useState<string>(
-    () => supportedAssets[0]?.address ?? "native",
+    () => supportedAssets[0]?.address ?? "",
   );
   const [networkId, setNetworkId] = React.useState<string>(
     () => X402_CHECKOUT_NETWORKS[0]?.id ?? "",
@@ -111,7 +111,7 @@ export function CreatePaymentLinkDialog({
   const resetForm = React.useCallback(() => {
     setCheckoutType("x402");
     setResourceId(crypto.randomUUID());
-    setAssetAddr(supportedAssets[0]?.address ?? "native");
+    setAssetAddr(supportedAssets[0]?.address ?? "");
     setNetworkId(X402_CHECKOUT_NETWORKS[0]?.id ?? "");
     setAmountHuman("");
     setPayTo(address?.trim() ?? "");

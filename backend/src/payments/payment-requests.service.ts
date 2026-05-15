@@ -50,14 +50,15 @@ export class PaymentRequestsService {
       attachment: doc.attachment,
       txHash: doc.txHash,
       paidByWallet: doc.paidByWallet,
+      facilitatorSettlement:
+        doc.type === 'x402' ? this.x402Facilitator.isConfigured() : undefined,
     });
   }
 
-  async getPublicById(id: string): Promise<PublicPaymentRequest | null> {
+  async findDocumentById(id: string): Promise<PaymentRequestDocument | null> {
     if (!Types.ObjectId.isValid(id)) return null;
     const doc = await this.model.findById(id).exec();
     if (!doc) return null;
-
     const now = new Date();
     if (
       doc.status === 'pending' &&
@@ -67,7 +68,12 @@ export class PaymentRequestsService {
       doc.status = 'expired';
       await doc.save();
     }
+    return doc;
+  }
 
+  async getPublicById(id: string): Promise<PublicPaymentRequest | null> {
+    const doc = await this.findDocumentById(id);
+    if (!doc) return null;
     return this.toPublic(doc);
   }
 

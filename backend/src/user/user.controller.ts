@@ -13,6 +13,8 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  Res,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -25,6 +27,8 @@ import { CurrentWallet } from '../auth/current-wallet.decorator';
 import { parseBody } from '../common/parse-body';
 import { parseQuery, parseQueryRecord } from '../common/parse-query';
 import type { MulterIncomingFile } from './multer-file.types';
+import type { Request, Response } from 'express';
+import { CreditCardFundPaywallService } from '../credit-cards/credit-card-fund-paywall.service';
 import { UserService } from './user.service';
 import { parseClientEvmChainIdHeader } from '../beam/beam-evm-chain';
 import {
@@ -35,9 +39,8 @@ import {
   conversationsQuerySchema,
   createConversationBodySchema,
   deleteConversationResponseSchema,
-  creditCardFundBodySchema,
   creditCardFundQuoteQuerySchema,
-  creditCardFundQuoteResponseSchema,
+  creditCardFundQuoteSchema,
   creditCardPublicSchema,
   creditCardSensitiveDetailsSchema,
   creditCardsListResponseSchema,
@@ -59,7 +62,10 @@ const CHAT_MAX_FILES = 2;
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly users: UserService) {}
+  constructor(
+    private readonly users: UserService,
+    private readonly cardFundPaywall: CreditCardFundPaywallService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -183,7 +189,7 @@ export class UserController {
       parseQueryRecord(query),
     );
     const chainId = parseClientEvmChainIdHeader(beamChainHeader);
-    return creditCardFundQuoteResponseSchema.parse(
+    return creditCardFundQuoteSchema.parse(
       await this.users.getCreditCardFundQuote(q.amountCents, chainId),
     );
   }
@@ -238,22 +244,24 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('me/credit-cards/:cardId/fund')
-  async fundCreditCard(
+  @Get('me/credit-cards/:cardId/fund/access')
+  async creditCardFundAccess(
     @CurrentWallet() wallet: AuthedWallet,
     @Param('cardId') cardId: string,
-    @Body() raw: unknown,
-    @Headers('x-beam-chain-id') beamChainHeader: string | undefined,
-  ) {
-    const body = parseBody(creditCardFundBodySchema, raw);
-    const clientEvmChainId = parseClientEvmChainIdHeader(beamChainHeader);
-    return creditCardPublicSchema.parse(
-      await this.users.fundMyCreditCard(
-        wallet.walletAddress,
-        cardId.trim(),
-        body,
-        clientEvmChainId,
-      ),
+    @Query() query: Record<string, string | string[] | undefined>,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const q = parseQuery(
+      creditCardFundQuoteQuerySchema,
+      parseQueryRecord(query),
+    );
+    await this.cardFundPaywall.handleFundAccess(
+      wallet.walletAddress,
+      cardId.trim(),
+      q.amountCents,
+      req,
+      res,
     );
   }
 

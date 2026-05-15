@@ -56,8 +56,7 @@ import {
   draftNativeTransferInputSchema,
   draftErc20TransferInputSchema,
   draftNftTransferInputSchema,
-  type CreditCardFundBody,
-  type CreditCardFundQuoteResponse,
+  type CreditCardFundQuote,
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
   type ChatHistoryMessage,
@@ -327,22 +326,14 @@ export class UserService {
     };
   }
 
-  /** Virtual card balance fund / withdraw are disabled on 0G mainnet (see product policy). */
-  private assertVirtualCardFundsNotBlockedOnMainnet(
+  /** Native unfund payouts are testnet-only until mainnet treasury policy is defined. */
+  private assertVirtualCardWithdrawNotBlockedOnMainnet(
     clientEvmChainId?: number,
-    fundingTxChainId?: number,
   ): void {
     if (beamEvmTierFromChainId(clientEvmChainId) === 'mainnet') {
       throw new ForbiddenException(
-        'Virtual card funding and withdrawals are disabled on 0G mainnet.',
+        'Virtual card withdrawals to your wallet are disabled on 0G mainnet. Switch to testnet to withdraw; funding uses USDC.e on mainnet.',
       );
-    }
-    if (fundingTxChainId != null) {
-      if (beamEvmTierFromChainId(fundingTxChainId) === 'mainnet') {
-        throw new ForbiddenException(
-          'Virtual card funding and withdrawals are disabled on 0G mainnet.',
-        );
-      }
     }
   }
 
@@ -934,65 +925,8 @@ export class UserService {
   async getCreditCardFundQuote(
     amountCents: number,
     clientEvmChainId?: number,
-  ): Promise<CreditCardFundQuoteResponse> {
-    this.assertVirtualCardFundsNotBlockedOnMainnet(clientEvmChainId);
+  ): Promise<CreditCardFundQuote> {
     return this.cardFunding.quote(amountCents, clientEvmChainId);
-  }
-
-  async fundMyCreditCard(
-    walletAddress: string,
-    cardId: string,
-    body: CreditCardFundBody,
-    clientEvmChainId?: number,
-  ): Promise<CreditCardPublic> {
-    this.assertVirtualCardFundsNotBlockedOnMainnet(
-      clientEvmChainId,
-      body.fundingChainId,
-    );
-    const wallet = this.normalizeWallet(walletAddress);
-    if (this.cardFunding.isOnchainFundingConfigured()) {
-      const h = body.fundingTxHash?.trim();
-      const cid = body.fundingChainId;
-      if (!h || cid == null) {
-        throw new BadRequestException(
-          'Funding this card requires a native 0G treasury transfer first. Use the dashboard fund flow (or send fundingTxHash and fundingChainId after paying).',
-        );
-      }
-    } else if (body.fundingTxHash != null || body.fundingChainId != null) {
-      throw new BadRequestException(
-        'On-chain funding fields are not used in this environment.',
-      );
-    }
-
-    let releaseClaim: (() => Promise<void>) | undefined;
-    try {
-      if (this.cardFunding.isOnchainFundingConfigured()) {
-        const h = body.fundingTxHash!.trim();
-        const cid = body.fundingChainId!;
-        releaseClaim = await this.cardFunding.lockAndVerifyFundingTx({
-          walletAddress: wallet,
-          amountCents: body.amountCents,
-          fundingTxHash: h,
-          fundingChainId: cid,
-        });
-      }
-      const doc = await this.creditCards.fund(
-        wallet,
-        cardId,
-        body.amountCents,
-      );
-      releaseClaim = undefined;
-      void this.financialSnapshots
-        .recordVirtualCardFund(wallet, body.amountCents)
-        .catch(() => {
-          /* best-effort rollup */
-        });
-      return this.creditCards.toPublic(doc);
-    } finally {
-      if (releaseClaim) {
-        await releaseClaim();
-      }
-    }
   }
 
   async withdrawMyCreditCard(
@@ -1001,7 +935,7 @@ export class UserService {
     amountCents: number,
     clientEvmChainId?: number,
   ): Promise<CreditCardPublic> {
-    this.assertVirtualCardFundsNotBlockedOnMainnet(clientEvmChainId);
+    this.assertVirtualCardWithdrawNotBlockedOnMainnet(clientEvmChainId);
     const wallet = this.normalizeWallet(walletAddress);
 
     if (this.cardFunding.isOnchainUnfundPayoutConfigured()) {
@@ -1037,9 +971,9 @@ export class UserService {
       }
     }
 
-    if (this.cardFunding.isOnchainFundingConfigured()) {
+    if (this.cardFunding.isX402FundingConfigured()) {
       throw new ServiceUnavailableException(
-        'On-chain card funding is configured but CREDIT_CARD_TREASURY_PRIVATE_KEY is missing or does not match CREDIT_CARD_FUND_RECIPIENT; native unfund payouts cannot be sent.',
+        'USDC.e card funding is configured but CREDIT_CARD_TREASURY_PRIVATE_KEY is missing or does not match CREDIT_CARD_FUND_RECIPIENT; native unfund payouts cannot be sent.',
       );
     }
 

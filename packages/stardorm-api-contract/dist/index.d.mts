@@ -6977,6 +6977,8 @@ declare const publicPaymentRequestSchema: z.ZodObject<{
     /** Set when status is `paid` (on-chain settlement recorded). */
     txHash: z.ZodOptional<z.ZodString>;
     paidByWallet: z.ZodOptional<z.ZodString>;
+    /** When true, checkout can settle via x402 facilitator + wallet-signed payload. */
+    facilitatorSettlement: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     type: "on-chain" | "x402";
     status: "pending" | "paid" | "expired" | "cancelled";
@@ -7001,6 +7003,7 @@ declare const publicPaymentRequestSchema: z.ZodObject<{
         size?: string | undefined;
     } | undefined;
     paidByWallet?: string | undefined;
+    facilitatorSettlement?: boolean | undefined;
 }, {
     type: "on-chain" | "x402";
     status: "pending" | "paid" | "expired" | "cancelled";
@@ -7025,6 +7028,7 @@ declare const publicPaymentRequestSchema: z.ZodObject<{
         size?: string | undefined;
     } | undefined;
     paidByWallet?: string | undefined;
+    facilitatorSettlement?: boolean | undefined;
 }>;
 type PublicPaymentRequest = z.infer<typeof publicPaymentRequestSchema>;
 /** Query for GET `/users/me/payment-requests`. */
@@ -7074,6 +7078,8 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
         /** Set when status is `paid` (on-chain settlement recorded). */
         txHash: z.ZodOptional<z.ZodString>;
         paidByWallet: z.ZodOptional<z.ZodString>;
+        /** When true, checkout can settle via x402 facilitator + wallet-signed payload. */
+        facilitatorSettlement: z.ZodOptional<z.ZodBoolean>;
     }, "strip", z.ZodTypeAny, {
         type: "on-chain" | "x402";
         status: "pending" | "paid" | "expired" | "cancelled";
@@ -7098,6 +7104,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
             size?: string | undefined;
         } | undefined;
         paidByWallet?: string | undefined;
+        facilitatorSettlement?: boolean | undefined;
     }, {
         type: "on-chain" | "x402";
         status: "pending" | "paid" | "expired" | "cancelled";
@@ -7122,6 +7129,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
             size?: string | undefined;
         } | undefined;
         paidByWallet?: string | undefined;
+        facilitatorSettlement?: boolean | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
@@ -7148,6 +7156,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
             size?: string | undefined;
         } | undefined;
         paidByWallet?: string | undefined;
+        facilitatorSettlement?: boolean | undefined;
     }[];
 }, {
     items: {
@@ -7174,6 +7183,7 @@ declare const paymentRequestsListResponseSchema: z.ZodObject<{
             size?: string | undefined;
         } | undefined;
         paidByWallet?: string | undefined;
+        facilitatorSettlement?: boolean | undefined;
     }[];
 }>;
 type PaymentRequestsListResponse = z.infer<typeof paymentRequestsListResponseSchema>;
@@ -7734,28 +7744,6 @@ declare const creditCardsListResponseSchema: z.ZodObject<{
     }[];
 }>;
 type CreditCardsListResponse = z.infer<typeof creditCardsListResponseSchema>;
-declare const creditCardFundBodySchema: z.ZodEffects<z.ZodObject<{
-    amountCents: z.ZodNumber;
-    fundingTxHash: z.ZodOptional<z.ZodString>;
-    fundingChainId: z.ZodOptional<z.ZodNumber>;
-}, "strip", z.ZodTypeAny, {
-    amountCents: number;
-    fundingTxHash?: string | undefined;
-    fundingChainId?: number | undefined;
-}, {
-    amountCents: number;
-    fundingTxHash?: string | undefined;
-    fundingChainId?: number | undefined;
-}>, {
-    amountCents: number;
-    fundingTxHash?: string | undefined;
-    fundingChainId?: number | undefined;
-}, {
-    amountCents: number;
-    fundingTxHash?: string | undefined;
-    fundingChainId?: number | undefined;
-}>;
-type CreditCardFundBody = z.infer<typeof creditCardFundBodySchema>;
 declare const creditCardFundQuoteQuerySchema: z.ZodObject<{
     amountCents: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
@@ -7764,70 +7752,69 @@ declare const creditCardFundQuoteQuerySchema: z.ZodObject<{
     amountCents: number;
 }>;
 type CreditCardFundQuoteQuery = z.infer<typeof creditCardFundQuoteQuerySchema>;
-declare const creditCardFundQuoteOffChainSchema: z.ZodObject<{
-    onchainFundingRequired: z.ZodLiteral<false>;
-}, "strip", z.ZodTypeAny, {
-    onchainFundingRequired: false;
-}, {
-    onchainFundingRequired: false;
-}>;
-declare const creditCardFundQuoteOnChainSchema: z.ZodObject<{
-    onchainFundingRequired: z.ZodLiteral<true>;
+/** USDC.e x402 fund on 0G mainnet (1 USD cent = 10_000 base units). */
+declare const creditCardFundQuoteSchema: z.ZodObject<{
     chainId: z.ZodNumber;
     recipient: z.ZodString;
-    minNativeWei: z.ZodString;
-    usdValue: z.ZodNumber;
-    nativeSymbol: z.ZodString;
-    nativeDecimals: z.ZodNumber;
+    usdcAsset: z.ZodString;
+    usdcAmountBaseUnits: z.ZodString;
+    usdcDecimals: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    usdValue: number;
-    onchainFundingRequired: true;
     chainId: number;
     recipient: string;
-    minNativeWei: string;
-    nativeSymbol: string;
-    nativeDecimals: number;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
 }, {
-    usdValue: number;
-    onchainFundingRequired: true;
     chainId: number;
     recipient: string;
-    minNativeWei: string;
-    nativeSymbol: string;
-    nativeDecimals: number;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
 }>;
-declare const creditCardFundQuoteResponseSchema: z.ZodDiscriminatedUnion<"onchainFundingRequired", [z.ZodObject<{
-    onchainFundingRequired: z.ZodLiteral<false>;
-}, "strip", z.ZodTypeAny, {
-    onchainFundingRequired: false;
-}, {
-    onchainFundingRequired: false;
-}>, z.ZodObject<{
-    onchainFundingRequired: z.ZodLiteral<true>;
+type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
+/** @deprecated Use {@link creditCardFundQuoteSchema} */
+declare const creditCardFundQuoteX402Schema: z.ZodObject<{
     chainId: z.ZodNumber;
     recipient: z.ZodString;
-    minNativeWei: z.ZodString;
-    usdValue: z.ZodNumber;
-    nativeSymbol: z.ZodString;
-    nativeDecimals: z.ZodNumber;
+    usdcAsset: z.ZodString;
+    usdcAmountBaseUnits: z.ZodString;
+    usdcDecimals: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    usdValue: number;
-    onchainFundingRequired: true;
     chainId: number;
     recipient: string;
-    minNativeWei: string;
-    nativeSymbol: string;
-    nativeDecimals: number;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
 }, {
-    usdValue: number;
-    onchainFundingRequired: true;
     chainId: number;
     recipient: string;
-    minNativeWei: string;
-    nativeSymbol: string;
-    nativeDecimals: number;
-}>]>;
-type CreditCardFundQuoteResponse = z.infer<typeof creditCardFundQuoteResponseSchema>;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
+}>;
+/** @deprecated Use {@link CreditCardFundQuote} */
+type CreditCardFundQuoteResponse = CreditCardFundQuote;
+/** @deprecated Use {@link creditCardFundQuoteSchema} */
+declare const creditCardFundQuoteResponseSchema: z.ZodObject<{
+    chainId: z.ZodNumber;
+    recipient: z.ZodString;
+    usdcAsset: z.ZodString;
+    usdcAmountBaseUnits: z.ZodString;
+    usdcDecimals: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    chainId: number;
+    recipient: string;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
+}, {
+    chainId: number;
+    recipient: string;
+    usdcAsset: string;
+    usdcAmountBaseUnits: string;
+    usdcDecimals: number;
+}>;
 declare const creditCardWithdrawBodySchema: z.ZodObject<{
     amountCents: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
@@ -8249,4 +8236,4 @@ declare const draftTokenSwapInputSchema: z.ZodObject<{
 }>;
 type DraftTokenSwapInput = z.infer<typeof draftTokenSwapInputSchema>;
 
-export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundBody, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SwapFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundBodySchema, creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };
+export { type Agent, type AgentCategory, type AgentFeedbacksPageResponse, type AgentFeedbacksQuery, type AgentOnchainFeedbackItem, type AuthChallengeBody, type AuthChallengeResponse, type AuthMeResponse, type AuthVerifyBody, type AuthVerifyResponse, type BillingDatePart, type CatalogResponse, type ChatFollowUp, type ChatHistoryAttachment, type ChatHistoryMessage, type ChatHistoryQuery, type ChatHistoryResponse, type ConversationSummary, type ConversationSyncPayload, type ConversationSyncThreadMessagesPayload, type ConversationSyncThreadPayload, type ConversationsListResponse, type ConversationsPageResponse, type ConversationsQuery, type CreateConversationBody, type CreateCreditCardInput, type CreditCardFormCtaParams, type CreditCardFundQuote, type CreditCardFundQuoteQuery, type CreditCardFundQuoteResponse, type CreditCardPublic, type CreditCardSensitiveDetails, type CreditCardWithdrawBody, type CreditCardsListResponse, type DeleteConversationResponse, type DraftErc20TransferInput, type DraftNativeTransferInput, type DraftNftTransferInput, type DraftTokenSwapInput, type ExecuteHandlerBody, type ExecuteHandlerResponse, type GenerateFinancialActivityReportInput, type GeneratePaymentInvoiceInput, HANDLER_ACTION_IDS, type HandlerActionId, type HandlersListResponse, ISO_3166_1_ALPHA2_CODES, type MeOnRampsQuery, type MePaymentRequestsQuery, type OnRampFormCtaParams, type OnRampRecord, type OnRampRecordStatus, type OnRampTokensInput, type OnRampsListResponse, type PaymentRequestsListResponse, type PaymentSettlementBody, type PublicPaymentRequest, type PublicUser, type SkillHandle, type StardormChatAttachment, type StardormChatClientResult, type StardormChatJsonBody, type StardormChatRichBlock, type StardormChatSuccess, type StorageUploadBody, type StorageUploadResponse, type StripeKycInput, type SwapFormCtaParams, type UpdateUserBody, type UserAvatarPreset, type UserKycStatus, type UserKycStatusDocument, type UserUploadResult, type X402SupportedAsset, agentAvatarSchema, agentCategorySchema, agentFeedbacksPageResponseSchema, agentFeedbacksQuerySchema, agentOnchainFeedbackItemSchema, agentSchema, agentsListSchema, authChallengeBodySchema, authChallengeResponseSchema, authMeResponseSchema, authVerifyBodySchema, authVerifyResponseSchema, billingDatePartSchema, billingDatePartToUtc, billingPeriodBounds, billingRangeEndOfDay, buildStardormCatalogResponse, catalogResponseSchema, chatFollowUpSchema, chatHistoryAttachmentSchema, chatHistoryHandlerCtaSchema, chatHistoryMessageSchema, chatHistoryQuerySchema, chatHistoryResponseSchema, conversationSummarySchema, conversationSyncConversationDeletedSchema, conversationSyncConversationsSchema, conversationSyncPayloadSchema, conversationSyncThreadMessagesSchema, conversationSyncThreadSchema, conversationsListResponseSchema, conversationsPageResponseSchema, conversationsQuerySchema, createConversationBodySchema, createCreditCardInputSchema, creditCardFormCtaParamsSchema, creditCardFundQuoteQuerySchema, creditCardFundQuoteResponseSchema, creditCardFundQuoteSchema, creditCardFundQuoteX402Schema, creditCardPublicSchema, creditCardSensitiveDetailsSchema, creditCardWithdrawBodySchema, creditCardsListResponseSchema, deleteConversationResponseSchema, draftErc20TransferInputSchema, draftNativeTransferInputSchema, draftNftTransferInputSchema, draftTokenSwapInputSchema, executeHandlerBodySchema, executeHandlerResponseSchema, generateFinancialActivityReportInputSchema, generatePaymentInvoiceInputSchema, handlerActionIdSchema, handlersListResponseSchema, isCreditCardFormCtaParams, isHandlerActionId, isIso3166Alpha2, isOnRampFormCtaParams, isSwapFormCtaParams, isoCountryDisplayName, meOnRampsQuerySchema, mePaymentRequestsQuerySchema, onRampFormCtaParamsSchema, onRampFormNetworkOptionSchema, onRampRecordSchema, onRampRecordStatusSchema, onRampTokensInputSchema, onRampsListResponseSchema, paymentRequestStatusSchema, paymentRequestTypeSchema, paymentRequestsListResponseSchema, paymentSettlementBodySchema, publicPaymentRequestSchema, publicUserSchema, resolveStardormAgentKey, resolveStardormChainAgentId, skillHandleSchema, stardormChatAttachmentSchema, stardormChatClientErrorSchema, stardormChatClientResultSchema, stardormChatComputeSchema, stardormChatJsonBodySchema, stardormChatRichBlockSchema, stardormChatRichRowSchema, stardormChatStructuredSchema, stardormChatSuccessSchema, storageUploadBodySchema, storageUploadResponseSchema, stripeKycInputSchema, swapFormCtaParamsSchema, swapFormNetworkOptionSchema, taxRateForCountry, updateUserBodySchema, userAvatarPresetSchema, userKycStatusDocumentSchema, userKycStatusSchema, userPreferencesSchema, userUploadResultSchema, x402SupportedAssetSchema };

@@ -90,28 +90,6 @@ export const creditCardsListResponseSchema = z.object({
 
 export type CreditCardsListResponse = z.infer<typeof creditCardsListResponseSchema>;
 
-export const creditCardFundBodySchema = z
-  .object({
-    amountCents: z.coerce.number().int().min(1).max(100_000_000),
-    fundingTxHash: z
-      .string()
-      .regex(/^0x[a-fA-F0-9]{64}$/)
-      .optional(),
-    fundingChainId: z.coerce.number().int().positive().optional(),
-  })
-  .refine(
-    (d) =>
-      (d.fundingTxHash == null && d.fundingChainId == null) ||
-      (d.fundingTxHash != null && d.fundingChainId != null),
-    {
-      message:
-        "fundingTxHash and fundingChainId must both be provided or both omitted",
-      path: ["fundingTxHash"],
-    },
-  );
-
-export type CreditCardFundBody = z.infer<typeof creditCardFundBodySchema>;
-
 export const creditCardFundQuoteQuerySchema = z.object({
   amountCents: z.coerce.number().int().min(1).max(100_000_000),
 });
@@ -120,28 +98,25 @@ export type CreditCardFundQuoteQuery = z.infer<
   typeof creditCardFundQuoteQuerySchema
 >;
 
-export const creditCardFundQuoteOffChainSchema = z.object({
-  onchainFundingRequired: z.literal(false),
-});
-
-export const creditCardFundQuoteOnChainSchema = z.object({
-  onchainFundingRequired: z.literal(true),
+/** USDC.e x402 fund on 0G mainnet (1 USD cent = 10_000 base units). */
+export const creditCardFundQuoteSchema = z.object({
   chainId: z.number().int(),
   recipient: z.string().min(1),
-  minNativeWei: z.string().regex(/^\d+$/),
-  usdValue: z.number().finite().positive(),
-  nativeSymbol: z.string().min(1),
-  nativeDecimals: z.number().int().min(0).max(18),
+  usdcAsset: z.string().min(1),
+  usdcAmountBaseUnits: z.string().regex(/^\d+$/),
+  usdcDecimals: z.number().int().min(0).max(18),
 });
 
-export const creditCardFundQuoteResponseSchema = z.discriminatedUnion(
-  "onchainFundingRequired",
-  [creditCardFundQuoteOffChainSchema, creditCardFundQuoteOnChainSchema],
-);
+export type CreditCardFundQuote = z.infer<typeof creditCardFundQuoteSchema>;
 
-export type CreditCardFundQuoteResponse = z.infer<
-  typeof creditCardFundQuoteResponseSchema
->;
+/** @deprecated Use {@link creditCardFundQuoteSchema} */
+export const creditCardFundQuoteX402Schema = creditCardFundQuoteSchema;
+
+/** @deprecated Use {@link CreditCardFundQuote} */
+export type CreditCardFundQuoteResponse = CreditCardFundQuote;
+
+/** @deprecated Use {@link creditCardFundQuoteSchema} */
+export const creditCardFundQuoteResponseSchema = creditCardFundQuoteSchema;
 
 export const creditCardWithdrawBodySchema = z.object({
   amountCents: z.coerce.number().int().min(1).max(100_000_000),
