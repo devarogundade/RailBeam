@@ -2,7 +2,7 @@ import * as React from "react";
 import { useAccount } from "wagmi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { parseUnits } from "viem";
-import { Copy, ExternalLink, Link2, Paperclip, X } from "lucide-react";
+import { Link2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import type { StardormChatAttachment, X402SupportedAsset } from "@railbeam/stardorm-api-contract";
 import {
@@ -24,6 +24,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { X402PaymentLinkActions } from "@/components/x402-payment-link-actions";
+import { getStardormApiBase } from "@/lib/stardorm-axios";
 import { stardormInvokeHandler, uploadStardormUserFile } from "@/lib/stardorm-api";
 import { invalidateBeamHttpDashboardLists } from "@/lib/query-invalidation";
 import {
@@ -178,10 +180,6 @@ export function CreatePaymentLinkDialog({
   });
 
   const pending = createMutation.isPending;
-  const payHref =
-    created && typeof window !== "undefined"
-      ? `${window.location.origin}${created.payPath}`
-      : "";
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,15 +214,15 @@ export function CreatePaymentLinkDialog({
           </DialogTitle>
           <DialogDescription>
             {created
-              ? "Share this x402 checkout URL with your payer."
+              ? "Copy the checkout link for payers, or the x402 API link for agents and backends."
               : "Configure an on-chain x402 checkout. Amounts are stored in smallest token units (wei)."}
           </DialogDescription>
         </DialogHeader>
 
         {created ? (
           <CheckoutSuccessBody
-            payHref={payHref}
             paymentRequestId={created.paymentRequestId}
+            payPath={created.payPath}
             onClose={() => onOpenChange(false)}
             onCreateAnother={() => {
               setCreated(null);
@@ -528,48 +526,27 @@ function ResourceIdRow({
 }
 
 function CheckoutSuccessBody({
-  payHref,
   paymentRequestId,
+  payPath,
   onClose,
   onCreateAnother,
 }: {
-  payHref: string;
   paymentRequestId: string;
+  payPath: string;
   onClose: () => void;
   onCreateAnother: () => void;
 }) {
-  const copyLink = () => {
-    void navigator.clipboard.writeText(payHref).then(
-      () => toast.success("Checkout link copied"),
-      () =>
-        toast.error("Could not copy", {
-          description: "Clipboard permission denied or unavailable.",
-        }),
-    );
-  };
-
   return (
     <>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
         <p className="text-sm text-muted-foreground">
           Checkout id <span className="font-mono text-foreground">{paymentRequestId}</span>
         </p>
-        <PayLinkBox payHref={payHref} />
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="secondary" onClick={copyLink}>
-            <Copy className="mr-1 h-3.5 w-3.5" />
-            Copy link
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => window.open(payHref, "_blank", "noopener,noreferrer")}
-          >
-            <ExternalLink className="mr-1 h-3.5 w-3.5" />
-            Open checkout
-          </Button>
-        </div>
+        <X402PaymentLinkActions
+          paymentRequestId={paymentRequestId}
+          payPath={payPath}
+          apiBase={getStardormApiBase() ?? undefined}
+        />
       </div>
       <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
         <Button type="button" variant="outline" onClick={onCreateAnother}>
@@ -583,14 +560,6 @@ function CheckoutSuccessBody({
   );
 }
 
-function PayLinkBox({ payHref }: { payHref: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface-elevated p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Pay link</p>
-      <p className="mt-1 break-all font-mono text-xs text-foreground">{payHref}</p>
-    </div>
-  );
-}
 
 function Field({
   label,

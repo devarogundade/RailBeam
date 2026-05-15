@@ -116,6 +116,7 @@ import { StorageFile } from "@stardorm/agentflow-finance/src/components/storage-
 import {
   X402CheckoutFormCard,
 } from "@/components/x402-checkout-form-card";
+import { X402PaymentLinkActions } from "@/components/x402-payment-link-actions";
 import { OnRampCheckoutFormCard } from "@/components/on-ramp-checkout-form-card";
 import { CreditCardCheckoutFormCard } from "@/components/credit-card-checkout-form-card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1439,39 +1440,13 @@ function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
   const fu = m.followUp;
   if (!fu) return null;
   if (fu.kind === "x402_checkout") {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const href = `${origin}${fu.payPath}`;
     return (
-      <div className="mt-1 flex flex-wrap gap-2 px-0.5">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void navigator.clipboard.writeText(href).then(
-              () => {
-                toast.success("Checkout link copied");
-              },
-              () => {
-                toast.error("Could not copy", {
-                  description: "Clipboard permission denied or unavailable.",
-                });
-              },
-            );
-          }}
-        >
-          <Copy className="mr-1 h-3.5 w-3.5" />
-          Copy pay link
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
-        >
-          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-          Open checkout
-        </Button>
+      <div className="mt-2 max-w-md px-0.5">
+        <X402PaymentLinkActions
+          paymentRequestId={fu.paymentRequestId}
+          payPath={fu.payPath}
+          apiBase={apiBase}
+        />
       </div>
     );
   }

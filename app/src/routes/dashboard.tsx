@@ -5,7 +5,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
 import { useApp } from "@/lib/app-state";
 import { CoinIcon } from "@/components/icons";
-import { ArrowUpRight, Zap, CreditCard, Eye, EyeOff, Users, Receipt, Landmark, Plus } from "lucide-react";
+import {
+  ArrowUpRight,
+  Zap,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Users,
+  Receipt,
+  Landmark,
+  Plus,
+} from "lucide-react";
 import {
   useMyActiveSubscribedChainAgentIds,
   useStardormRecentSubscriptions,
@@ -56,6 +66,7 @@ import {
 } from "@/components/page-shimmer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatePaymentLinkDialog } from "@/components/create-payment-link-dialog";
+import { X402PaymentLinkCopyButtons } from "@/components/x402-payment-link-actions";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -273,6 +284,57 @@ const KYC_STATUS_LABEL: Record<UserKycStatus, string> = {
   canceled: "Canceled",
 };
 
+const KYC_STATUS_BADGE: Record<
+  UserKycStatus,
+  { className: string; dotClassName: string; pulse?: boolean }
+> = {
+  not_started: {
+    className: "border-border/80 bg-muted/50 text-muted-foreground",
+    dotClassName: "bg-muted-foreground/60",
+  },
+  pending: {
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-300",
+    dotClassName: "bg-amber-500",
+    pulse: true,
+  },
+  processing: {
+    className: "border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-300",
+    dotClassName: "bg-sky-500",
+    pulse: true,
+  },
+  verified: {
+    className: "border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300",
+    dotClassName: "bg-emerald-500",
+  },
+  requires_input: {
+    className: "border-orange-500/35 bg-orange-500/10 text-orange-900 dark:text-orange-300",
+    dotClassName: "bg-orange-500",
+  },
+  canceled: {
+    className: "border-destructive/30 bg-destructive/10 text-destructive",
+    dotClassName: "bg-destructive",
+  },
+};
+
+function KycStatusBadge({ status }: { status: UserKycStatus }) {
+  const style = KYC_STATUS_BADGE[status];
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "h-6 gap-1.5 border px-2.5 py-0 text-xs font-medium normal-case tracking-normal shadow-none",
+        style.className,
+      )}
+    >
+      <span
+        className={cn("size-1.5 shrink-0 rounded-full", style.dotClassName, style.pulse && "animate-pulse")}
+        aria-hidden
+      />
+      {KYC_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
 function formatTokenWeiHuman(wei: string, decimals: number): string {
   try {
     const s = formatUnits(BigInt(wei), decimals);
@@ -369,13 +431,21 @@ function DashboardPaymentRequests({ enabled }: { enabled: boolean; }) {
                   <div className="text-[11px] text-muted-foreground">Tx {shortenHex(row.txHash)}</div>
                 ) : null}
               </div>
-              <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+              <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end sm:max-w-md">
                 {row.status === "pending" ? (
                   <Button type="button" size="sm" variant="outline" asChild>
                     <Link to="/pay/$id" params={{ id: row.id }}>
                       Open checkout
                     </Link>
                   </Button>
+                ) : null}
+                {row.type === "x402" && row.status === "pending" ? (
+                  <X402PaymentLinkCopyButtons
+                    paymentRequestId={row.id}
+                    payPath={`/pay/${row.id}`}
+                    apiBase={getStardormApiBase() ?? undefined}
+                    className="sm:justify-end"
+                  />
                 ) : null}
               </div>
             </li>
@@ -412,11 +482,9 @@ function DashboardKyc({ enabled }: { enabled: boolean; }) {
         </div>
       ) : data ? (
         <div className="mt-4 space-y-2 rounded-lg border border-border bg-surface-elevated p-4 text-foreground">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold">Status</span>
-            <Badge variant="secondary" className="text-[10px] uppercase">
-              {KYC_STATUS_LABEL[data.status]}
-            </Badge>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-foreground">Status</span>
+            <KycStatusBadge status={data.status} />
           </div>
           {data.stripeVerificationSessionId ? (
             <div className="text-[11px] text-muted-foreground">
