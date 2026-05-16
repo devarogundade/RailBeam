@@ -15,7 +15,9 @@ import { getStardormApiBase, stardormAxios } from "./stardorm-axios";
 import { fetchStardormMe, patchStardormUser } from "./stardorm-user-api";
 import {
   clearStardormAccessToken,
+  clearStardormSignInInflight,
   getStardormAccessToken,
+  runStardormWalletSignInOnce,
   setStardormAccessToken,
   stardormConnectedWalletRef,
 } from "./stardorm-auth";
@@ -26,9 +28,6 @@ import { isBeamConfiguredChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain } from "@/lib/stardorm-subgraph-config";
 import { queryKeys } from "@/lib/query-keys";
 import { invalidateAfterIdentityRegistryWrite } from "@/lib/query-invalidation";
-
-/** Prevents overlapping auto sign-in (e.g. React Strict Mode double mount). */
-const pendingAutoStardormSignIn = new Set<string>();
 
 interface WalletState {
   address: string | null;
@@ -73,6 +72,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { effectiveChainId } = useBeamNetwork();
   const { disconnect: wagmiDisconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
+  const signMessageAsyncRef = React.useRef(signMessageAsync);
+  signMessageAsyncRef.current = signMessageAsync;
   const catalog = useStardormCatalog();
 
   const address = status === "connected" && rawAddress ? rawAddress : null;
@@ -80,10 +81,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   stardormConnectedWalletRef.current = address;
 
-  /** Bumped after JWT write/clear so we re-read `localStorage` without stale `useMemo` deps. */
-  const [, bumpJwtFromStorage] = React.useState(0);
+  /** Session JWT for React consumers — synced from storage on wallet change, not read every render. */
+  const [stardormAccessToken, setStardormAccessTokenState] = React.useState<string | null>(null);
 
-  const stardormAccessToken = address ? getStardormAccessToken() : null;
+  React.useEffect(() => {
+    if (!address) {
+      setStardormAccessTokenState(null);
+      return;
+    }
+    setStardormAccessTokenState(getStardormAccessToken());
+  }, [address]);
 
   const { data: bal } = useBalance({
     address: rawAddress,
@@ -247,7 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       const message = chParsed.data.message;
-      const signature = await signMessageAsync({ message });
+      const signature = await signMessageAsyncRef.current({ message });
       const { data: vJson } = await stardormAxios.post<unknown>("/auth/verify", {
         walletAddress: address,
         message,
@@ -260,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       setStardormAccessToken(token, address);
-      bumpJwtFromStorage((e) => e + 1);
+      setStardormAccessTokenState(token);
       const w = address.toLowerCase() as `0x${string}`;
       void queryClient.invalidateQueries({ queryKey: queryKeys.user.me(w) });
       return true;
@@ -283,26 +290,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toast.error("Sign-in failed", { description: msg });
       return false;
     }
-  }, [address, queryClient, signMessageAsync]);
+  }, [address, queryClient]);
 
   const stardormSignInRef = React.useRef(stardormSignIn);
   stardormSignInRef.current = stardormSignIn;
 
   React.useEffect(() => {
-    if (!address) {
-      /** Do not clear `pendingAutoStardormSignIn` here — `address` is null during wagmi
-       * `connecting` / `reconnecting`, which would drop the in-flight guard and prompt a second signature. */
+    if (!address || status !== "connected") return;
+    if (!getStardormApiBase()) return;
+    const stored = getStardormAccessToken();
+    if (stored) {
+      setStardormAccessTokenState((prev) => prev ?? stored);
       return;
     }
-    if (!getStardormApiBase()) return;
-    if (getStardormAccessToken()) return;
-    const norm = address.toLowerCase();
-    if (pendingAutoStardormSignIn.has(norm)) return;
-    pendingAutoStardormSignIn.add(norm);
-    void stardormSignInRef.current().finally(() => {
-      pendingAutoStardormSignIn.delete(norm);
+    void runStardormWalletSignInOnce(address, () => stardormSignInRef.current()).then((ok) => {
+      if (!ok) return;
+      const token = getStardormAccessToken();
+      if (token) setStardormAccessTokenState(token);
     });
-  }, [address]);
+  }, [address, status]);
 
   const connect = (): boolean => {
     if (!isWalletConfigured) {
@@ -317,9 +323,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnect = () => {
-    pendingAutoStardormSignIn.clear();
+    clearStardormSignInInflight(address);
     clearStardormAccessToken(address);
-    bumpJwtFromStorage((e) => e + 1);
+    setStardormAccessTokenState(null);
     queryClient.removeQueries({ queryKey: queryKeys.user.all });
     setActiveAgentIdState("beam-default");
     appliedServerAgentOnce.current = false;

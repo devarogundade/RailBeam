@@ -1,6 +1,9 @@
 /** Legacy single-key storage (pre per-wallet); cleared when saving a scoped token. */
 const LEGACY_STARDORM_JWT_STORAGE_KEY = "stardorm:jwt";
 
+/** In-flight wallet sign-in (challenge + `signMessage` + verify) deduped per address. */
+const stardormSignInInflight = new Map<string, Promise<boolean>>();
+
 /**
  * Connected wallet (`AppProvider` sets this every render). Used by `getStardormAccessToken`
  * and axios so JWT storage can be keyed by address.
@@ -40,6 +43,32 @@ export function setStardormAccessToken(token: string, walletAddress: string): vo
 }
 
 /** Omit `walletAddress` to clear the token for whoever is in `stardormConnectedWalletRef`. */
+/**
+ * Runs `signIn` at most once per wallet until it settles (success or failure).
+ * Concurrent callers (re-renders, Strict Mode, navigation) share the same promise.
+ */
+export function runStardormWalletSignInOnce(
+  walletAddress: string,
+  signIn: () => Promise<boolean>,
+): Promise<boolean> {
+  const key = normalizeWalletKey(walletAddress);
+  const existing = stardormSignInInflight.get(key);
+  if (existing) return existing;
+  const run = signIn().finally(() => {
+    stardormSignInInflight.delete(key);
+  });
+  stardormSignInInflight.set(key, run);
+  return run;
+}
+
+export function clearStardormSignInInflight(walletAddress?: string | null): void {
+  if (walletAddress?.trim()) {
+    stardormSignInInflight.delete(normalizeWalletKey(walletAddress));
+    return;
+  }
+  stardormSignInInflight.clear();
+}
+
 export function clearStardormAccessToken(walletAddress?: string | null): void {
   if (typeof window === "undefined") return;
   const raw =

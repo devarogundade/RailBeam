@@ -75,7 +75,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   fetchStardormChatMessages,
   isStardormInferenceEnabled,
@@ -134,8 +134,6 @@ import { EmptyState } from "@/components/empty-state";
 import { ChatHistorySkeleton, ConversationListSkeleton } from "@/components/page-shimmer";
 import { chainIdFromPaymentNetwork, beamTxExplorerUrl } from "@/lib/beam-tx-explorer";
 import { shortenHex } from "@/lib/format-subgraph";
-
-const indexRouteApi = getRouteApi("/");
 
 /** UI-only attachment row that also keeps the raw `File` for upload. */
 type DraftAttachment = ChatAttachment & { file: File; };
@@ -528,27 +526,6 @@ export function Chat() {
       toast.error("Could not switch conversation", { description: msg });
     },
   });
-
-  const navigate = useNavigate();
-  const { convId: conversationFromSearch } = indexRouteApi.useSearch();
-
-  React.useEffect(() => {
-    const id = conversationFromSearch;
-    if (!id || !apiOn || !userKey || !stardormAccessToken) return;
-    if (openConversationId === id) {
-      void navigate({ to: "/", search: () => ({}), replace: true });
-      return;
-    }
-    selectConvMutation.mutate(id);
-  }, [
-    apiOn,
-    conversationFromSearch,
-    navigate,
-    openConversationId,
-    selectConvMutation,
-    stardormAccessToken,
-    userKey,
-  ]);
 
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const deleteConvMutation = useMutation({

@@ -39,6 +39,9 @@ import {
   IDENTITY_SUBSCRIBE_NUM_DAYS,
 } from "@/lib/web3/identity-registry";
 
+/** When true, clone UI stays visible but on-chain clone is blocked. */
+const CLONING_RESTRICTED = true;
+
 function txError(err: unknown): string {
   if (err && typeof err === "object" && "shortMessage" in err) {
     const m = (err as { shortMessage?: unknown }).shortMessage;
@@ -339,12 +342,6 @@ export function CloneDialog({
     if (!open) setNewTokenId(null);
   }, [open]);
 
-  React.useEffect(() => {
-    if (open && agent && !canUserCloneCatalogAgent(agent)) {
-      onOpenChange(false);
-    }
-  }, [open, agent, onOpenChange]);
-
   if (!agent) return null;
 
   const registryReady = Boolean(
@@ -352,6 +349,12 @@ export function CloneDialog({
   );
 
   const onClone = async () => {
+    if (CLONING_RESTRICTED) {
+      toast.error("Cloning restricted", {
+        description: "Cloning is restricted at the moment. Try hiring the agent instead.",
+      });
+      return;
+    }
     if (!address) {
       if (connect()) {
         toast.info("Connect your wallet", { description: "Then confirm clone again." });
@@ -430,12 +433,20 @@ export function CloneDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground/90">
-          On-chain <code className="text-[11px]">clone</code> succeeds only when your wallet is
-          authorized to act for this token (owner or approved operator). If the transaction
-          reverts, use <span className="font-medium">Hire</span> to add the original agent to your
-          workspace.
-        </div>
+        {CLONING_RESTRICTED ? (
+          <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-foreground/90">
+            Cloning is restricted at the moment. Use{" "}
+            <span className="font-medium">Hire</span> to add the original agent to your workspace
+            instead.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground/90">
+            On-chain <code className="text-[11px]">clone</code> succeeds only when your wallet is
+            authorized to act for this token (owner or approved operator). If the transaction
+            reverts, use <span className="font-medium">Hire</span> to add the original agent to your
+            workspace.
+          </div>
+        )}
 
         {newTokenId != null ? (
           <div className="text-sm">
@@ -457,7 +468,7 @@ export function CloneDialog({
           </Button>
           <Button
             loading={cloneBusy}
-            disabled={cloneBusy || !registryReady}
+            disabled={cloneBusy || CLONING_RESTRICTED || !registryReady}
             onClick={() => void onClone()}
           >
             {cloneBusy
