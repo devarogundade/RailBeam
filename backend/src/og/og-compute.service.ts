@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createZGComputeNetworkBroker } from '@0gfoundation/0g-compute-ts-sdk';
+import {
+  createZGComputeNetworkBroker,
+  type InferenceServiceStructOutput,
+} from '@0gfoundation/0g-compute-ts-sdk';
 import { ethers } from 'ethers';
 
 import type { OpenAiChatTool } from 'src/agent-reply/stardorm-handler-tools';
@@ -72,6 +75,42 @@ export class OgComputeService {
   private inferenceUseResponsesApi(): boolean {
     const v = this.config.get<string>('INFERENCE_USE_RESPONSES_API');
     return v?.toLowerCase() === 'true' || v === '1';
+  }
+
+  /** Searchable label for marketplace chatbot services (model, URL, additionalInfo name). */
+  private chatbotServiceName(service: InferenceServiceStructOutput): string {
+    const parts: string[] = [service.model, service.url];
+    if (service.additionalInfo) {
+      try {
+        const info = JSON.parse(service.additionalInfo) as Record<
+          string,
+          unknown
+        >;
+        for (const key of ['name', 'serviceName', 'displayName'] as const) {
+          const v = info[key];
+          if (typeof v === 'string' && v.trim()) {
+            parts.push(v);
+          }
+        }
+      } catch {
+        // ignore malformed additionalInfo
+      }
+    }
+    return parts.join(' ');
+  }
+
+  private selectChatbotService(
+    services: InferenceServiceStructOutput[],
+  ): InferenceServiceStructOutput | undefined {
+    const chatbots = services.filter((s) => s.serviceType === 'chatbot');
+    if (chatbots.length === 0) {
+      return undefined;
+    }
+    return (
+      chatbots.find((s) =>
+        this.chatbotServiceName(s).toLowerCase().includes('openai'),
+      ) ?? chatbots[0]
+    );
   }
 
   /** Map chat-completions `tool_choice` to Responses API `tool_choice`. */
@@ -310,9 +349,7 @@ export class OgComputeService {
     const broker = await createZGComputeNetworkBroker(wallet);
 
     const services = await broker.inference.listService();
-    const chatbot = services.find(
-      (s: { serviceType: string }) => s.serviceType === 'chatbot',
-    );
+    const chatbot = this.selectChatbotService(services);
 
     if (!chatbot) {
       throw new Error('No chatbot service available');
