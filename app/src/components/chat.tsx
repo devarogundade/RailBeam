@@ -84,6 +84,7 @@ import {
   stardormExecuteHandler,
   stardormPatchChatMessageResult,
 } from "@/lib/stardorm-api";
+import { appendStorageDownloadExtQuery } from "@/lib/file-ext-from-mime-type";
 import { patchChatMessageInCache } from "@/lib/patch-chat-message-result";
 import type { ChatHandlerResult } from "@railbeam/stardorm-api-contract";
 import { getStardormApiBase } from "@/lib/stardorm-axios";
@@ -1498,6 +1499,28 @@ function walletTxConfirmed(m: Msg): boolean {
   return m.result?.kind === "wallet_tx" && m.result.status === "confirmed";
 }
 
+const USER_KYC_STATUSES = new Set([
+  "not_started",
+  "pending",
+  "processing",
+  "verified",
+  "requires_input",
+  "canceled",
+]);
+
+/** Stripe Identity session status from follow-up payload or refreshed server `result.data`. */
+function effectiveStripeIdentityKycStatus(m: Msg): string | undefined {
+  if (m.followUp?.kind === "stripe_identity") {
+    const s = m.followUp.kycSessionStatus;
+    if (typeof s === "string") return s;
+  }
+  if (m.result?.kind === "server" && m.result.data && typeof m.result.data === "object") {
+    const k = (m.result.data as Record<string, unknown>).kycStatus;
+    if (typeof k === "string" && USER_KYC_STATUSES.has(k)) return k;
+  }
+  return undefined;
+}
+
 type CheckoutFormRich = Extract<
   StardormChatRichBlock,
   | { type: "x402_checkout_form" }
@@ -1589,37 +1612,83 @@ function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
     );
   }
   if (fu.kind === "stripe_identity") {
+    const kycStatus = effectiveStripeIdentityKycStatus(m);
+    if (kycStatus === "verified") {
+      return (
+        <div
+          className="mt-1 flex w-full max-w-md items-center gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5"
+          role="status"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12">
+            <Check className="h-4 w-4 text-primary" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Identity verified</p>
+            <p className="text-xs text-muted-foreground">
+              You can continue with flows that require KYC.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    if (kycStatus === "canceled") {
+      return (
+        <div
+          className="mt-1 flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5"
+          role="status"
+        >
+          <AlertCircle
+            className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Verification canceled</p>
+            <p className="text-xs text-muted-foreground">
+              Ask the agent to start a new verification if you still need KYC.
+            </p>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="mt-1 flex flex-wrap gap-2 px-0.5">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => window.open(fu.verificationUrl, "_blank", "noopener,noreferrer")}
-        >
-          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-          Open Identity verification
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void navigator.clipboard.writeText(fu.verificationUrl).then(
-              () => {
-                toast.success("Verification link copied");
-              },
-              () => {
-                toast.error("Could not copy", {
-                  description: "Clipboard permission denied or unavailable.",
-                });
-              },
-            );
-          }}
-        >
-          <Copy className="mr-1 h-3.5 w-3.5" />
-          Copy link
-        </Button>
+      <div className="mt-1 space-y-2 px-0.5">
+        {kycStatus === "processing" ? (
+          <p className="text-xs text-muted-foreground">
+            Stripe is reviewing your documents — you can keep this link if you need to reopen the
+            session.
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => window.open(fu.verificationUrl, "_blank", "noopener,noreferrer")}
+          >
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+            Open Identity verification
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              void navigator.clipboard.writeText(fu.verificationUrl).then(
+                () => {
+                  toast.success("Verification link copied");
+                },
+                () => {
+                  toast.error("Could not copy", {
+                    description: "Clipboard permission denied or unavailable.",
+                  });
+                },
+              );
+            }}
+          >
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            Copy link
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1664,7 +1733,11 @@ function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
       </p>
     );
   }
-  const storageUrl = `${apiBase.replace(/\/$/, "")}/storage/${encodeURIComponent(hash)}`;
+  const storagePath = `${apiBase.replace(/\/$/, "")}/storage/${encodeURIComponent(hash)}`;
+  const storageUrl = appendStorageDownloadExtQuery(
+    storagePath,
+    att?.mimeType ?? "application/pdf",
+  );
   return (
     <div className="mt-1 flex flex-wrap gap-2 px-0.5">
       <StorageFile

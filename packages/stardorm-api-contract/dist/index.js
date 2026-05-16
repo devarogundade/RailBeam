@@ -480,6 +480,27 @@ var patchChatMessageResultResponseSchema = zod.z.object({
     ).optional()
   }).optional()
 });
+var userKycStatusSchema = zod.z.enum([
+  "not_started",
+  "pending",
+  "processing",
+  "verified",
+  "requires_input",
+  "canceled"
+]);
+var stripeKycInputSchema = zod.z.object({
+  /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
+  returnPath: zod.z.string().min(1).max(512).optional()
+}).strict();
+var userKycStatusDocumentSchema = zod.z.object({
+  walletAddress: zod.z.string().min(1),
+  status: userKycStatusSchema,
+  stripeVerificationSessionId: zod.z.string().optional(),
+  lastStripeEventType: zod.z.string().optional(),
+  lastError: zod.z.string().optional(),
+  createdAt: zod.z.coerce.date().optional(),
+  updatedAt: zod.z.coerce.date().optional()
+});
 
 // src/conversation.ts
 var chatHistoryQuerySchema = zod.z.object({
@@ -523,7 +544,9 @@ var chatFollowUpSchema = zod.z.discriminatedUnion("kind", [
   zod.z.object({
     kind: zod.z.literal("stripe_identity"),
     verificationUrl: zod.z.string().url(),
-    verificationSessionId: zod.z.string().min(1)
+    verificationSessionId: zod.z.string().min(1),
+    /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+    kycSessionStatus: userKycStatusSchema.optional()
   }),
   zod.z.object({
     kind: zod.z.literal("credit_card_ready"),
@@ -850,27 +873,6 @@ var meOnRampsQuerySchema = zod.z.object({
 });
 var onRampsListResponseSchema = zod.z.object({
   items: zod.z.array(onRampRecordSchema)
-});
-var userKycStatusSchema = zod.z.enum([
-  "not_started",
-  "pending",
-  "processing",
-  "verified",
-  "requires_input",
-  "canceled"
-]);
-var stripeKycInputSchema = zod.z.object({
-  /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
-  returnPath: zod.z.string().min(1).max(512).optional()
-}).strict();
-var userKycStatusDocumentSchema = zod.z.object({
-  walletAddress: zod.z.string().min(1),
-  status: userKycStatusSchema,
-  stripeVerificationSessionId: zod.z.string().optional(),
-  lastStripeEventType: zod.z.string().optional(),
-  lastError: zod.z.string().optional(),
-  createdAt: zod.z.coerce.date().optional(),
-  updatedAt: zod.z.coerce.date().optional()
 });
 var createCreditCardInputSchema = zod.z.object({
   firstName: zod.z.string().trim().min(1).max(80),

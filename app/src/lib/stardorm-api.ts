@@ -1,4 +1,5 @@
 import axios from "axios";
+import { appendStorageDownloadExtQuery } from "@/lib/file-ext-from-mime-type";
 import {
   chatHistoryResponseSchema,
   patchChatMessageResultBodySchema,
@@ -147,7 +148,8 @@ export function mapHistoryToChatMessages(hist: ChatHistoryResponse, apiBase: str
       ? {
           attachments: m.attachments.map((a: ChatHistoryAttachment) => {
             const isImg = a.mimeType.startsWith("image/");
-            const storageUrl = `${base}/storage/${encodeURIComponent(a.hash)}`;
+            const path = `${base}/storage/${encodeURIComponent(a.hash)}`;
+            const storageUrl = appendStorageDownloadExtQuery(path, a.mimeType);
             return {
               id: a.id,
               type: isImg ? ("image" as const) : ("file" as const),

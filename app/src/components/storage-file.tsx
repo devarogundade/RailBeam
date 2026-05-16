@@ -1,29 +1,9 @@
 import * as React from "react";
 
-const MIME_EXTENSION: Record<string, string> = {
-  "application/pdf": "pdf",
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/gif": "gif",
-  "image/webp": "webp",
-  "image/svg+xml": "svg",
-  "text/plain": "txt",
-  "text/csv": "csv",
-};
-
-function extFromMimeType(mimeType: string | undefined): string | undefined {
-  const base = mimeType?.split(";")[0]?.trim().toLowerCase();
-  if (!base) return undefined;
-  const mapped = MIME_EXTENSION[base];
-  if (mapped) return mapped;
-  const slash = base.indexOf("/");
-  if (slash > 0 && slash < base.length - 1) {
-    const sub = base.slice(slash + 1);
-    if (/^[\w+-]+$/.test(sub) && sub !== "octet-stream") return sub;
-  }
-  return undefined;
-}
+import {
+  appendStorageDownloadExtQuery,
+  fileExtFromMimeType,
+} from "@/lib/file-ext-from-mime-type";
 
 function hasFileExtension(name: string): boolean {
   const base = name.split(/[/\\]/).pop() ?? name;
@@ -38,7 +18,7 @@ export function downloadFileName(
 ): string {
   const trimmed = fileName.trim();
   if (!trimmed || hasFileExtension(trimmed)) return trimmed;
-  const ext = extFromMimeType(mimeType);
+  const ext = fileExtFromMimeType(mimeType);
   return ext ? `${trimmed}.${ext}` : trimmed;
 }
 
@@ -98,10 +78,12 @@ function defaultApiBase(): string {
 function storageHref(
   apiBase: string | undefined,
   rootHash: string,
+  mimeType?: string,
 ): string | null {
   const base = (apiBase ?? defaultApiBase()).replace(/\/$/, "");
   if (!base) return null;
-  return `${base}/storage/${encodeURIComponent(rootHash)}`;
+  const path = `${base}/storage/${encodeURIComponent(rootHash)}`;
+  return appendStorageDownloadExtQuery(path, mimeType);
 }
 
 export function StorageFile({
@@ -125,8 +107,8 @@ export function StorageFile({
     const rh = resolvedRootHashFromProps(rootHash, src);
     if (!rh) return null;
 
-    return storageHref(apiBase, rh);
-  }, [url, src, rootHash, apiBase]);
+    return storageHref(apiBase, rh, mimeType);
+  }, [url, src, rootHash, apiBase, mimeType]);
 
   const download = React.useMemo(() => {
     if (typeof downloadProp === "string" && downloadProp.trim()) {

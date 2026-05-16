@@ -5126,14 +5126,18 @@ declare const chatFollowUpSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
     kind: z.ZodLiteral<"stripe_identity">;
     verificationUrl: z.ZodString;
     verificationSessionId: z.ZodString;
+    /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+    kycSessionStatus: z.ZodOptional<z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>>;
 }, "strip", z.ZodTypeAny, {
     kind: "stripe_identity";
     verificationUrl: string;
     verificationSessionId: string;
+    kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
 }, {
     kind: "stripe_identity";
     verificationUrl: string;
     verificationSessionId: string;
+    kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
 }>, z.ZodObject<{
     kind: z.ZodLiteral<"credit_card_ready">;
     creditCardId: z.ZodString;
@@ -5909,14 +5913,18 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: z.ZodLiteral<"stripe_identity">;
         verificationUrl: z.ZodString;
         verificationSessionId: z.ZodString;
+        /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+        kycSessionStatus: z.ZodOptional<z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>>;
     }, "strip", z.ZodTypeAny, {
         kind: "stripe_identity";
         verificationUrl: string;
         verificationSessionId: string;
+        kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
     }, {
         kind: "stripe_identity";
         verificationUrl: string;
         verificationSessionId: string;
+        kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
     }>, z.ZodObject<{
         kind: z.ZodLiteral<"credit_card_ready">;
         creditCardId: z.ZodString;
@@ -6119,6 +6127,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: "stripe_identity";
         verificationUrl: string;
         verificationSessionId: string;
+        kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
     } | {
         kind: "credit_card_ready";
         creditCardId: string;
@@ -6177,6 +6186,7 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: "stripe_identity";
         verificationUrl: string;
         verificationSessionId: string;
+        kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
     } | {
         kind: "credit_card_ready";
         creditCardId: string;
@@ -6947,14 +6957,18 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
             verificationSessionId: z.ZodString;
+            /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+            kycSessionStatus: z.ZodOptional<z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"credit_card_ready">;
             creditCardId: z.ZodString;
@@ -7157,6 +7171,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -7215,6 +7230,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -7412,6 +7428,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -7476,6 +7493,7 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -8408,14 +8426,17 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
             verificationSessionId: z.ZodString;
+            kycSessionStatus: z.ZodOptional<z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"credit_card_ready">;
             creditCardId: z.ZodString;
@@ -8617,6 +8638,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -8675,6 +8697,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -8868,6 +8891,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -8931,6 +8955,7 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -9737,14 +9762,17 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
             verificationSessionId: z.ZodString;
+            kycSessionStatus: z.ZodOptional<z.ZodEnum<["not_started", "pending", "processing", "verified", "requires_input", "canceled"]>>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }, {
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"credit_card_ready">;
             creditCardId: z.ZodString;
@@ -9946,6 +9974,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -10004,6 +10033,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -10197,6 +10227,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -10260,6 +10291,7 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_identity";
             verificationUrl: string;
             verificationSessionId: string;
+            kycSessionStatus?: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled" | undefined;
         } | {
             kind: "credit_card_ready";
             creditCardId: string;
@@ -11052,7 +11084,7 @@ declare const onRampRecordSchema: z.ZodObject<{
     createdAt: z.ZodOptional<z.ZodDate>;
     updatedAt: z.ZodOptional<z.ZodDate>;
 }, "strip", z.ZodTypeAny, {
-    status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+    status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
     id: string;
     walletAddress: string;
     network: string;
@@ -11070,7 +11102,7 @@ declare const onRampRecordSchema: z.ZodObject<{
     fulfillmentTxHash?: string | undefined;
     errorMessage?: string | undefined;
 }, {
-    status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+    status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
     id: string;
     walletAddress: string;
     network: string;
@@ -11118,7 +11150,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
         createdAt: z.ZodOptional<z.ZodDate>;
         updatedAt: z.ZodOptional<z.ZodDate>;
     }, "strip", z.ZodTypeAny, {
-        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+        status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
         id: string;
         walletAddress: string;
         network: string;
@@ -11136,7 +11168,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
         fulfillmentTxHash?: string | undefined;
         errorMessage?: string | undefined;
     }, {
-        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+        status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
         id: string;
         walletAddress: string;
         network: string;
@@ -11156,7 +11188,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+        status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
         id: string;
         walletAddress: string;
         network: string;
@@ -11176,7 +11208,7 @@ declare const onRampsListResponseSchema: z.ZodObject<{
     }[];
 }, {
     items: {
-        status: "failed" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | "canceled";
+        status: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled";
         id: string;
         walletAddress: string;
         network: string;
@@ -11218,7 +11250,7 @@ declare const userKycStatusDocumentSchema: z.ZodObject<{
     createdAt: z.ZodOptional<z.ZodDate>;
     updatedAt: z.ZodOptional<z.ZodDate>;
 }, "strip", z.ZodTypeAny, {
-    status: "verified" | "pending" | "canceled" | "not_started" | "processing" | "requires_input";
+    status: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled";
     walletAddress: string;
     createdAt?: Date | undefined;
     updatedAt?: Date | undefined;
@@ -11226,7 +11258,7 @@ declare const userKycStatusDocumentSchema: z.ZodObject<{
     lastStripeEventType?: string | undefined;
     lastError?: string | undefined;
 }, {
-    status: "verified" | "pending" | "canceled" | "not_started" | "processing" | "requires_input";
+    status: "verified" | "not_started" | "pending" | "processing" | "requires_input" | "canceled";
     walletAddress: string;
     createdAt?: Date | undefined;
     updatedAt?: Date | undefined;

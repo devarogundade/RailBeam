@@ -478,6 +478,27 @@ var patchChatMessageResultResponseSchema = z.object({
     ).optional()
   }).optional()
 });
+var userKycStatusSchema = z.enum([
+  "not_started",
+  "pending",
+  "processing",
+  "verified",
+  "requires_input",
+  "canceled"
+]);
+var stripeKycInputSchema = z.object({
+  /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
+  returnPath: z.string().min(1).max(512).optional()
+}).strict();
+var userKycStatusDocumentSchema = z.object({
+  walletAddress: z.string().min(1),
+  status: userKycStatusSchema,
+  stripeVerificationSessionId: z.string().optional(),
+  lastStripeEventType: z.string().optional(),
+  lastError: z.string().optional(),
+  createdAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional()
+});
 
 // src/conversation.ts
 var chatHistoryQuerySchema = z.object({
@@ -521,7 +542,9 @@ var chatFollowUpSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("stripe_identity"),
     verificationUrl: z.string().url(),
-    verificationSessionId: z.string().min(1)
+    verificationSessionId: z.string().min(1),
+    /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+    kycSessionStatus: userKycStatusSchema.optional()
   }),
   z.object({
     kind: z.literal("credit_card_ready"),
@@ -848,27 +871,6 @@ var meOnRampsQuerySchema = z.object({
 });
 var onRampsListResponseSchema = z.object({
   items: z.array(onRampRecordSchema)
-});
-var userKycStatusSchema = z.enum([
-  "not_started",
-  "pending",
-  "processing",
-  "verified",
-  "requires_input",
-  "canceled"
-]);
-var stripeKycInputSchema = z.object({
-  /** App path + query (e.g. `/` or `/?conversation=<id>`); joined with `APP_PUBLIC_URL` for Stripe `return_url`. */
-  returnPath: z.string().min(1).max(512).optional()
-}).strict();
-var userKycStatusDocumentSchema = z.object({
-  walletAddress: z.string().min(1),
-  status: userKycStatusSchema,
-  stripeVerificationSessionId: z.string().optional(),
-  lastStripeEventType: z.string().optional(),
-  lastError: z.string().optional(),
-  createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional()
 });
 var createCreditCardInputSchema = z.object({
   firstName: z.string().trim().min(1).max(80),

@@ -336,7 +336,7 @@ Canonical templates live next to each app:
 - **x402**: `X402_FACILITATOR_URL` (base URL of facilitator HTTP API)
 - **Indexing / chain**: `STARDORM_SUBGRAPH_URL`, optional `STARDORM_SUBGRAPH_URL_MAINNET` / `_TESTNET`, `X-Beam-Chain-Id` behavior per `.env.example`
 - **0G / EVM RPCs**: `PRIVATE_KEY`, `OG_RPC_URL_MAINNET`, `OG_RPC_URL_TESTNET`, `ONRAMP_RPC_*`, `OG_STORAGE_INDEXER_RPC`, etc.
-- **Chainscan / tax helpers**: `CHAINSCAN_API_URL`, tier overrides; native USD spot via `COINMARKETCAP_API_KEY` + `REDIS_URL` (24h cache, slug `zero-gravity`)
+- **Chainscan / tax helpers**: `CHAINSCAN_API_URL`, tier overrides; native USD spot via `COINMARKETCAP_API_KEY` + `REDIS_URL` (24h cache, CMC symbol `0G`)
 - **Stripe / KYC / webhooks**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_PUBLIC_URL`
 - **Virtual card / treasury** (when features enabled): `CREDIT_CARD_FUND_RECIPIENT`, `CREDIT_CARD_TREASURY_PRIVATE_KEY`, `ONRAMP_TREASURY_PRIVATE_KEY`
 - **Inference**: `INFERENCE_USE_RESPONSES_API`

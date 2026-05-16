@@ -66,6 +66,7 @@ import {
   type CreditCardPublic,
   type CreditCardSensitiveDetails,
   type ChatHistoryMessage,
+  userKycStatusSchema,
 } from '@beam/stardorm-api-contract';
 import {
   X402InputSchema,
@@ -147,6 +148,7 @@ type ChatFollowUpPayload =
       kind: 'stripe_identity';
       verificationUrl: string;
       verificationSessionId: string;
+      kycSessionStatus?: UserKycStatus;
     }
   | {
       kind: 'credit_card_ready';
@@ -956,10 +958,15 @@ export class UserService {
           ? d.verificationSessionId
           : null;
       if (verificationUrl && verificationSessionId) {
+        const kycRaw = d.kycStatus;
+        const kycParsed =
+          typeof kycRaw === 'string' ? userKycStatusSchema.safeParse(kycRaw) : null;
+        const kycSessionStatus = kycParsed?.success ? kycParsed.data : undefined;
         return {
           kind: 'stripe_identity',
           verificationUrl,
           verificationSessionId,
+          ...(kycSessionStatus ? { kycSessionStatus } : {}),
         };
       }
     }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { handlerActionIdSchema } from "./handlers.js";
 import { stripJsonNulls, stardormChatRichBlockSchema } from "./chat-api.js";
 import { chatHandlerResultSchema } from "./handler-result.js";
+import { userKycStatusSchema } from "./kyc.js";
 
 export const chatHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(40),
@@ -51,6 +52,8 @@ export const chatFollowUpSchema = z.discriminatedUnion("kind", [
     kind: z.literal("stripe_identity"),
     verificationUrl: z.string().url(),
     verificationSessionId: z.string().min(1),
+    /** Present after webhooks refresh the session; drives chat follow-up CTAs. */
+    kycSessionStatus: userKycStatusSchema.optional(),
   }),
   z.object({
     kind: z.literal("credit_card_ready"),

@@ -311,6 +311,7 @@ export class KycStripeService {
             kind: 'stripe_identity' as const,
             verificationUrl,
             verificationSessionId: vsId,
+            kycSessionStatus: status,
           })
         : undefined;
 

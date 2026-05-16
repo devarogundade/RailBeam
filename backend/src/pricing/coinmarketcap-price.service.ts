@@ -6,7 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import IORedis from 'ioredis';
 import {
-  ZERO_GRAVITY_CMC_SLUG,
+  ZERO_GRAVITY_CMC_SYMBOL,
   ZERO_GRAVITY_USD_CACHE_TTL_SEC,
   ZERO_GRAVITY_USD_REDIS_KEY,
 } from './coinmarketcap.constants';
@@ -84,7 +84,7 @@ export class CoinmarketcapPriceService implements OnModuleDestroy {
     }
 
     const url = new URL(CMC_QUOTES_URL);
-    url.searchParams.set('slug', ZERO_GRAVITY_CMC_SLUG);
+    url.searchParams.set('symbol', ZERO_GRAVITY_CMC_SYMBOL);
     url.searchParams.set('convert', 'USD');
 
     let res: Response;
@@ -117,24 +117,54 @@ export class CoinmarketcapPriceService implements OnModuleDestroy {
       return null;
     }
 
-    return parseZeroGravityUsdFromQuotes(json);
+    return parseZeroGravityUsdFromQuotes(json, ZERO_GRAVITY_CMC_SYMBOL);
   }
 }
 
-function parseZeroGravityUsdFromQuotes(body: unknown): number | null {
+function usdPriceFromQuoteEntry(entry: object): number | null {
+  const quote = (entry as { quote?: unknown }).quote;
+  if (!quote || typeof quote !== 'object') return null;
+  const usd = (quote as { USD?: unknown }).USD;
+  if (!usd || typeof usd !== 'object') return null;
+  const price = (usd as { price?: unknown }).price;
+  const n = typeof price === 'number' ? price : Number(price);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function quoteDataEntries(data: Record<string, unknown>): unknown[] {
+  const out: unknown[] = [];
+  for (const v of Object.values(data)) {
+    if (Array.isArray(v)) {
+      for (const item of v) out.push(item);
+    } else if (v != null && typeof v === 'object') {
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+function parseZeroGravityUsdFromQuotes(
+  body: unknown,
+  expectedSymbol: string,
+): number | null {
   if (!body || typeof body !== 'object') return null;
   const data = (body as { data?: unknown }).data;
   if (!data || typeof data !== 'object') return null;
 
-  for (const entry of Object.values(data as Record<string, unknown>)) {
+  const entries = quoteDataEntries(data as Record<string, unknown>);
+  const want = expectedSymbol.trim().toUpperCase();
+  for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
-    const quote = (entry as { quote?: unknown }).quote;
-    if (!quote || typeof quote !== 'object') continue;
-    const usd = (quote as { USD?: unknown }).USD;
-    if (!usd || typeof usd !== 'object') continue;
-    const price = (usd as { price?: unknown }).price;
-    const n = typeof price === 'number' ? price : Number(price);
-    if (Number.isFinite(n) && n > 0) return n;
+    const sym = (entry as { symbol?: unknown }).symbol;
+    if (typeof sym === 'string' && sym.trim().toUpperCase() === want) {
+      const n = usdPriceFromQuoteEntry(entry);
+      if (n != null) return n;
+    }
+  }
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    const n = usdPriceFromQuoteEntry(entry);
+    if (n != null) return n;
   }
 
   return null;

@@ -1,5 +1,5 @@
-/** CoinMarketCap slug for 0G native (see coinmarketcap.com/currencies/zero-gravity/). */
-export const ZERO_GRAVITY_CMC_SLUG = 'zero-gravity';
+/** CoinMarketCap symbol for 0G native (see coinmarketcap.com/currencies/zero-gravity/). */
+export const ZERO_GRAVITY_CMC_SYMBOL = '0G';
 
 export const ZERO_GRAVITY_USD_REDIS_KEY = 'cmc:usd:zero-gravity';
 
