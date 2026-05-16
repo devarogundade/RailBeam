@@ -84,10 +84,11 @@ export class OgComputeService {
     if (chatbots.length === 0) {
       return undefined;
     }
-    return (
-      chatbots.find((s) => s.model.toLowerCase().includes('openai')) ??
-      chatbots[0]
-    );
+    // return (
+    //   chatbots.find((s) => s.model.toLowerCase().includes('openai')) ??
+    //   chatbots[0]
+    // );
+    return chatbots[0];
   }
 
   /** Map chat-completions `tool_choice` to Responses API `tool_choice`. */
