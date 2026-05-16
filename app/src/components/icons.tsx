@@ -1,4 +1,5 @@
 import coin0g from "@/assets/0g.png";
+import { resolvePaymentTokenIcon } from "@/lib/payment-token-icon";
 import { cn } from "@/lib/utils";
 
 /** 0G token mark — uses the official coin artwork everywhere balances and prices appear. */
@@ -6,6 +7,26 @@ export function CoinIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <img
       src={coin0g}
+      alt=""
+      className={cn("aspect-square shrink-0 rounded-full object-cover", className)}
+      aria-hidden
+    />
+  );
+}
+
+/** Checkout / payment asset mark — resolves icon from native, symbol, or contract address. */
+export function PaymentTokenIcon({
+  asset,
+  className = "h-4 w-4",
+}: {
+  asset: string;
+  className?: string;
+}) {
+  const src = resolvePaymentTokenIcon(asset);
+  if (!src) return null;
+  return (
+    <img
+      src={src}
       alt=""
       className={cn("aspect-square shrink-0 rounded-full object-cover", className)}
       aria-hidden

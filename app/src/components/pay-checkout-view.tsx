@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import type { PublicPaymentRequest } from "@railbeam/stardorm-api-contract";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BeamLogo, CoinIcon } from "@/components/icons";
+import { BeamLogo, PaymentTokenIcon } from "@/components/icons";
+import { resolvePaymentTokenSymbol } from "@/lib/payment-token-icon";
 import { StorageFile } from "@/components/storage-file";
 import { StorageImage } from "@/components/storage-image";
 import { EmptyState } from "@/components/empty-state";
@@ -317,11 +318,14 @@ function CheckoutSummaryPanel({
   isEvmAddress: (s: string) => boolean;
   shortenMiddle: (value: string, headChars?: number, tailChars?: number) => string;
 }) {
-  const tokenLabel = isNativeAsset(payment.asset)
-    ? "Native token"
-    : isEvmAddress(payment.asset)
-      ? "ERC-20"
-      : payment.asset;
+  const tokenSymbol = resolvePaymentTokenSymbol(payment.asset);
+  const tokenLabel = tokenSymbol
+    ? tokenSymbol
+    : isNativeAsset(payment.asset)
+      ? "Native token"
+      : isEvmAddress(payment.asset)
+        ? "ERC-20"
+        : payment.asset;
 
   return (
     <div className="flex flex-col">
@@ -352,7 +356,7 @@ function CheckoutSummaryPanel({
             {amountPresentation.primary}
           </p>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <CoinIcon className="h-4 w-4 shrink-0" />
+            <PaymentTokenIcon asset={payment.asset} className="h-4 w-4 shrink-0" />
             <span>
               {tokenLabel}
               {payment.decimals != null ? ` · ${payment.decimals} decimals` : ""}
@@ -375,7 +379,7 @@ function CheckoutSummaryPanel({
               className="inline-flex items-center gap-2 font-mono text-xs text-foreground sm:text-sm"
               title={payment.asset}
             >
-              <CoinIcon className="h-4 w-4 shrink-0" />
+              <PaymentTokenIcon asset={payment.asset} className="h-4 w-4 shrink-0" />
               {shortenMiddle(payment.asset, 10, 8)}
             </span>
           </li>
@@ -560,13 +564,14 @@ function CheckoutPaymentPanel({
           label="Asset"
           value={
             <span className="inline-flex items-center gap-2">
-              <CoinIcon className="h-4 w-4 shrink-0" />
+              <PaymentTokenIcon asset={payment.asset} className="h-4 w-4 shrink-0" />
               <span>
-                {isNativeAsset(payment.asset)
-                  ? "Native token"
-                  : isEvmAddress(payment.asset)
-                    ? shortenMiddle(payment.asset, 10, 8)
-                    : payment.asset}
+                {resolvePaymentTokenSymbol(payment.asset) ??
+                  (isNativeAsset(payment.asset)
+                    ? "Native token"
+                    : isEvmAddress(payment.asset)
+                      ? shortenMiddle(payment.asset, 10, 8)
+                      : payment.asset)}
               </span>
             </span>
           }
