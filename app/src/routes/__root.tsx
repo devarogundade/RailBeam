@@ -82,10 +82,15 @@ function isDocsPath(pathname: string): boolean {
   return pathname === "/docs" || pathname.startsWith("/docs/");
 }
 
+function isWaitlistPath(pathname: string): boolean {
+  return pathname === "/waitlist" || pathname.startsWith("/waitlist/");
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
     const pathname = location.pathname;
-    if (isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname)) return;
+    if (isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname) || isWaitlistPath(pathname))
+      return;
     if (typeof window === "undefined") return;
     if (!isOnboardingComplete()) {
       prefetchOnboardingRoute();
@@ -137,7 +142,7 @@ function RootComponent() {
   const mainScrollRef = React.useRef<HTMLElement>(null);
   const onboardingComplete = isOnboardingComplete();
   const minimalShell =
-    isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname);
+    isPayPath(pathname) || isOnboardingPath(pathname) || isDocsPath(pathname) || isWaitlistPath(pathname);
   const useMinimalChrome = minimalShell || !onboardingComplete;
   const awaitingOnboarding =
     !onboardingComplete && !isOnboardingPath(pathname);

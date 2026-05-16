@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
@@ -29,6 +30,11 @@ import { Route as DocsAuthenticationRouteImport } from './routes/docs/authentica
 import { Route as DocsAgentsRouteImport } from './routes/docs/agents'
 import { Route as AgentsAgentIdRouteImport } from './routes/agents.$agentId'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/marketplace': typeof MarketplaceRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
+  '/waitlist': typeof WaitlistRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
   '/docs/agents': typeof DocsAgentsRoute
   '/docs/authentication': typeof DocsAuthenticationRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/marketplace': typeof MarketplaceRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
+  '/waitlist': typeof WaitlistRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
   '/docs/agents': typeof DocsAgentsRoute
   '/docs/authentication': typeof DocsAuthenticationRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/marketplace': typeof MarketplaceRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
+  '/waitlist': typeof WaitlistRoute
   '/agents/$agentId': typeof AgentsAgentIdRoute
   '/docs/agents': typeof DocsAgentsRoute
   '/docs/authentication': typeof DocsAuthenticationRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/onboarding'
     | '/settings'
+    | '/waitlist'
     | '/agents/$agentId'
     | '/docs/agents'
     | '/docs/authentication'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/onboarding'
     | '/settings'
+    | '/waitlist'
     | '/agents/$agentId'
     | '/docs/agents'
     | '/docs/authentication'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/marketplace'
     | '/onboarding'
     | '/settings'
+    | '/waitlist'
     | '/agents/$agentId'
     | '/docs/agents'
     | '/docs/authentication'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   MarketplaceRoute: typeof MarketplaceRoute
   OnboardingRoute: typeof OnboardingRoute
   SettingsRoute: typeof SettingsRoute
+  WaitlistRoute: typeof WaitlistRoute
   AgentsAgentIdRoute: typeof AgentsAgentIdRoute
   PayIdRoute: typeof PayIdRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
@@ -267,6 +280,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketplaceRoute: MarketplaceRoute,
   OnboardingRoute: OnboardingRoute,
   SettingsRoute: SettingsRoute,
+  WaitlistRoute: WaitlistRoute,
   AgentsAgentIdRoute: AgentsAgentIdRoute,
   PayIdRoute: PayIdRoute,
   AgentsIndexRoute: AgentsIndexRoute,
