@@ -74,6 +74,18 @@ export async function resolveCatalogAgentByParamId(
   const fromCatalog = data?.agents.find((a) => a.id === agentId);
   if (fromCatalog) return fromCatalog;
 
+  const chainFromParam = resolveStardormChainAgentId(agentId);
+  if (chainFromParam != null) {
+    const byChainId = data?.agents.find((a) => a.chainAgentId === chainFromParam);
+    if (byChainId) return byChainId;
+    const prefixedId = `chain-${chainFromParam}`;
+    const byPrefixed = data?.agents.find((a) => a.id === prefixedId);
+    if (byPrefixed) return byPrefixed;
+    if (!/^chain-\d+$/i.test(agentId)) {
+      agentId = prefixedId;
+    }
+  }
+
   const m = /^chain-(\d+)$/.exec(agentId);
   if (!m) return null;
   const chainAgentId = Number(m[1]);

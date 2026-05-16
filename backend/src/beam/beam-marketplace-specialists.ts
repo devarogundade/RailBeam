@@ -1,9 +1,6 @@
 import type { SuggestMarketplaceHireInput } from '@beam/stardorm-api-contract';
 import type { StardormChatRichBlock } from '@beam/stardorm-api-contract';
-import {
-  resolveStardormAgentKey,
-  resolveStardormChainAgentId,
-} from '@beam/stardorm-api-contract';
+import { resolveStardormChainAgentId } from '@beam/stardorm-api-contract';
 import type { HandlerActionId } from '../handlers/handler.types';
 import { isHandlerActionId } from '../handlers/handler.types';
 
@@ -121,20 +118,15 @@ export function agentProfilePathForKey(agentKey: string): string | undefined {
 
   const chainId = resolveStardormChainAgentId(trimmed);
   if (chainId != null && chainId > 1) {
-    const catalogSlug = resolveStardormAgentKey(chainId);
-    if (catalogSlug && !catalogSlug.startsWith('chain-')) {
-      /** `/agents/{agentKey}` matches EIP-8004 `agentKey` in the registration URI (stable across deployments). */
-      return `/agents/${catalogSlug}`;
-    }
+    /** App catalog rows use `chain-{registryId}` (see subgraph catalog mapper). */
     return `/agents/chain-${chainId}`;
   }
 
   if (/^chain-\d+$/i.test(trimmed)) {
-    return `/agents/${lower}`;
+    const id = Number.parseInt(trimmed.slice(6), 10);
+    if (Number.isFinite(id) && id > 1) return `/agents/${lower}`;
   }
-  if (trimmed) {
-    return `/agents/${trimmed}`;
-  }
+
   return undefined;
 }
 

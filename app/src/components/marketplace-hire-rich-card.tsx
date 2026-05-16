@@ -1,16 +1,32 @@
 import type { StardormChatRichBlock } from "@railbeam/stardorm-api-contract";
+import { resolveStardormChainAgentId } from "@railbeam/stardorm-api-contract";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Sparkles, UserRound } from "lucide-react";
 
 type MarketplaceHireRich = Extract<StardormChatRichBlock, { type: "marketplace_hire" }>;
 
+function agentProfileRouteParam(rich: MarketplaceHireRich): string | undefined {
+  const key = rich.specialistAgentKey?.trim();
+  if (key) {
+    const chainId = resolveStardormChainAgentId(key);
+    if (chainId != null && chainId > 1) return `chain-${chainId}`;
+    if (/^chain-\d+$/i.test(key)) return key.toLowerCase();
+  }
+  const path = rich.agentProfilePath?.trim();
+  if (!path?.startsWith("/agents/")) return undefined;
+  const segment = path.slice("/agents/".length).split("/")[0]?.trim();
+  if (!segment || segment.toLowerCase() === "beam-default") return undefined;
+  const chainFromPath = resolveStardormChainAgentId(segment);
+  if (chainFromPath != null && chainFromPath > 1) return `chain-${chainFromPath}`;
+  return segment;
+}
+
 export function MarketplaceHireRichCard({ rich }: { rich: MarketplaceHireRich }) {
   const marketplaceTo = rich.marketplacePath?.startsWith("/")
     ? rich.marketplacePath
     : "/marketplace";
-  const profileTo =
-    rich.agentProfilePath?.startsWith("/") ? rich.agentProfilePath : undefined;
+  const profileAgentId = agentProfileRouteParam(rich);
 
   return (
     <div className="w-full max-w-md overflow-hidden rounded-xl border border-primary/25 bg-surface-elevated">
@@ -42,9 +58,9 @@ export function MarketplaceHireRichCard({ rich }: { rich: MarketplaceHireRich })
           <Button type="button" size="sm" variant="default" asChild>
             <Link to={marketplaceTo}>Browse marketplace</Link>
           </Button>
-          {profileTo ? (
+          {profileAgentId ? (
             <Button type="button" size="sm" variant="secondary" asChild>
-              <Link to={profileTo}>
+              <Link to="/agents/$agentId" params={{ agentId: profileAgentId }}>
                 <UserRound className="mr-1 h-3.5 w-3.5" />
                 View {rich.specialistName}
               </Link>
