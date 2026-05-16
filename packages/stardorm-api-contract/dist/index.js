@@ -501,6 +501,130 @@ var userKycStatusDocumentSchema = zod.z.object({
   createdAt: zod.z.coerce.date().optional(),
   updatedAt: zod.z.coerce.date().optional()
 });
+var onRampFormNetworkOptionSchema = zod.z.object({
+  id: zod.z.string().min(1).max(64),
+  label: zod.z.string().min(1).max(120)
+});
+var onRampFormCtaParamsSchema = zod.z.object({
+  _onRampForm: zod.z.literal(true),
+  supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
+  networks: zod.z.array(onRampFormNetworkOptionSchema).max(16).optional(),
+  intro: zod.z.string().max(2e3).optional()
+});
+function isOnRampFormCtaParams(v) {
+  return onRampFormCtaParamsSchema.safeParse(v).success;
+}
+var weiString = zod.z.union([
+  zod.z.string().trim().regex(
+    /^[1-9]\d*$/,
+    "tokenAmountWei must be base units (positive integer string, no decimals)"
+  ),
+  zod.z.number().int().positive().transform((n) => String(n))
+]);
+function deriveTokenAmountWeiFromUsdCents(usdAmountCents, tokenDecimals) {
+  if (!Number.isFinite(usdAmountCents) || usdAmountCents < 100) {
+    throw new Error("usdAmountCents must be a finite integer >= 100");
+  }
+  if (!Number.isInteger(usdAmountCents)) {
+    throw new Error("usdAmountCents must be an integer (cents)");
+  }
+  if (!Number.isInteger(tokenDecimals) || tokenDecimals < 2 || tokenDecimals > 36) {
+    throw new Error("tokenDecimals must be an integer from 2 to 36 for 1:1 USD mapping");
+  }
+  const cents = BigInt(usdAmountCents);
+  const scale = 10n ** BigInt(tokenDecimals - 2);
+  return (cents * scale).toString();
+}
+var evmAddr = zod.z.string().min(1).refine(
+  (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
+  "must be a 0x-prefixed 20-byte address"
+).transform((s) => s.trim().toLowerCase());
+var onRampTokensInputCoreSchema = zod.z.object({
+  recipientWallet: evmAddr,
+  network: zod.z.string().min(1).max(64),
+  tokenAddress: evmAddr,
+  tokenDecimals: zod.z.number().int().min(2).max(36),
+  tokenSymbol: zod.z.string().min(1).max(32),
+  /** Prefer omitting — server derives from USD card charge using 1:1 USD-stable mapping. */
+  tokenAmountWei: weiString.optional(),
+  /** Optional spot reference for analytics / UI (per supported token). */
+  usdValue: zod.z.number().finite().nonnegative().optional(),
+  /** Total USD charged via Stripe (cents). Minimum $1.00. */
+  usdAmountCents: zod.z.number().int().min(100).max(1e7)
+});
+function validateOnRampUsdDerive(data, ctx) {
+  try {
+    const derived = deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    );
+    if (data.tokenAmountWei !== void 0) {
+      const provided = typeof data.tokenAmountWei === "number" ? String(data.tokenAmountWei) : data.tokenAmountWei.trim();
+      if (provided !== derived) {
+        ctx.addIssue({
+          code: zod.z.ZodIssueCode.custom,
+          message: "tokenAmountWei must match the card charge under 1:1 USD-stable mapping \u2014 omit tokenAmountWei and rely on usdAmountCents.",
+          path: ["tokenAmountWei"]
+        });
+      }
+    }
+  } catch {
+    ctx.addIssue({
+      code: zod.z.ZodIssueCode.custom,
+      message: "Could not derive token amount from USD; check usdAmountCents and tokenDecimals.",
+      path: ["usdAmountCents"]
+    });
+  }
+}
+function finalizeOnRampTokensPayload(data) {
+  return {
+    recipientWallet: data.recipientWallet,
+    network: data.network,
+    tokenAddress: data.tokenAddress,
+    tokenDecimals: data.tokenDecimals,
+    tokenSymbol: data.tokenSymbol,
+    tokenAmountWei: deriveTokenAmountWeiFromUsdCents(
+      data.usdAmountCents,
+      data.tokenDecimals
+    ),
+    ...data.usdValue !== void 0 ? { usdValue: data.usdValue } : {},
+    usdAmountCents: data.usdAmountCents
+  };
+}
+var onRampTokensInputSchema = onRampTokensInputCoreSchema.superRefine(validateOnRampUsdDerive).transform(finalizeOnRampTokensPayload);
+var onRampRecordStatusSchema = zod.z.enum([
+  "pending_checkout",
+  "pending_payment",
+  "paid_pending_transfer",
+  "fulfilled",
+  "failed",
+  "canceled"
+]);
+var onRampRecordSchema = zod.z.object({
+  id: zod.z.string().min(1),
+  status: onRampRecordStatusSchema,
+  walletAddress: zod.z.string().min(1),
+  recipientWallet: zod.z.string().min(1),
+  network: zod.z.string().min(1),
+  tokenAddress: zod.z.string().min(1),
+  tokenDecimals: zod.z.number().int().min(0).max(36),
+  tokenSymbol: zod.z.string().min(1),
+  tokenAmountWei: zod.z.string().min(1),
+  usdAmountCents: zod.z.number().int().nonnegative(),
+  usdValue: zod.z.number().finite().nonnegative().optional(),
+  stripeCheckoutSessionId: zod.z.string().optional(),
+  stripePaymentIntentId: zod.z.string().optional(),
+  fulfillmentTxHash: zod.z.string().optional(),
+  errorMessage: zod.z.string().optional(),
+  createdAt: zod.z.coerce.date().optional(),
+  updatedAt: zod.z.coerce.date().optional()
+});
+var meOnRampsQuerySchema = zod.z.object({
+  limit: zod.z.coerce.number().int().min(1).max(50).default(20)
+});
+var onRampsListResponseSchema = zod.z.object({
+  items: zod.z.array(onRampRecordSchema)
+});
 
 // src/conversation.ts
 var chatHistoryQuerySchema = zod.z.object({
@@ -539,7 +663,12 @@ var chatFollowUpSchema = zod.z.discriminatedUnion("kind", [
   zod.z.object({
     kind: zod.z.literal("stripe_on_ramp"),
     checkoutUrl: zod.z.string().url(),
-    onRampId: zod.z.string().min(1)
+    onRampId: zod.z.string().min(1),
+    /** Populated after server webhooks refresh the on-ramp row (payment + transfer). */
+    onRampStatus: onRampRecordStatusSchema.optional(),
+    fulfillmentTxHash: zod.z.string().min(1).optional(),
+    /** CAIP-2 (e.g. eip155:16661) for explorer links in clients. */
+    network: zod.z.string().min(1).optional()
   }),
   zod.z.object({
     kind: zod.z.literal("stripe_identity"),
@@ -749,130 +878,6 @@ var meFinancialSnapshotsQuerySchema = zod.z.object({
 });
 var financialSnapshotsListResponseSchema = zod.z.object({
   items: zod.z.array(financialSnapshotDailyRowSchema)
-});
-var onRampFormNetworkOptionSchema = zod.z.object({
-  id: zod.z.string().min(1).max(64),
-  label: zod.z.string().min(1).max(120)
-});
-var onRampFormCtaParamsSchema = zod.z.object({
-  _onRampForm: zod.z.literal(true),
-  supportedAssets: zod.z.array(x402SupportedAssetSchema).min(1).max(24),
-  networks: zod.z.array(onRampFormNetworkOptionSchema).max(16).optional(),
-  intro: zod.z.string().max(2e3).optional()
-});
-function isOnRampFormCtaParams(v) {
-  return onRampFormCtaParamsSchema.safeParse(v).success;
-}
-var weiString = zod.z.union([
-  zod.z.string().trim().regex(
-    /^[1-9]\d*$/,
-    "tokenAmountWei must be base units (positive integer string, no decimals)"
-  ),
-  zod.z.number().int().positive().transform((n) => String(n))
-]);
-function deriveTokenAmountWeiFromUsdCents(usdAmountCents, tokenDecimals) {
-  if (!Number.isFinite(usdAmountCents) || usdAmountCents < 100) {
-    throw new Error("usdAmountCents must be a finite integer >= 100");
-  }
-  if (!Number.isInteger(usdAmountCents)) {
-    throw new Error("usdAmountCents must be an integer (cents)");
-  }
-  if (!Number.isInteger(tokenDecimals) || tokenDecimals < 2 || tokenDecimals > 36) {
-    throw new Error("tokenDecimals must be an integer from 2 to 36 for 1:1 USD mapping");
-  }
-  const cents = BigInt(usdAmountCents);
-  const scale = 10n ** BigInt(tokenDecimals - 2);
-  return (cents * scale).toString();
-}
-var evmAddr = zod.z.string().min(1).refine(
-  (s) => /^0x[a-fA-F0-9]{40}$/.test(s.trim()),
-  "must be a 0x-prefixed 20-byte address"
-).transform((s) => s.trim().toLowerCase());
-var onRampTokensInputCoreSchema = zod.z.object({
-  recipientWallet: evmAddr,
-  network: zod.z.string().min(1).max(64),
-  tokenAddress: evmAddr,
-  tokenDecimals: zod.z.number().int().min(2).max(36),
-  tokenSymbol: zod.z.string().min(1).max(32),
-  /** Prefer omitting — server derives from USD card charge using 1:1 USD-stable mapping. */
-  tokenAmountWei: weiString.optional(),
-  /** Optional spot reference for analytics / UI (per supported token). */
-  usdValue: zod.z.number().finite().nonnegative().optional(),
-  /** Total USD charged via Stripe (cents). Minimum $1.00. */
-  usdAmountCents: zod.z.number().int().min(100).max(1e7)
-});
-function validateOnRampUsdDerive(data, ctx) {
-  try {
-    const derived = deriveTokenAmountWeiFromUsdCents(
-      data.usdAmountCents,
-      data.tokenDecimals
-    );
-    if (data.tokenAmountWei !== void 0) {
-      const provided = typeof data.tokenAmountWei === "number" ? String(data.tokenAmountWei) : data.tokenAmountWei.trim();
-      if (provided !== derived) {
-        ctx.addIssue({
-          code: zod.z.ZodIssueCode.custom,
-          message: "tokenAmountWei must match the card charge under 1:1 USD-stable mapping \u2014 omit tokenAmountWei and rely on usdAmountCents.",
-          path: ["tokenAmountWei"]
-        });
-      }
-    }
-  } catch {
-    ctx.addIssue({
-      code: zod.z.ZodIssueCode.custom,
-      message: "Could not derive token amount from USD; check usdAmountCents and tokenDecimals.",
-      path: ["usdAmountCents"]
-    });
-  }
-}
-function finalizeOnRampTokensPayload(data) {
-  return {
-    recipientWallet: data.recipientWallet,
-    network: data.network,
-    tokenAddress: data.tokenAddress,
-    tokenDecimals: data.tokenDecimals,
-    tokenSymbol: data.tokenSymbol,
-    tokenAmountWei: deriveTokenAmountWeiFromUsdCents(
-      data.usdAmountCents,
-      data.tokenDecimals
-    ),
-    ...data.usdValue !== void 0 ? { usdValue: data.usdValue } : {},
-    usdAmountCents: data.usdAmountCents
-  };
-}
-var onRampTokensInputSchema = onRampTokensInputCoreSchema.superRefine(validateOnRampUsdDerive).transform(finalizeOnRampTokensPayload);
-var onRampRecordStatusSchema = zod.z.enum([
-  "pending_checkout",
-  "pending_payment",
-  "paid_pending_transfer",
-  "fulfilled",
-  "failed",
-  "canceled"
-]);
-var onRampRecordSchema = zod.z.object({
-  id: zod.z.string().min(1),
-  status: onRampRecordStatusSchema,
-  walletAddress: zod.z.string().min(1),
-  recipientWallet: zod.z.string().min(1),
-  network: zod.z.string().min(1),
-  tokenAddress: zod.z.string().min(1),
-  tokenDecimals: zod.z.number().int().min(0).max(36),
-  tokenSymbol: zod.z.string().min(1),
-  tokenAmountWei: zod.z.string().min(1),
-  usdAmountCents: zod.z.number().int().nonnegative(),
-  usdValue: zod.z.number().finite().nonnegative().optional(),
-  stripeCheckoutSessionId: zod.z.string().optional(),
-  stripePaymentIntentId: zod.z.string().optional(),
-  fulfillmentTxHash: zod.z.string().optional(),
-  errorMessage: zod.z.string().optional(),
-  createdAt: zod.z.coerce.date().optional(),
-  updatedAt: zod.z.coerce.date().optional()
-});
-var meOnRampsQuerySchema = zod.z.object({
-  limit: zod.z.coerce.number().int().min(1).max(50).default(20)
-});
-var onRampsListResponseSchema = zod.z.object({
-  items: zod.z.array(onRampRecordSchema)
 });
 var createCreditCardInputSchema = zod.z.object({
   firstName: zod.z.string().trim().min(1).max(80),

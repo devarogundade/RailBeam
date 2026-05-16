@@ -11,18 +11,39 @@ import { Model, Types } from 'mongoose';
 import {
   onRampRecordSchema,
   onRampTokensInputSchema,
+  onRampRecordStatusSchema,
+  type ChatHistoryMessage,
 } from '@beam/stardorm-api-contract';
 import type { OnRampRecord } from '@beam/stardorm-api-contract';
 import type { HandlerContext, HandlerMessage } from '../handlers/handler.types';
+import type { AgentRichCard } from 'src/agent-reply/stardorm-agent-reply.schema';
 import { EmailNotificationsService } from '../email/email-notifications.service';
 import { FinancialSnapshotsService } from '../mongo/financial-snapshots.service';
 import { OnRamp, type OnRampDocument } from '../mongo/schemas/on-ramp.schema';
+import {
+  ChatMessage,
+  type ChatMessageDocument,
+} from '../mongo/schemas/chat-message.schema';
+import { ConversationSyncService } from '../conversations-sync/conversation-sync.service';
 import { getStripe } from './stripe.client';
 import { rpcUrlForCaip2 } from './onramp-rpc';
 
 const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
 ] as const;
+
+/** Stripe Checkout requires absolute HTTPS URLs; fulfillment is driven by webhooks, not return navigation. */
+const DEFAULT_ONRAMP_CHECKOUT_SUCCESS_URL = 'https://stripe.com/';
+const DEFAULT_ONRAMP_CHECKOUT_CANCEL_URL = 'https://stripe.com/';
+
+function isHttpsAbsoluteUrl(u: string): boolean {
+  try {
+    const p = new URL(u);
+    return p.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 @Injectable()
 export class OnRampService {
@@ -31,8 +52,11 @@ export class OnRampService {
   constructor(
     private readonly config: ConfigService,
     @InjectModel(OnRamp.name) private readonly onRampModel: Model<OnRampDocument>,
+    @InjectModel(ChatMessage.name)
+    private readonly chatMessageModel: Model<ChatMessageDocument>,
     private readonly financialSnapshots: FinancialSnapshotsService,
     private readonly emailNotifications: EmailNotificationsService,
+    private readonly conversationSync: ConversationSyncService,
   ) {}
 
   readonly id = 'on_ramp_tokens' as const;
@@ -59,7 +83,9 @@ export class OnRampService {
       ...(doc.fulfillmentTxHash
         ? { fulfillmentTxHash: doc.fulfillmentTxHash }
         : {}),
-      ...(doc.errorMessage ? { errorMessage: doc.errorMessage } : {}),
+      ...(doc.status !== 'fulfilled' && doc.errorMessage
+        ? { errorMessage: doc.errorMessage }
+        : {}),
       ...(doc.createdAt ? { createdAt: doc.createdAt } : {}),
       ...(doc.updatedAt ? { updatedAt: doc.updatedAt } : {}),
     });
@@ -86,6 +112,28 @@ export class OnRampService {
     return docs.map((d) => this.toPublicRecord(d));
   }
 
+  /** Links the `execute-handler` agent bubble to this on-ramp row for webhook-driven refreshes. */
+  async linkSourceChatMessage(onRampId: string, chatMessageId: string): Promise<void> {
+    const oid = onRampId.trim();
+    const mid = chatMessageId.trim();
+    if (!Types.ObjectId.isValid(oid) || !Types.ObjectId.isValid(mid)) return;
+    await this.onRampModel
+      .updateOne(
+        { _id: new Types.ObjectId(oid) },
+        { $set: { sourceChatMessageId: mid } },
+      )
+      .exec();
+  }
+
+  /** Refreshes linked chat bubble content from the latest on-ramp Mongo row (Stripe + fulfillment). */
+  async syncChatMessageFromStoredOnRamp(onRampId: string): Promise<void> {
+    const oid = onRampId.trim();
+    if (!Types.ObjectId.isValid(oid)) return;
+    const doc = await this.onRampModel.findById(oid).exec();
+    if (!doc?.sourceChatMessageId?.trim()) return;
+    await this.applyOnRampToLinkedChat(doc);
+  }
+
 
   async handle(raw: unknown, ctx: HandlerContext): Promise<HandlerMessage> {
     const stripe = getStripe(this.config);
@@ -101,9 +149,17 @@ export class OnRampService {
     const data = parsed.data;
     const buyer = ctx.walletAddress.trim().toLowerCase();
 
-    const appUrl =
-      this.config.get<string>('APP_PUBLIC_URL')?.trim().replace(/\/$/, '') ||
-      'http://localhost:5173';
+    const successUrlRaw =
+      this.config.get<string>('ONRAMP_CHECKOUT_SUCCESS_URL')?.trim() ||
+      DEFAULT_ONRAMP_CHECKOUT_SUCCESS_URL;
+    const cancelUrlRaw =
+      this.config.get<string>('ONRAMP_CHECKOUT_CANCEL_URL')?.trim() ||
+      DEFAULT_ONRAMP_CHECKOUT_CANCEL_URL;
+    if (!isHttpsAbsoluteUrl(successUrlRaw) || !isHttpsAbsoluteUrl(cancelUrlRaw)) {
+      throw new BadRequestException(
+        'ONRAMP_CHECKOUT_SUCCESS_URL and ONRAMP_CHECKOUT_CANCEL_URL must be absolute https URLs (or omit both to use defaults).',
+      );
+    }
 
     const doc = await this.onRampModel.create({
       walletAddress: buyer,
@@ -119,11 +175,6 @@ export class OnRampService {
     });
 
     const onRampId = doc._id.toHexString();
-    const convId = ctx.conversationId?.trim();
-    const convQuery =
-      convId && convId.length <= 128
-        ? `&convId=${encodeURIComponent(convId)}`
-        : '';
 
     let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
     try {
@@ -142,9 +193,8 @@ export class OnRampService {
             quantity: 1,
           },
         ],
-        /** Chat lives at `/`, not `/chat` (see app `routes/index.tsx`). */
-        success_url: `${appUrl}/?onRamp=success&session_id={CHECKOUT_SESSION_ID}${convQuery}`,
-        cancel_url: `${appUrl}/?onRamp=canceled${convQuery}`,
+        success_url: successUrlRaw,
+        cancel_url: cancelUrlRaw,
         client_reference_id: onRampId,
         metadata: {
           beam_on_ramp: '1',
@@ -250,6 +300,7 @@ export class OnRampService {
           reason: 'Treasury key not configured',
         });
       }
+      await this.syncChatMessageFromStoredOnRamp(onRampId);
       return;
     }
     if (!row) {
@@ -297,6 +348,7 @@ export class OnRampService {
               status: 'fulfilled',
               fulfillmentTxHash: receipt?.hash ?? tx.hash,
             },
+            $unset: { errorMessage: 1 },
           },
         )
         .exec();
@@ -325,21 +377,25 @@ export class OnRampService {
         usdAmountCents: row.usdAmountCents,
         fulfillmentTxHash: receipt?.hash ?? tx.hash,
       });
+      await this.syncChatMessageFromStoredOnRamp(onRampId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       this.log.error(`On-ramp fulfillment failed for ${onRampId}: ${msg}`);
-      await this.onRampModel
+      const failUpdate = await this.onRampModel
         .updateOne(
-          { _id: row._id },
+          { _id: row._id, status: { $ne: 'fulfilled' } },
           { $set: { status: 'failed', errorMessage: msg } },
         )
         .exec();
-      this.emailNotifications.notifyOnRampFailed({
-        walletAddress: row.walletAddress,
-        tokenSymbol: row.tokenSymbol,
-        usdAmountCents: row.usdAmountCents,
-        reason: msg,
-      });
+      if (failUpdate.modifiedCount > 0) {
+        this.emailNotifications.notifyOnRampFailed({
+          walletAddress: row.walletAddress,
+          tokenSymbol: row.tokenSymbol,
+          usdAmountCents: row.usdAmountCents,
+          reason: msg,
+        });
+      }
+      await this.syncChatMessageFromStoredOnRamp(onRampId);
     }
   }
 
@@ -354,6 +410,7 @@ export class OnRampService {
         { $set: { status: 'canceled' } },
       )
       .exec();
+    await this.syncChatMessageFromStoredOnRamp(onRampId);
   }
 
   /** Persist PaymentIntent id when Stripe includes it on the Checkout Session. */
@@ -388,5 +445,215 @@ export class OnRampService {
         reason,
       });
     }
+    await this.syncChatMessageFromStoredOnRamp(onRampId);
+  }
+
+  private priorOnRampHandlerData(msg: ChatMessageDocument): Record<string, unknown> {
+    const hr = msg.handlerResultData;
+    if (!hr || typeof hr !== 'object') return {};
+    const rec = hr as Record<string, unknown>;
+    if (rec.kind !== 'server' || rec.data == null || typeof rec.data !== 'object') {
+      return {};
+    }
+    return { ...(rec.data as Record<string, unknown>) };
+  }
+
+  private static readonly ON_RAMP_STATUS_LABEL: Record<string, string> = {
+    pending_checkout: 'Awaiting checkout',
+    pending_payment: 'Awaiting Stripe payment',
+    paid_pending_transfer: 'Paid — sending tokens',
+    fulfilled: 'Fulfilled',
+    failed: 'Failed',
+    canceled: 'Canceled',
+  };
+
+  private shortenMiddleText(s: string, maxLen = 42): string {
+    const t = s.trim();
+    if (t.length <= maxLen) return t;
+    const head = Math.ceil((maxLen - 1) / 2);
+    const tail = Math.floor((maxLen - 1) / 2);
+    return `${t.slice(0, head)}…${t.slice(-tail)}`;
+  }
+
+  private shortenHexAddress(addr: string, head = 6, tail = 4): string {
+    const t = addr.trim();
+    if (/^0x[a-fA-F0-9]{40}$/i.test(t)) {
+      const a = t.toLowerCase();
+      return `${a.slice(0, head)}…${a.slice(-tail)}`;
+    }
+    return this.shortenMiddleText(t, 28);
+  }
+
+  private trimDecimalZeros(s: string): string {
+    if (!/^\d+\.\d+$/.test(s)) return s;
+    return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
+
+  private onRampBubbleContent(status: string, tokenSymbol: string): string {
+    switch (status) {
+      case 'fulfilled':
+        return `On-ramp complete. Stripe charged your card and we sent ${tokenSymbol} from the Beam treasury on-chain.`;
+      case 'failed':
+        return `This on-ramp did not complete. Open Financial dashboard → On Ramp for details, or create a new checkout from chat.`;
+      case 'canceled':
+        return `Stripe checkout was not finished (canceled or expired). You can start a new on-ramp when ready.`;
+      default:
+        return `Your Stripe checkout is ready. Pay in the secure window; once Stripe confirms, we send ${tokenSymbol} to the recipient from the Beam treasury.`;
+    }
+  }
+
+  private onRampTxRich(doc: OnRampDocument): AgentRichCard {
+    const tokenSymbol = doc.tokenSymbol?.trim() || '—';
+    const tokenAmountWei = doc.tokenAmountWei?.trim() ?? '';
+    const recipient = doc.recipientWallet?.trim() ?? '';
+    const network = doc.network?.trim() || '—';
+    const usdCents = Number.isFinite(doc.usdAmountCents) ? doc.usdAmountCents : null;
+    const td = doc.tokenDecimals;
+    let amountDisplay = '—';
+    if (tokenAmountWei && /^\d+$/.test(tokenAmountWei)) {
+      if (
+        typeof td === 'number' &&
+        Number.isInteger(td) &&
+        td >= 0 &&
+        td <= 36
+      ) {
+        try {
+          amountDisplay = this.trimDecimalZeros(
+            formatUnits(BigInt(tokenAmountWei), td),
+          );
+        } catch {
+          amountDisplay = '—';
+        }
+      }
+    }
+    const rows: Array<{ label: string; value: string }> = [
+      { label: 'Token', value: tokenSymbol },
+      { label: `Amount (${tokenSymbol})`, value: amountDisplay },
+      { label: 'Network', value: this.shortenMiddleText(network, 48) },
+      {
+        label: 'Recipient',
+        value: recipient ? this.shortenHexAddress(recipient) : '—',
+      },
+      {
+        label: 'Card charge',
+        value: usdCents != null ? `$${(usdCents / 100).toFixed(2)}` : '—',
+      },
+      {
+        label: 'Status',
+        value:
+          OnRampService.ON_RAMP_STATUS_LABEL[doc.status] ?? doc.status ?? '—',
+      },
+    ];
+    if (doc.fulfillmentTxHash?.trim()) {
+      rows.push({
+        label: 'Fulfillment tx',
+        value: this.shortenMiddleText(doc.fulfillmentTxHash.trim(), 28),
+      });
+    }
+    if (doc.status !== 'fulfilled' && doc.errorMessage?.trim()) {
+      rows.push({
+        label: 'Error',
+        value: this.shortenMiddleText(doc.errorMessage.trim(), 160),
+      });
+    }
+    return {
+      type: 'tx',
+      title: 'Stripe on-ramp',
+      rows,
+    };
+  }
+
+  private async applyOnRampToLinkedChat(doc: OnRampDocument): Promise<void> {
+    const chatMessageId = doc.sourceChatMessageId?.trim();
+    if (!chatMessageId || !Types.ObjectId.isValid(chatMessageId)) return;
+    const msg = await this.chatMessageModel.findById(chatMessageId).exec();
+    if (!msg) return;
+
+    const prior = this.priorOnRampHandlerData(msg);
+    const checkoutUrlRaw =
+      typeof prior.stripeCheckoutUrl === 'string'
+        ? prior.stripeCheckoutUrl.trim()
+        : '';
+    const checkoutUrl = /^https:\/\//i.test(checkoutUrlRaw)
+      ? checkoutUrlRaw
+      : '';
+
+    const data: Record<string, unknown> = {
+      ...prior,
+      onRampId: doc._id.toHexString(),
+      onRampStatus: doc.status,
+      tokenSymbol: doc.tokenSymbol,
+      tokenAmountWei: doc.tokenAmountWei,
+      recipientWallet: doc.recipientWallet,
+      network: doc.network,
+      tokenDecimals: doc.tokenDecimals,
+      usdAmountCents: doc.usdAmountCents,
+      ...(doc.usdValue !== undefined ? { usdValue: doc.usdValue } : {}),
+      ...(doc.stripeCheckoutSessionId
+        ? { stripeCheckoutSessionId: doc.stripeCheckoutSessionId }
+        : {}),
+      ...(doc.stripePaymentIntentId
+        ? { stripePaymentIntentId: doc.stripePaymentIntentId }
+        : {}),
+      ...(doc.fulfillmentTxHash?.trim()
+        ? { fulfillmentTxHash: doc.fulfillmentTxHash.trim() }
+        : {}),
+    };
+    if (checkoutUrl) data.stripeCheckoutUrl = checkoutUrl;
+    if (doc.status !== 'fulfilled' && doc.errorMessage?.trim()) {
+      data.onRampErrorMessage = doc.errorMessage.trim();
+    } else {
+      delete data.onRampErrorMessage;
+    }
+
+    const content = this.onRampBubbleContent(doc.status, doc.tokenSymbol);
+    const rich = this.onRampTxRich(doc);
+    const serverStatus: 'completed' | 'failed' =
+      doc.status === 'failed' || doc.status === 'canceled' ? 'failed' : 'completed';
+
+    const handlerResultData = {
+      kind: 'server' as const,
+      status: serverStatus,
+      data,
+      updatedAt: Date.now(),
+    };
+
+    await this.chatMessageModel.updateOne(
+      { _id: msg._id },
+      { $set: { content, rich, handlerResultData } },
+    );
+
+    const statusParsed = onRampRecordStatusSchema.safeParse(doc.status);
+    const stripeOnRampFollowUp =
+      checkoutUrl
+        ? {
+            kind: 'stripe_on_ramp' as const,
+            checkoutUrl,
+            onRampId: doc._id.toHexString(),
+            ...(statusParsed.success ? { onRampStatus: statusParsed.data } : {}),
+            ...(doc.fulfillmentTxHash?.trim()
+              ? { fulfillmentTxHash: doc.fulfillmentTxHash.trim() }
+              : {}),
+            ...(doc.network?.trim() ? { network: doc.network.trim() } : {}),
+          }
+        : undefined;
+
+    const historyMsg: ChatHistoryMessage = {
+      id: String(msg._id),
+      role: msg.role === 'user' ? 'user' : 'agent',
+      ...(msg.agentKey ? { agentKey: msg.agentKey } : {}),
+      content,
+      createdAt: typeof msg.createdAt === 'number' ? msg.createdAt : Date.now(),
+      rich,
+      ...(stripeOnRampFollowUp ? { followUp: stripeOnRampFollowUp } : {}),
+      result: handlerResultData,
+    };
+
+    this.conversationSync.notifyWallet(doc.walletAddress, {
+      v: 1,
+      op: 'thread_messages',
+      conversationId: String(msg.conversationId),
+      messages: [historyMsg],
+    });
   }
 }

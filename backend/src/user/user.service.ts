@@ -67,6 +67,7 @@ import {
   type CreditCardSensitiveDetails,
   type ChatHistoryMessage,
   userKycStatusSchema,
+  onRampRecordStatusSchema,
 } from '@beam/stardorm-api-contract';
 import {
   X402InputSchema,
@@ -942,10 +943,17 @@ export class UserService {
           : null;
       const onRampId = typeof d.onRampId === 'string' ? d.onRampId : null;
       if (checkoutUrl && onRampId) {
+        const st = onRampRecordStatusSchema.safeParse(d.onRampStatus);
+        const net = typeof d.network === 'string' ? d.network.trim() : '';
+        const ft =
+          typeof d.fulfillmentTxHash === 'string' ? d.fulfillmentTxHash.trim() : '';
         return {
           kind: 'stripe_on_ramp',
           checkoutUrl,
           onRampId,
+          ...(st.success ? { onRampStatus: st.data } : {}),
+          ...(ft ? { fulfillmentTxHash: ft } : {}),
+          ...(net ? { network: net } : {}),
         };
       }
       const verificationUrl =
@@ -2196,6 +2204,17 @@ export class UserService {
         wallet,
         String(handlerReply._id),
       );
+    }
+    if (body.handler === 'on_ramp_tokens') {
+      const rd =
+        result.data && typeof result.data === 'object'
+          ? (result.data as Record<string, unknown>)
+          : null;
+      const rid = typeof rd?.onRampId === 'string' ? rd.onRampId.trim() : '';
+      if (rid && Types.ObjectId.isValid(rid)) {
+        await this.onRamp.linkSourceChatMessage(rid, String(handlerReply._id));
+        await this.onRamp.syncChatMessageFromStoredOnRamp(rid);
+      }
     }
     await this.chatMessageModel.updateOne(
       {

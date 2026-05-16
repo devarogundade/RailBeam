@@ -22,7 +22,7 @@ import {
   useStardormRecentSubscriptions,
 } from "@/lib/hooks/use-stardorm-subgraph";
 import { useBeamNetwork } from "@/lib/beam-network-context";
-import { BEAM_CHAIN_IDS, BEAM_TOKENS, beamNetworkFromChainId, beamNetworkLabelFromChainId } from "@/lib/beam-chain-config";
+import { BEAM_CHAIN_IDS, BEAM_TOKENS, beamNetworkLabelFromChainId } from "@/lib/beam-chain-config";
 import { getStardormSubgraphUrlForChain, getStardormPaymentTokenDecimals } from "@/lib/stardorm-subgraph-config";
 import {
   formatCompactFromBaseUnits,
@@ -30,6 +30,7 @@ import {
   formatSubgraphRelativeTime,
   shortenHex,
 } from "@/lib/format-subgraph";
+import { chainIdFromPaymentNetwork, beamTxExplorerUrl } from "@/lib/beam-tx-explorer";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -431,13 +432,6 @@ function formatTokenWeiHuman(wei: string, decimals: number): string {
   }
 }
 
-function chainIdFromPaymentNetwork(network: string): number | undefined {
-  const m = /^eip155:(\d+)$/i.exec(network.trim());
-  if (!m) return undefined;
-  const id = Number.parseInt(m[1]!, 10);
-  return Number.isFinite(id) ? id : undefined;
-}
-
 function tokenSymbolFromKnownAssets(assetTrimmed: string): string | undefined {
   const lower = assetTrimmed.toLowerCase();
   for (const t of BEAM_TOKENS.mainnet) {
@@ -446,15 +440,6 @@ function tokenSymbolFromKnownAssets(assetTrimmed: string): string | undefined {
   for (const t of BEAM_TOKENS.testnet) {
     if (t.address.toLowerCase() === lower) return t.symbol;
   }
-  return undefined;
-}
-
-function beamTxExplorerUrl(chainId: number, txHash: string): string | undefined {
-  if (!/^0x[a-fA-F0-9]{64}$/i.test(txHash.trim())) return undefined;
-  const tier = beamNetworkFromChainId(chainId);
-  const h = txHash.trim();
-  if (tier === "mainnet") return `https://chainscan.0g.ai/tx/${h}`;
-  if (tier === "testnet") return `https://chainscan-testnet.0g.ai/tx/${h}`;
   return undefined;
 }
 
@@ -1042,8 +1027,15 @@ function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
           </div>
         ) : (
           <ul className="mt-3 divide-y divide-border text-sm">
-            {data.items.map((row) => (
-              <li key={row.id} className="flex w-full min-w-0 flex-col gap-2 py-3">
+            {data.items.map((row) => {
+              const fulfillHash = row.fulfillmentTxHash?.trim() ?? "";
+              const fulfillChainId = chainIdFromPaymentNetwork(row.network);
+              const fulfillExplorerUrl =
+                fulfillChainId != null && fulfillHash
+                  ? beamTxExplorerUrl(fulfillChainId, fulfillHash)
+                  : undefined;
+              return (
+                <li key={row.id} className="flex w-full min-w-0 flex-col gap-2 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <OnRampStatusBadge status={row.status} />
                   <span className="font-medium">
@@ -1061,12 +1053,31 @@ function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
                   })}{" "}
                   charged · {row.network}
                 </div>
-                {row.fulfillmentTxHash ? (
-                  <div className="text-[11px] text-muted-foreground">
-                    Fulfillment tx <span className="font-mono">{row.fulfillmentTxHash}</span>
+                {fulfillHash ? (
+                  <div className="flex w-full min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px]">
+                    <span className="text-muted-foreground">Fulfillment tx</span>
+                    {fulfillExplorerUrl ? (
+                      <a
+                        href={fulfillExplorerUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="inline-flex min-w-0 items-center gap-1 font-mono text-primary underline-offset-2 hover:underline"
+                        title={fulfillHash}
+                      >
+                        {shortenHex(fulfillHash)}
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+                      </a>
+                    ) : (
+                      <span className="font-mono text-foreground/90" title={fulfillHash}>
+                        {fulfillHash}
+                      </span>
+                    )}
+                    {fulfillExplorerUrl ? (
+                      <span className="text-[10px] text-muted-foreground">View on 0G Chainscan</span>
+                    ) : null}
                   </div>
                 ) : null}
-                {row.errorMessage ? (
+                {row.errorMessage && row.status !== "fulfilled" ? (
                   <div className="text-[11px] text-destructive">{row.errorMessage}</div>
                 ) : null}
                 {row.createdAt ? (
@@ -1075,7 +1086,8 @@ function DashboardOnRamps({ enabled }: { enabled: boolean; }) {
                   </div>
                 ) : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>

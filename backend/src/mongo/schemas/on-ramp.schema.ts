@@ -58,6 +58,10 @@ export class OnRamp {
   @Prop()
   errorMessage?: string;
 
+  /** Agent bubble id (`execute-handler` reply) to refresh when Stripe / fulfillment webhooks run. */
+  @Prop({ index: true, sparse: true })
+  sourceChatMessageId?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -285,9 +285,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [address, queryClient, signMessageAsync]);
 
+  const stardormSignInRef = React.useRef(stardormSignIn);
+  stardormSignInRef.current = stardormSignIn;
+
   React.useEffect(() => {
     if (!address) {
-      pendingAutoStardormSignIn.clear();
+      /** Do not clear `pendingAutoStardormSignIn` here — `address` is null during wagmi
+       * `connecting` / `reconnecting`, which would drop the in-flight guard and prompt a second signature. */
       return;
     }
     if (!getStardormApiBase()) return;
@@ -295,10 +299,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const norm = address.toLowerCase();
     if (pendingAutoStardormSignIn.has(norm)) return;
     pendingAutoStardormSignIn.add(norm);
-    void stardormSignIn().finally(() => {
+    void stardormSignInRef.current().finally(() => {
       pendingAutoStardormSignIn.delete(norm);
     });
-  }, [address, stardormSignIn]);
+  }, [address]);
 
   const connect = (): boolean => {
     if (!isWalletConfigured) {
@@ -313,6 +317,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnect = () => {
+    pendingAutoStardormSignIn.clear();
     clearStardormAccessToken(address);
     bumpJwtFromStorage((e) => e + 1);
     queryClient.removeQueries({ queryKey: queryKeys.user.all });

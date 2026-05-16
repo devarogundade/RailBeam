@@ -3,6 +3,7 @@ import { handlerActionIdSchema } from "./handlers.js";
 import { stripJsonNulls, stardormChatRichBlockSchema } from "./chat-api.js";
 import { chatHandlerResultSchema } from "./handler-result.js";
 import { userKycStatusSchema } from "./kyc.js";
+import { onRampRecordStatusSchema } from "./on-ramp.js";
 
 export const chatHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(40),
@@ -47,6 +48,11 @@ export const chatFollowUpSchema = z.discriminatedUnion("kind", [
     kind: z.literal("stripe_on_ramp"),
     checkoutUrl: z.string().url(),
     onRampId: z.string().min(1),
+    /** Populated after server webhooks refresh the on-ramp row (payment + transfer). */
+    onRampStatus: onRampRecordStatusSchema.optional(),
+    fulfillmentTxHash: z.string().min(1).optional(),
+    /** CAIP-2 (e.g. eip155:16661) for explorer links in clients. */
+    network: z.string().min(1).optional(),
   }),
   z.object({
     kind: z.literal("stripe_identity"),

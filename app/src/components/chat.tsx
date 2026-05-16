@@ -132,6 +132,8 @@ import { CreditCardCheckoutFormCard } from "@/components/credit-card-checkout-fo
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EmptyState } from "@/components/empty-state";
 import { ChatHistorySkeleton, ConversationListSkeleton } from "@/components/page-shimmer";
+import { chainIdFromPaymentNetwork, beamTxExplorerUrl } from "@/lib/beam-tx-explorer";
+import { shortenHex } from "@/lib/format-subgraph";
 
 const indexRouteApi = getRouteApi("/");
 
@@ -535,29 +537,7 @@ export function Chat() {
   });
 
   const navigate = useNavigate();
-  const { convId: conversationFromSearch, onRamp: onRampFromStripe } = indexRouteApi.useSearch();
-
-  /** Stripe Checkout return: show feedback and drop one-off query params (keep `convId`). */
-  React.useEffect(() => {
-    if (!onRampFromStripe) return;
-    if (onRampFromStripe === "success") {
-      toast.success("Payment submitted", {
-        description: "Stripe will confirm your card; settlement runs after that.",
-      });
-    } else {
-      toast.info("Checkout canceled", {
-        description: "You can start a new checkout from the conversation when you're ready.",
-      });
-    }
-    void navigate({
-      to: "/",
-      search: (prev) => {
-        const { onRamp: _o, session_id: _s, ...rest } = prev;
-        return rest;
-      },
-      replace: true,
-    });
-  }, [onRampFromStripe, navigate]);
+  const { convId: conversationFromSearch } = indexRouteApi.useSearch();
 
   React.useEffect(() => {
     const id = conversationFromSearch;
@@ -1577,37 +1557,128 @@ function FollowUpRow({ m, apiBase }: { m: Msg; apiBase?: string }) {
     );
   }
   if (fu.kind === "stripe_on_ramp") {
+    const status = fu.onRampStatus;
+    const chainId =
+      fu.network != null && fu.network.length > 0
+        ? chainIdFromPaymentNetwork(fu.network)
+        : undefined;
+    const fulfillHash = fu.fulfillmentTxHash?.trim() ?? "";
+    const fulfillExplorerUrl =
+      chainId != null && fulfillHash
+        ? beamTxExplorerUrl(chainId, fulfillHash)
+        : undefined;
+    const showCheckoutCtas =
+      status == null ||
+      status === "pending_checkout" ||
+      status === "pending_payment";
+
     return (
-      <div className="mt-1 flex flex-wrap gap-2 px-0.5">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void navigator.clipboard.writeText(fu.checkoutUrl).then(
-              () => {
-                toast.success("Stripe checkout link copied");
-              },
-              () => {
-                toast.error("Could not copy", {
-                  description: "Clipboard permission denied or unavailable.",
-                });
-              },
-            );
-          }}
-        >
-          <Copy className="mr-1 h-3.5 w-3.5" />
-          Copy Stripe link
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => window.open(fu.checkoutUrl, "_blank", "noopener,noreferrer")}
-        >
-          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-          Open Stripe checkout
-        </Button>
+      <div className="mt-1 space-y-2 px-0.5">
+        {status === "fulfilled" ? (
+          <div
+            className="flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5"
+            role="status"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12">
+              <Check className="h-4 w-4 text-primary" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-sm font-medium text-foreground">On-ramp fulfilled</p>
+              <p className="text-xs text-muted-foreground">
+                Stripe payment settled and treasury tokens were sent on-chain.
+              </p>
+              {fulfillExplorerUrl ? (
+                <a
+                  href={fulfillExplorerUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  title={fulfillHash}
+                >
+                  View fulfillment tx ({shortenHex(fulfillHash)})
+                  <ExternalLink className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+                </a>
+              ) : fulfillHash ? (
+                <p className="font-mono text-[11px] text-muted-foreground" title={fulfillHash}>
+                  Tx {shortenHex(fulfillHash)}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {status === "paid_pending_transfer" ? (
+          <p className="text-xs text-muted-foreground">
+            Payment received — treasury transfer is in progress.
+          </p>
+        ) : null}
+        {status === "failed" ? (
+          <div
+            className="flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5"
+            role="alert"
+          >
+            <AlertCircle
+              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">On-ramp failed</p>
+              <p className="text-xs text-muted-foreground">
+                See Financial dashboard → On Ramp for details. You can start a new checkout from
+                chat.
+              </p>
+            </div>
+          </div>
+        ) : null}
+        {status === "canceled" ? (
+          <div
+            className="flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5"
+            role="status"
+          >
+            <AlertCircle
+              className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Checkout not completed</p>
+              <p className="text-xs text-muted-foreground">
+                This session was canceled or expired. Start a new on-ramp when you are ready.
+              </p>
+            </div>
+          </div>
+        ) : null}
+        {showCheckoutCtas ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                void navigator.clipboard.writeText(fu.checkoutUrl).then(
+                  () => {
+                    toast.success("Stripe checkout link copied");
+                  },
+                  () => {
+                    toast.error("Could not copy", {
+                      description: "Clipboard permission denied or unavailable.",
+                    });
+                  },
+                );
+              }}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" />
+              Copy Stripe link
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(fu.checkoutUrl, "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+              Open Stripe checkout
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }

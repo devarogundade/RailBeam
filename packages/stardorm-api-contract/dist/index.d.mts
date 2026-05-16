@@ -5114,14 +5114,25 @@ declare const chatFollowUpSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
     kind: z.ZodLiteral<"stripe_on_ramp">;
     checkoutUrl: z.ZodString;
     onRampId: z.ZodString;
+    /** Populated after server webhooks refresh the on-ramp row (payment + transfer). */
+    onRampStatus: z.ZodOptional<z.ZodEnum<["pending_checkout", "pending_payment", "paid_pending_transfer", "fulfilled", "failed", "canceled"]>>;
+    fulfillmentTxHash: z.ZodOptional<z.ZodString>;
+    /** CAIP-2 (e.g. eip155:16661) for explorer links in clients. */
+    network: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     kind: "stripe_on_ramp";
     checkoutUrl: string;
     onRampId: string;
+    network?: string | undefined;
+    fulfillmentTxHash?: string | undefined;
+    onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
 }, {
     kind: "stripe_on_ramp";
     checkoutUrl: string;
     onRampId: string;
+    network?: string | undefined;
+    fulfillmentTxHash?: string | undefined;
+    onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
 }>, z.ZodObject<{
     kind: z.ZodLiteral<"stripe_identity">;
     verificationUrl: z.ZodString;
@@ -5901,14 +5912,25 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: z.ZodLiteral<"stripe_on_ramp">;
         checkoutUrl: z.ZodString;
         onRampId: z.ZodString;
+        /** Populated after server webhooks refresh the on-ramp row (payment + transfer). */
+        onRampStatus: z.ZodOptional<z.ZodEnum<["pending_checkout", "pending_payment", "paid_pending_transfer", "fulfilled", "failed", "canceled"]>>;
+        fulfillmentTxHash: z.ZodOptional<z.ZodString>;
+        /** CAIP-2 (e.g. eip155:16661) for explorer links in clients. */
+        network: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         kind: "stripe_on_ramp";
         checkoutUrl: string;
         onRampId: string;
+        network?: string | undefined;
+        fulfillmentTxHash?: string | undefined;
+        onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
     }, {
         kind: "stripe_on_ramp";
         checkoutUrl: string;
         onRampId: string;
+        network?: string | undefined;
+        fulfillmentTxHash?: string | undefined;
+        onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
     }>, z.ZodObject<{
         kind: z.ZodLiteral<"stripe_identity">;
         verificationUrl: z.ZodString;
@@ -6123,6 +6145,9 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: "stripe_on_ramp";
         checkoutUrl: string;
         onRampId: string;
+        network?: string | undefined;
+        fulfillmentTxHash?: string | undefined;
+        onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
     } | {
         kind: "stripe_identity";
         verificationUrl: string;
@@ -6182,6 +6207,9 @@ declare const chatHistoryMessageSchema: z.ZodObject<{
         kind: "stripe_on_ramp";
         checkoutUrl: string;
         onRampId: string;
+        network?: string | undefined;
+        fulfillmentTxHash?: string | undefined;
+        onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
     } | {
         kind: "stripe_identity";
         verificationUrl: string;
@@ -6945,14 +6973,25 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: z.ZodLiteral<"stripe_on_ramp">;
             checkoutUrl: z.ZodString;
             onRampId: z.ZodString;
+            /** Populated after server webhooks refresh the on-ramp row (payment + transfer). */
+            onRampStatus: z.ZodOptional<z.ZodEnum<["pending_checkout", "pending_payment", "paid_pending_transfer", "fulfilled", "failed", "canceled"]>>;
+            fulfillmentTxHash: z.ZodOptional<z.ZodString>;
+            /** CAIP-2 (e.g. eip155:16661) for explorer links in clients. */
+            network: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
@@ -7167,6 +7206,9 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -7226,6 +7268,9 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -7424,6 +7469,9 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -7489,6 +7537,9 @@ declare const chatHistoryResponseSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -8414,14 +8465,23 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: z.ZodLiteral<"stripe_on_ramp">;
             checkoutUrl: z.ZodString;
             onRampId: z.ZodString;
+            onRampStatus: z.ZodOptional<z.ZodEnum<["pending_checkout", "pending_payment", "paid_pending_transfer", "fulfilled", "failed", "canceled"]>>;
+            fulfillmentTxHash: z.ZodOptional<z.ZodString>;
+            network: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
@@ -8634,6 +8694,9 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -8693,6 +8756,9 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -8887,6 +8953,9 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -8951,6 +9020,9 @@ declare const conversationSyncThreadMessagesSchema: z.ZodObject<{
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -9750,14 +9822,23 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: z.ZodLiteral<"stripe_on_ramp">;
             checkoutUrl: z.ZodString;
             onRampId: z.ZodString;
+            onRampStatus: z.ZodOptional<z.ZodEnum<["pending_checkout", "pending_payment", "paid_pending_transfer", "fulfilled", "failed", "canceled"]>>;
+            fulfillmentTxHash: z.ZodOptional<z.ZodString>;
+            network: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }, {
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         }>, z.ZodObject<{
             kind: z.ZodLiteral<"stripe_identity">;
             verificationUrl: z.ZodString;
@@ -9970,6 +10051,9 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -10029,6 +10113,9 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -10223,6 +10310,9 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
@@ -10287,6 +10377,9 @@ declare const conversationSyncPayloadSchema: z.ZodDiscriminatedUnion<"op", [z.Zo
             kind: "stripe_on_ramp";
             checkoutUrl: string;
             onRampId: string;
+            network?: string | undefined;
+            fulfillmentTxHash?: string | undefined;
+            onRampStatus?: "failed" | "canceled" | "pending_checkout" | "pending_payment" | "paid_pending_transfer" | "fulfilled" | undefined;
         } | {
             kind: "stripe_identity";
             verificationUrl: string;
