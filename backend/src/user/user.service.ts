@@ -42,8 +42,11 @@ import { buildOpenAiHandlerTools } from 'src/agent-reply/stardorm-handler-tools'
 import {
   HandlerActionId,
   HANDLER_ACTION_IDS,
-  isHandlerActionId,
 } from 'src/handlers/handler.types';
+import {
+  normalizeHandlerCapabilityIds,
+  parseHandlerCapabilitiesMetadataValue,
+} from 'src/handlers/handler-capabilities-normalize';
 import { HandlersService } from 'src/handlers/handlers.service';
 import {
   resolveStardormAgentKey,
@@ -198,18 +201,8 @@ function handlerCapabilitiesFromSubgraphAgent(
   if (!agent?.metadata?.length) return [];
   const row = agent.metadata.find((m) => m.key === 'handlerCapabilities');
   if (!row?.value?.trim()) return [];
-  let s = row.value.trim();
-  if (/^0x[0-9a-fA-F]+$/.test(s) && s.length >= 4 && s.length % 2 === 0) {
-    try {
-      s = toUtf8String(s);
-    } catch {
-      return [];
-    }
-  }
-  return s
-    .split(',')
-    .map((x) => x.trim())
-    .filter((x): x is HandlerActionId => isHandlerActionId(x));
+  const tokens = parseHandlerCapabilitiesMetadataValue(row.value);
+  return normalizeHandlerCapabilityIds(tokens);
 }
 
 function mergeHandlerSets(sets: Iterable<HandlerActionId[]>): HandlerActionId[] {

@@ -1,5 +1,6 @@
 import type { X402SupportedAsset } from '@beam/stardorm-api-contract';
 import { BEAM_EVM_CHAIN_IDS } from './beam-evm-chain';
+import { beamMainnetErc20SupportedAssets } from './beam-swap.config';
 import {
   BEAM_USDC_E_ADDRESS,
   BEAM_USDC_E_DECIMALS,
@@ -18,7 +19,7 @@ export function beamMainnetTransferNetworks(): Array<{ id: string; label: string
 }
 
 export function beamTransferSupportedAssets(): X402SupportedAsset[] {
-  return [beamUsdcESupportedAsset()];
+  return beamMainnetErc20SupportedAssets();
 }
 
 export function defaultBeamTransferFormPayload() {
@@ -48,30 +49,46 @@ export function resolveBeamCaip2Network(input: string | undefined): string | und
   return undefined;
 }
 
+function erc20FieldsFromAsset(
+  asset: X402SupportedAsset,
+): { token: string; tokenDecimals: number; tokenSymbol: string } {
+  return {
+    token: asset.address.toLowerCase(),
+    tokenDecimals: asset.decimals,
+    tokenSymbol: asset.symbol,
+  };
+}
+
+function findBeamErc20Asset(tokenOrSymbol: string): X402SupportedAsset | undefined {
+  const raw = tokenOrSymbol.trim();
+  const lower = raw.toLowerCase();
+  const assets = beamMainnetErc20SupportedAssets();
+  const byAddress = assets.find((a) => a.address.toLowerCase() === lower);
+  if (byAddress) return byAddress;
+  const bySymbol = assets.find((a) => a.symbol.toLowerCase() === lower);
+  if (bySymbol) return bySymbol;
+  if (isBeamUsdcEAsset(raw)) return beamUsdcESupportedAsset();
+  if (['w0g', 'wrapped 0g', 'wrapped0g'].includes(lower)) {
+    return assets.find((a) => a.symbol === 'W0G');
+  }
+  if (['pai', 'pandaai', 'panda ai'].includes(lower)) {
+    return assets.find((a) => a.symbol === 'PAI');
+  }
+  return undefined;
+}
+
 export function resolveBeamErc20TokenFields(
   tokenOrSymbol: string | undefined,
 ): { token: string; tokenDecimals: number; tokenSymbol: string } | undefined {
   if (!tokenOrSymbol?.trim()) return undefined;
   const raw = tokenOrSymbol.trim();
+  const known = findBeamErc20Asset(raw);
+  if (known) return erc20FieldsFromAsset(known);
   if (/^0x[a-fA-F0-9]{40}$/.test(raw)) {
-    if (isBeamUsdcEAsset(raw)) {
-      return {
-        token: BEAM_USDC_E_ADDRESS,
-        tokenDecimals: BEAM_USDC_E_DECIMALS,
-        tokenSymbol: 'USDC.e',
-      };
-    }
     return {
       token: raw.toLowerCase(),
       tokenDecimals: BEAM_USDC_E_DECIMALS,
       tokenSymbol: 'ERC-20',
-    };
-  }
-  if (isBeamUsdcEAsset(raw)) {
-    return {
-      token: BEAM_USDC_E_ADDRESS,
-      tokenDecimals: BEAM_USDC_E_DECIMALS,
-      tokenSymbol: 'USDC.e',
     };
   }
   return undefined;
@@ -113,9 +130,9 @@ export function beamKnownAssetsPromptBlock(): string {
   const assets = beamTransferSupportedAssets();
   const nets = beamMainnetTransferNetworks();
   return [
-    'Beam known assets (use these exact contract addresses — never ask the user for USDC.e on 0G):',
+    'Beam known ERC-20 assets (use these exact contract addresses — never ask the user for USDC.e / W0G / PAI on 0G):',
     JSON.stringify({ networks: nets, supportedAssets: assets }, null, 0),
-    `USDC.e on 0G mainnet: ${BEAM_USDC_E_ADDRESS} (${BEAM_USDC_E_DECIMALS} decimals).`,
+    `ERC-20 transfers: W0G, USDC.e (${BEAM_USDC_E_ADDRESS}, ${BEAM_USDC_E_DECIMALS} decimals), and PAI on 0G mainnet — see supportedAssets.`,
     `Networks: mainnet → ${BEAM_MAINNET_CAIP2}; testnet → ${BEAM_TESTNET_CAIP2}.`,
     'x402 payment links (`create_x402_payment` / `offer_x402_checkout_form`): USDC.e on 0G mainnet only — never offer other tokens or testnet for x402 checkout.',
   ].join('\n');

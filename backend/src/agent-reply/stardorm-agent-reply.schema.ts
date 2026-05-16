@@ -762,7 +762,7 @@ export function buildAgentOutputContract(
       : '',
     allowed.includes('draft_erc20_transfer')
       ? [
-          '- draft_erc20_transfer (JSON-only): use when the user message states `network` (or mainnet/testnet), `to` (0x…40), human or wei amount, and token (USDC.e / USDC.e contract — never ask for USDC.e address on 0G).',
+          '- draft_erc20_transfer (JSON-only): use when the user message states `network` (or mainnet/testnet), `to` (0x…40), human or wei amount, and token (W0G, USDC.e, or PAI — never ask for known token contracts on 0G).',
           '- Transfer checkout form: params `{"_transferForm":true,"supportedAssets":[...], ...}` and matching `rich` type `transfer_checkout_form` when any required field is missing; use only tokens from the supported list.',
         ].join('\n')
       : '',
@@ -1601,7 +1601,7 @@ export function buildAgentToolCallingSystemPrompt(
       : '',
     allowed.includes('draft_erc20_transfer')
       ? [
-          'For ERC-20 transfers: USDC.e on 0G mainnet is `0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E` (6 decimals). Map “mainnet” → `eip155:16661`, “testnet” → `eip155:16602`. Never ask the user for the USDC.e contract if they said USDC.e / USDCE on 0G.',
+          'For ERC-20 transfers: use W0G, USDC.e (`0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E`, 6 decimals), and PAI from `supportedAssets` on 0G mainnet. Map “mainnet” → `eip155:16661`, “testnet” → `eip155:16602`. Never ask the user for known token contracts if they named W0G, USDC.e, or PAI.',
           'If the user already states network (or mainnet/testnet), recipient `to`, amount (convert to `amountWei`), and token (symbol or address), call **draft_erc20_transfer** with those exact values.',
           'If anything is missing, call **offer_transfer_checkout_form** with `supportedAssets` (and optional `networks`, optional `defaultTo` when they gave a recipient only).',
           'After proposing a transfer draft, remind them to tap **Send token transfer** (or confirm the form first) — the chat card will show the transaction hash when the wallet broadcast completes.',
@@ -1618,7 +1618,7 @@ export function buildAgentToolCallingSystemPrompt(
       ? [
           'For token swaps on 0G: only **mainnet** (`eip155:16661`). Never call swap tools with `eip155:16602` — testnet swap intents are blocked.',
           'If the user already states `tokenIn`, `tokenOut`, both decimals, and `amountInWei` (and optional min-out / pool fee), call **draft_token_swap** with `network` `eip155:16661`.',
-          'If anything is missing, call **offer_swap_checkout_form** with `supportedAssets` from the deployment (USDC.e and wrapped native when listed); never invent contracts.',
+          'If anything is missing, call **offer_swap_checkout_form** with `supportedAssets` from the deployment (W0G, USDC.e, PAI on 0G mainnet); never invent contracts.',
           'After proposing a swap, remind them to tap **Approve & swap** — approve ERC-20 allowance on token-in when needed, then `exactInputSingle` on the Beam router.',
         ].join(' ')
       : '',

@@ -8,7 +8,9 @@
     "subgraph:codegen": "npm run subgraph:abis && cd subgraph && npm run codegen",
     "subgraph:build": "npm run subgraph:abis && cd subgraph && npm run build",
     "deploy:stardorm8004": "npx hardhat ignition deploy ./ignition/modules/Stardorm8004.ts --network zogMainnet",
-    "deploy:testnet:stardorm8004": "npx hardhat ignition deploy ./ignition/modules/Stardorm8004.ts --network zogTestnet"
+    "deploy:testnet:stardorm8004": "npx hardhat ignition deploy ./ignition/modules/Stardorm8004.ts --network zogTestnet",
+    "update:seed-agents:testnet": "hardhat run scripts/update-seed-agent-registration.ts --network zogTestnet",
+    "update:seed-agents:mainnet": "hardhat run scripts/update-seed-agent-registration.ts --network zogMainnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.5",

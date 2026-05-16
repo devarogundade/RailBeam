@@ -2,14 +2,12 @@ import { parseEther } from "viem";
 
 type SkillHandle = { handle: string; label: string };
 
-/** Must stay in sync with `stardorm/backend/src/handlers/handler.types` HANDLER_ACTION_IDS */
+/** Must stay in sync with `@beam/stardorm-api-contract` `HANDLER_ACTION_IDS`. */
 const SEED_HANDLER_ACTION_IDS = [
   "generate_tax_report",
   "create_x402_payment",
-  "generate_financial_report",
-  "generate_audit_report",
-  "payroll_settlement",
-  "defi_strategy",
+  "generate_financial_activity_report",
+  "generate_payment_invoice",
   "on_ramp_tokens",
   "complete_stripe_kyc",
   "create_credit_card",
@@ -116,7 +114,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       { handle: "generate_pdf", label: "Generate shareable PDF report" },
     ],
     feesPerDay: parseEther("0.002").toString(),
-    handlerCapabilities: ["generate_financial_report"],
+    handlerCapabilities: ["generate_financial_activity_report"],
   },
   yieldr: {
     agentKey: "yieldr",
@@ -134,7 +132,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       { handle: "risk_check", label: "Risk / drawdown check" },
     ],
     feesPerDay: parseEther("0.002").toString(),
-    handlerCapabilities: ["defi_strategy"],
+    handlerCapabilities: ["draft_token_swap"],
   },
   audita: {
     agentKey: "audita",
@@ -153,7 +151,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       { handle: "generate_pdf", label: "Generate audit PDF" },
     ],
     feesPerDay: parseEther("0.002").toString(),
-    handlerCapabilities: ["generate_audit_report"],
+    handlerCapabilities: ["generate_financial_activity_report"],
   },
   settler: {
     agentKey: "settler",
@@ -172,7 +170,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       { handle: "generate_pdf", label: "Generate settlement PDF" },
     ],
     feesPerDay: parseEther("0.002").toString(),
-    handlerCapabilities: ["payroll_settlement"],
+    handlerCapabilities: ["generate_payment_invoice"],
   },
   quanta: {
     agentKey: "quanta",
@@ -190,7 +188,7 @@ const catalogJson: Record<string, StardormCatalogAgent> = {
       { handle: "generate_pdf", label: "Export strategy summary PDF" },
     ],
     feesPerDay: parseEther("0.002").toString(),
-    handlerCapabilities: ["defi_strategy"],
+    handlerCapabilities: ["draft_token_swap"],
   },
   ramp: {
     agentKey: "ramp",
@@ -300,7 +298,42 @@ export function registrationUriFromCatalogAgent(agent: StardormCatalogAgent): {
   };
 }
 
-/** Registration URIs in JSON object key order (beam-default, ledger, …). */
+/**
+ * Catalog slugs in registration order (`agentId` = index + 1).
+ * Must match `packages/stardorm-api-contract/src/catalog-build.ts` exactly —
+ * do not derive from `Object.keys(catalogJson)` (insertion order is easy to break).
+ */
+export const STARDORM_CATALOG_AGENT_KEYS_ORDERED = [
+  "beam-default",
+  "ledger",
+  "fiscus",
+  "scribe",
+  "yieldr",
+  "audita",
+  "settler",
+  "quanta",
+  "ramp",
+  "passport",
+  "capita",
+] as const satisfies readonly (keyof typeof catalogJson)[];
+
+function assertCatalogRegistrationOrder(): void {
+  const jsonKeys = new Set(Object.keys(catalogJson));
+  if (STARDORM_CATALOG_AGENT_KEYS_ORDERED.length !== jsonKeys.size) {
+    throw new Error(
+      `seedAgentUris: ordered keys (${STARDORM_CATALOG_AGENT_KEYS_ORDERED.length}) ≠ catalogJson keys (${jsonKeys.size})`,
+    );
+  }
+  for (const key of STARDORM_CATALOG_AGENT_KEYS_ORDERED) {
+    if (!jsonKeys.has(key)) {
+      throw new Error(`seedAgentUris: catalogJson missing "${key}"`);
+    }
+  }
+}
+
+assertCatalogRegistrationOrder();
+
+/** Registration URIs in canonical mint order (agentId = index + 1). */
 export const STARDORM_SEED_AGENT_URIS: readonly {
   uri: string;
   handlerCapabilities: {
@@ -308,4 +341,6 @@ export const STARDORM_SEED_AGENT_URIS: readonly {
     metadataValue: string;
   };
   feesPerDay: string;
-}[] = Object.values(catalogJson).map(registrationUriFromCatalogAgent);
+}[] = STARDORM_CATALOG_AGENT_KEYS_ORDERED.map((key) =>
+  registrationUriFromCatalogAgent(catalogJson[key]),
+);

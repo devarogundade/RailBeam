@@ -137,13 +137,6 @@ import { shortenHex } from "@/lib/format-subgraph";
 
 const indexRouteApi = getRouteApi("/");
 
-function buildStripeIdentityReturnPath(openConversationId: string | null): string {
-  if (openConversationId) {
-    return `/?${new URLSearchParams({ convId: openConversationId }).toString()}`;
-  }
-  return "/";
-}
-
 /** UI-only attachment row that also keeps the raw `File` for upload. */
 type DraftAttachment = ChatAttachment & { file: File; };
 
@@ -623,7 +616,7 @@ export function Chat() {
           m.handlerCta.handler === "complete_stripe_kyc"
             ? {
                 ...base,
-                returnPath: buildStripeIdentityReturnPath(openConversationId),
+                returnPath: "/",
               }
             : base;
         const res = await stardormExecuteHandler({

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Chat } from "@/components/chat";
 
 export type IndexSearch = {
-  /** Open this conversation after navigation (e.g. Stripe Identity return_url). */
+  /** Optional conversation to open when present in the URL (deep link). */
   convId?: string;
 };
 

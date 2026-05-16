@@ -13,29 +13,57 @@ export const BEAM_TESTNET_CAIP2 = `eip155:${BEAM_EVM_CHAIN_IDS.testnet}` as cons
 /** Canonical bridged USDC on 0G mainnet. */
 export const BEAM_MAINNET_USDC_E = BEAM_USDC_E_ADDRESS;
 
+/** Wrapped native 0G on 0G mainnet (18 decimals). */
+export const BEAM_MAINNET_W0G_ADDRESS =
+  '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as const;
+
+/** PandaAI (PAI) on 0G mainnet (18 decimals). */
+export const BEAM_MAINNET_PAI_ADDRESS =
+  '0x59ef6f3943bbdfef2fb19565037ac85071223e94c' as const;
+
 /**
- * Wrapped native 0G for router `tokenIn` / `tokenOut` (set via env if deployment differs).
- * Uniswap-style deployments often use 0x4200…0006 on OP-stack chains.
+ * Wrapped native 0G for router `tokenIn` / `tokenOut`.
+ * Override with `BEAM_WETH_ADDRESS_MAINNET` when the deployment address differs.
  */
-export function beamMainnetWrappedNativeAddress(): `0x${string}` | undefined {
+export function beamMainnetWrappedNativeAddress(): `0x${string}` {
   const raw = process.env.BEAM_WETH_ADDRESS_MAINNET?.trim();
-  if (!raw?.startsWith('0x') || raw.length < 42) return undefined;
-  return raw.toLowerCase() as `0x${string}`;
+  if (raw?.startsWith('0x') && raw.length >= 42) {
+    return raw.toLowerCase() as `0x${string}`;
+  }
+  return BEAM_MAINNET_W0G_ADDRESS;
+}
+
+function beamMainnetW0gSupportedAsset(): X402SupportedAsset {
+  return {
+    name: 'Wrapped 0G',
+    symbol: 'W0G',
+    icon: '/images/0g.png',
+    decimals: 18,
+    address: beamMainnetWrappedNativeAddress(),
+  };
+}
+
+function beamMainnetPaiSupportedAsset(): X402SupportedAsset {
+  return {
+    name: 'PandaAI',
+    symbol: 'PAI',
+    icon: '/images/pai.png',
+    decimals: 18,
+    address: BEAM_MAINNET_PAI_ADDRESS,
+  };
+}
+
+/** W0G, USDC.e, and PAI on 0G mainnet — shared by swap and ERC-20 transfer flows. */
+export function beamMainnetErc20SupportedAssets(): X402SupportedAsset[] {
+  return [
+    beamMainnetW0gSupportedAsset(),
+    beamUsdcESupportedAsset(),
+    beamMainnetPaiSupportedAsset(),
+  ];
 }
 
 export function beamMainnetSwapSupportedAssets(): X402SupportedAsset[] {
-  const assets: X402SupportedAsset[] = [beamUsdcESupportedAsset()];
-  const wNative = beamMainnetWrappedNativeAddress();
-  if (wNative) {
-    assets.unshift({
-      name: 'Wrapped 0G',
-      symbol: 'W0G',
-      icon: '/images/0g.png',
-      decimals: 18,
-      address: wNative,
-    });
-  }
-  return assets;
+  return beamMainnetErc20SupportedAssets();
 }
 
 export function beamMainnetSwapNetworks(): Array<{ id: string; label: string }> {

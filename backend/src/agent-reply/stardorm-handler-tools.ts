@@ -555,7 +555,7 @@ const offerTransferCheckoutFormTool: OpenAiChatTool = {
   function: {
     name: 'offer_transfer_checkout_form',
     description:
-      'Show the token transfer form when the user wants to send ERC-20 on 0G but their message does NOT already state every required field (`network` CAIP-2, token contract or known symbol like USDC.e, human or wei `amount`, full `to` 0x…40). Pass `supportedAssets` from the deployment list (USDC.e on mainnet) and optional `networks`, optional `defaultTo`. Never invent token contracts or amounts.',
+      'Show the token transfer form when the user wants to send ERC-20 on 0G but their message does NOT already state every required field (`network` CAIP-2, token contract or known symbol like W0G / USDC.e / PAI, human or wei `amount`, full `to` 0x…40). Pass `supportedAssets` from the deployment list (W0G, USDC.e, PAI on mainnet) and optional `networks`, optional `defaultTo`. Never invent token contracts or amounts.',
     parameters: {
       type: 'object',
       properties: {
@@ -598,7 +598,7 @@ const draftErc20TransferTool: OpenAiChatTool = {
   function: {
     name: 'draft_erc20_transfer',
     description:
-      'When the user already stated every field, offer a server action that records an ERC-20 transfer draft. Use known Beam tokens without asking: USDC.e on 0G mainnet is `0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E` (6 decimals); mainnet `eip155:16661`, testnet `eip155:16602`. Convert human amounts to base units (e.g. 0.01 USDC.e → amountWei `10000`). If network, token, amount, or recipient is missing, call offer_transfer_checkout_form instead. The server does not broadcast — the user signs `transfer` in their wallet.',
+      'When the user already stated every field, offer a server action that records an ERC-20 transfer draft. Use known Beam tokens without asking: W0G, USDC.e (`0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E`, 6 decimals), and PAI on 0G mainnet; mainnet `eip155:16661`, testnet `eip155:16602`. Convert human amounts to base units (e.g. 0.01 USDC.e → amountWei `10000`). If network, token, amount, or recipient is missing, call offer_transfer_checkout_form instead. The server does not broadcast — the user signs `transfer` in their wallet.',
     parameters: {
       type: 'object',
       properties: {

@@ -1,6 +1,7 @@
 /**
  * Ignition seed registration order → on-chain `agentId` (1-based).
- * Keep aligned with `smart-contracts/ignition/data/seedAgentUris.ts` `catalogJson` key order.
+ * Keep aligned with `smart-contracts/ignition/data/seedAgentUris.ts`
+ * `STARDORM_CATALOG_AGENT_KEYS_ORDERED` (explicit array, not object key order).
  */
 export const STARDORM_CATALOG_AGENT_KEYS_ORDERED = [
   "beam-default",

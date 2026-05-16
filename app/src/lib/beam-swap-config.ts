@@ -12,18 +12,33 @@ export const BEAM_TESTNET_CAIP2 = `eip155:${BEAM_CHAIN_IDS.testnet}` as const;
 export const BEAM_MAINNET_USDC_E =
   "0x1f3aa82227281ca364bfb3d253b0f1af1da6473e" as const;
 
+/** Wrapped native 0G on 0G mainnet (18 decimals). */
+export const BEAM_MAINNET_W0G_ADDRESS =
+  "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as const;
+
+/** PandaAI (PAI) on 0G mainnet (18 decimals). */
+export const BEAM_MAINNET_PAI_ADDRESS =
+  "0x59ef6f3943bbdfef2fb19565037ac85071223e94c" as const;
+
 function parseAddr(raw: string | undefined): `0x${string}` | undefined {
   const s = raw?.trim() ?? "";
   if (!s.startsWith("0x") || s.length < 42) return undefined;
   return s.toLowerCase() as `0x${string}`;
 }
 
-export function beamMainnetWrappedNativeAddress(): `0x${string}` | undefined {
-  return parseAddr(import.meta.env.VITE_BEAM_WETH_ADDRESS_MAINNET);
+export function beamMainnetWrappedNativeAddress(): `0x${string}` {
+  return parseAddr(import.meta.env.VITE_BEAM_WETH_ADDRESS_MAINNET) ?? BEAM_MAINNET_W0G_ADDRESS;
 }
 
 export function beamMainnetSwapSupportedAssets(): X402SupportedAsset[] {
-  const assets: X402SupportedAsset[] = [
+  return [
+    {
+      name: "Wrapped 0G",
+      symbol: "W0G",
+      icon: "/images/0g.png",
+      decimals: 18,
+      address: beamMainnetWrappedNativeAddress(),
+    },
     {
       name: "Bridged USDC",
       symbol: "USDC.e",
@@ -31,18 +46,14 @@ export function beamMainnetSwapSupportedAssets(): X402SupportedAsset[] {
       decimals: 6,
       address: BEAM_MAINNET_USDC_E,
     },
-  ];
-  const wNative = beamMainnetWrappedNativeAddress();
-  if (wNative) {
-    assets.unshift({
-      name: "Wrapped 0G",
-      symbol: "W0G",
-      icon: "/images/0g.png",
+    {
+      name: "PandaAI",
+      symbol: "PAI",
+      icon: "/images/pai.png",
       decimals: 18,
-      address: wNative,
-    });
-  }
-  return assets;
+      address: BEAM_MAINNET_PAI_ADDRESS,
+    },
+  ];
 }
 
 export function beamMainnetSwapNetworks(): Array<{ id: string; label: string }> {
