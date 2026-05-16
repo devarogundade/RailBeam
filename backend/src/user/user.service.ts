@@ -305,17 +305,23 @@ export class UserService {
       : undefined;
     const rich =
       richParsed && richParsed.success ? richParsed.data : undefined;
-    const handlerCta =
+    let handlerCta:
+      | { handler: HandlerActionId; params: Record<string, unknown> }
+      | undefined;
+    if (
       row.handlerCta &&
       typeof row.handlerCta.handler === 'string' &&
-      isHandlerActionId(row.handlerCta.handler) &&
-      row.handlerCta.params != null &&
-      typeof row.handlerCta.params === 'object'
-        ? {
-            handler: row.handlerCta.handler,
-            params: row.handlerCta.params as Record<string, unknown>,
-          }
-        : undefined;
+      isHandlerActionId(row.handlerCta.handler)
+    ) {
+      const p = row.handlerCta.params;
+      handlerCta = {
+        handler: row.handlerCta.handler,
+        params:
+          p != null && typeof p === 'object' && !Array.isArray(p)
+            ? (p as Record<string, unknown>)
+            : {},
+      };
+    }
     const computeMeta =
       role === 'agent' &&
       (row.model != null ||

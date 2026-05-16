@@ -158,6 +158,8 @@ export class ChatHandlerCta {
 }
 
 const ChatHandlerCtaSchema = SchemaFactory.createForClass(ChatHandlerCta);
+/** Keep `params: {}` in MongoDB; default `minimize` would drop empty objects and break CTA round-trips. */
+ChatHandlerCtaSchema.set('minimize', false);
 
 /** One chat bubble (matches Stardorm `ChatMessage`). */
 @Schema({ timestamps: false })
