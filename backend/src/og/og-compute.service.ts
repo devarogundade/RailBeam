@@ -77,28 +77,6 @@ export class OgComputeService {
     return v?.toLowerCase() === 'true' || v === '1';
   }
 
-  /** Searchable label for marketplace chatbot services (model, URL, additionalInfo name). */
-  private chatbotServiceName(service: InferenceServiceStructOutput): string {
-    const parts: string[] = [service.model, service.url];
-    if (service.additionalInfo) {
-      try {
-        const info = JSON.parse(service.additionalInfo) as Record<
-          string,
-          unknown
-        >;
-        for (const key of ['name', 'serviceName', 'displayName'] as const) {
-          const v = info[key];
-          if (typeof v === 'string' && v.trim()) {
-            parts.push(v);
-          }
-        }
-      } catch {
-        // ignore malformed additionalInfo
-      }
-    }
-    return parts.join(' ');
-  }
-
   private selectChatbotService(
     services: InferenceServiceStructOutput[],
   ): InferenceServiceStructOutput | undefined {
@@ -107,9 +85,8 @@ export class OgComputeService {
       return undefined;
     }
     return (
-      chatbots.find((s) =>
-        this.chatbotServiceName(s).toLowerCase().includes('openai'),
-      ) ?? chatbots[0]
+      chatbots.find((s) => s.model.toLowerCase().includes('openai')) ??
+      chatbots[0]
     );
   }
 
