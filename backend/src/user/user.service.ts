@@ -42,6 +42,7 @@ import { buildOpenAiHandlerTools } from 'src/agent-reply/stardorm-handler-tools'
 import {
   HandlerActionId,
   HANDLER_ACTION_IDS,
+  isHandlerActionId,
 } from 'src/handlers/handler.types';
 import {
   normalizeHandlerCapabilityIds,

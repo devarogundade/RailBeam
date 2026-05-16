@@ -3,6 +3,7 @@ import { ArrowDownToLine, Plus } from "lucide-react";
 import type { CreditCardPublic } from "@railbeam/stardorm-api-contract";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -87,9 +88,9 @@ export function VirtualCardFundsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <div className="border-b border-border bg-surface-elevated/40 px-6 pb-4 pt-6">
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <form onSubmit={(e) => void handleSubmit(e)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-border bg-surface-elevated/40 px-6 pb-4 pt-6">
             <DialogHeader className="space-y-1 text-left">
               <DialogTitle className="flex items-center gap-2">
                 {isFund ? (
@@ -119,7 +120,7 @@ export function VirtualCardFundsDialog({
             </div>
           </div>
 
-          <div className="space-y-4 px-6 py-5">
+          <DialogBody className="space-y-4 px-6 py-5">
             <div className="grid gap-2">
               <Label htmlFor={`card-${mode}-amount`}>Amount (USD)</Label>
               <Input
@@ -165,9 +166,9 @@ export function VirtualCardFundsDialog({
                 );
               })}
             </div>
-          </div>
+          </DialogBody>
 
-          <DialogFooter className="gap-2 border-t border-border bg-surface-elevated/30 px-6 py-4 sm:gap-0">
+          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-surface-elevated/30 px-6 py-4 sm:gap-0">
             <Button
               type="button"
               variant="outline"
